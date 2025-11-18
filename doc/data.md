@@ -24,6 +24,10 @@ If the data is constant over time (like the distribution of material A and B) th
 
 The rest of this document is hierarchical, just like the HDF5 files.  Each subsection is a group name, with the subsequent text describing what that group stores.
 
+### Density
+
+I couldn't think of a good place to put this, so the density is recorded as an attribute at the top scope of the model.
+
 ### Generalized
 
 The generalized, homogenized stimuli and response information from the simulation.
