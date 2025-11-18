@@ -12,6 +12,8 @@ All tensor data is stored as a group in the HDF5 files with a string attribute "
 
 A "shape" subgroup which gives the base shape of tensor.  The actual data is stored as a `(ntime, ...,) + base_shape` tensor, where the first dimension stores time steps, the intermediate dimensions are the spatial distribution of the data, for example an `(nx,ny,nz)` grid, the `base_shape` gives the actual tensor dimension.
 
+***Important: Coordinates are generated with the numpy/pytorch `meshgrid` function with `indexing = 'ij'`.  This means that the x-values are the first axis in the array, the y-values the second, and the z-values the third.  For plotting 2D arrays you'll likely want to transpose the matrix before plotting with the standard `'xy'` convention, where rows (first index) are y and columns (second index) are x.***
+
 And finally a "data" subgroup which gives the actual tensor data.
 
 The intermediate dimensions are optional, for global data, like the generalized stimuli and responses, are not distributed over space.
@@ -69,6 +71,11 @@ The material properties of phase "A", given as float attributes of this subgroup
 #### B
 
 The material properties of phase "B", given as float attributes of this subgroup.
+
+
+#### AB
+
+The material properties of the interface, given as float attributes of this subgroup.
 
 ### Physics
 

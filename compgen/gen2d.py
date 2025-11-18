@@ -1,6 +1,45 @@
 import numpy as np
 
 
+class RandomGenerator:
+    """Generate random structures of a given shape.
+
+    Args:
+        nx (int): Number of grid points in the x-direction.
+        ny (int): Number of grid points in the y-direction.
+
+    Keyword Args:
+        seed (int): Seed for the random number generator. Defaults to None.
+
+    """
+
+    def __init__(self, nx, ny, seed=None):
+        self.nx = nx
+        self.ny = ny
+        self.rng = np.random.default_rng(seed)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        """Generate the next random structure via hierarchical sampling.
+
+        Returns:
+            np.ndarray: A 2D array of shape (nx, ny) with random bool values.
+        """
+        # First select the volume fraction of phase A
+        vf = self.rng.uniform(0, 1.0)
+        nf = int(self.nx * self.ny * vf)
+        # Then sample a hierarchical random structure
+        inds = self.rng.choice(list(range(self.nx * self.ny)), size=nf, replace=False)
+        img = np.zeros((self.nx * self.ny,), dtype=bool)
+        img[inds] = True
+        return img.reshape((self.nx, self.ny))
+
+
 class Rectangle:
     """Represents a 2D rectangular region.
 
@@ -77,7 +116,7 @@ def generate_from_objects(objects, lx, ly, nx, ny):
     """
     x_vals = np.linspace(0, lx, nx)
     y_vals = np.linspace(0, ly, ny)
-    X, Y = np.meshgrid(x_vals, y_vals)
+    X, Y = np.meshgrid(x_vals, y_vals, indexing="ij")
     img = np.zeros((ny, nx), dtype=bool)
 
     for obj in objects:

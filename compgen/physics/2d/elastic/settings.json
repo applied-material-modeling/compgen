@@ -3,18 +3,22 @@
     "number_of_targets": 3,
     "target_name": "value",
     "zero_name": "zero",
-    "material_properties": [
-        "youngs_modulus",
-        "poissons_ratio"
-    ],
-    "material_A_substitutions": [
-        "Materials/elastic_tensor_1/youngs_modulus",
-        "Materials/elastic_tensor_1/poissons_ratio"
-    ],
-    "material_B_substitutions": [
-        "Materials/elastic_tensor_2/youngs_modulus",
-        "Materials/elastic_tensor_2/poissons_ratio"
-    ],
+    "material_properties": {
+        "bulk_material_properties": [
+            "youngs_modulus",
+            "poissons_ratio"
+        ],
+        "interface_material_properties": [],
+        "material_A_substitutions": [
+            "Materials/elastic_tensor_1/youngs_modulus",
+            "Materials/elastic_tensor_1/poissons_ratio"
+        ],
+        "material_B_substitutions": [
+            "Materials/elastic_tensor_2/youngs_modulus",
+            "Materials/elastic_tensor_2/poissons_ratio"
+        ],
+        "interface_substitutions": []
+    },
     "target_substitution": "Physics/SolidMechanics/QuasiStatic/all/targets",
     "output_substitution": "Outputs/file_base",
     "stimuli_fields": {

@@ -31,28 +31,28 @@ def get_physics(name, settings_name="settings.json", template_name="template.i")
     )
 
 
-def material_property_substitutions(
-    material_properties, physics_property_names, material_A_subs, material_B_subs
-):
+def material_property_substitutions(material_properties, physics_properties):
     """Generate substitutions for material properties.
 
     Args:
         material_properties (dict): Dictionary defining material properties for materials A and B.
-        physics_property_names (list): List of property names expected by the physics template.
-        material_A_subs (list): Substitutions list for material A.
-        material_B_subs (list): Substitutions list for material B.
+        physics_properties (dict): Dictionary defining physics properties.
     """
     subs = []
-    for prop in physics_property_names:
+    for prop in physics_properties["bulk_material_properties"]:
         if prop not in material_properties["A"]:
             raise ValueError(f"Material property '{prop}' not defined for material A.")
         if prop not in material_properties["B"]:
             raise ValueError(f"Material property '{prop}' not defined for material B.")
 
-        ind = physics_property_names.index(prop)
+        ind = physics_properties["bulk_material_properties"].index(prop)
 
-        subs.append(f"{material_A_subs[ind]}={material_properties['A'][prop]}")
-        subs.append(f"{material_B_subs[ind]}={material_properties['B'][prop]}")
+        subs.append(
+            f"{physics_properties['material_A_substitutions'][ind]}={material_properties['A'][prop]}"
+        )
+        subs.append(
+            f"{physics_properties['material_B_substitutions'][ind]}={material_properties['B'][prop]}"
+        )
 
     return subs
 
@@ -239,6 +239,7 @@ def execute_moose_simulations(
     # Temp storage
     cwd = os.getcwd()
     tmpdir = tempfile.mkdtemp()
+    print(tmpdir)
 
     # Need the mesh and the template
     shutil.copy(mesh, os.path.join(tmpdir, "mesh.exo"))
@@ -250,8 +251,6 @@ def execute_moose_simulations(
     mat_subs = material_property_substitutions(
         material_properties,
         physics_settings["material_properties"],
-        physics_settings["material_A_substitutions"],
-        physics_settings["material_B_substitutions"],
     )
 
     outputs = []

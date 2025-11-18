@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}):
+def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}, sculpt=True):
     """Run the entire process of generating a mesh for an image and write it to an exodus file.
 
     This function will access a temp directory to store intermediate files, but copy the final
@@ -21,15 +21,19 @@ def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}):
         lx (float): Length of the domain in x-direction.
         ly (float): Length of the domain in y-direction.
         settings (dict): Global settings dict
+        sculpt (bool): Whether to sculpt the mesh
     """
     cwd = os.getcwd()
     tmpdir = tempfile.mkdtemp()
     os.chdir(tmpdir)
     write_mesh(img, "temp_mesh.e", lx=lx, ly=ly)
-    extrude("temp_mesh.e", prefix="extruded_")
-    sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
-    slice("sculpted_extruded_temp_mesh.e", prefix="sliced_")
-    os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
+    if sculpt:
+        extrude("temp_mesh.e", prefix="extruded_")
+        sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
+        slice("sculpted_extruded_temp_mesh.e", prefix="sliced_")
+        os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
+    else:
+        os.rename("temp_mesh.e", os.path.join(cwd, fname))
 
     os.chdir(cwd)
 
@@ -187,12 +191,12 @@ def write_mesh(img, fname, lx=1.0, ly=1.0):
         lx (float): Length of the domain in x-direction.
         ly (float): Length of the domain in y-direction.
     """
-    ny, nx = img.shape
+    nx, ny = img.shape
 
     x_vals = np.linspace(0, lx, nx + 1)
     y_vals = np.linspace(0, ly, ny + 1)
 
-    X, Y = np.meshgrid(x_vals, y_vals)
+    X, Y = np.meshgrid(x_vals, y_vals, indexing="ij")
     points = np.vstack([X.flatten(), Y.flatten()]).T
 
     mat_a = []
@@ -200,12 +204,12 @@ def write_mesh(img, fname, lx=1.0, ly=1.0):
     for je in range(ny):
         for ie in range(nx):
             cell = [
-                je * (ny + 1) + ie + 1,
-                je * (ny + 1) + ie + 1 + 1,
-                (je + 1) * (ny + 1) + ie + 1 + 1,
-                (je + 1) * (ny + 1) + ie + 1,
+                ie * (nx + 1) + je + 1,
+                ie * (nx + 1) + je + 1 + 1,
+                (ie + 1) * (nx + 1) + je + 1 + 1,
+                (ie + 1) * (nx + 1) + je + 1,
             ]
-            if img[je, ie]:
+            if img[ie, je]:
                 mat_a.append(cell)
             else:
                 mat_b.append(cell)
@@ -244,7 +248,7 @@ def project_element_field_to_grid(
     # Grid centroids
     x_vals = np.linspace(lx / nx / 2, lx - lx / nx / 2, nx)
     y_vals = np.linspace(ly / ny / 2, ly - ly / ny / 2, ny)
-    X, Y = np.meshgrid(x_vals, y_vals)
+    X, Y = np.meshgrid(x_vals, y_vals, indexing="ij")
 
     # Cell centroids
     elem_centroids = np.zeros((mesh_conn.shape[0], 2))
@@ -259,7 +263,7 @@ def project_element_field_to_grid(
     return {
         "type": tensor_type,
         "shape": shape,
-        "data": data[:, closest_elems].reshape((-1, ny, nx) + shape),
+        "data": data[:, closest_elems].reshape((-1, nx, ny) + shape),
     }
 
 
