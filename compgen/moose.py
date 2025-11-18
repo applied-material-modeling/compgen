@@ -1,13 +1,13 @@
 import os
 import os.path
 import json
-import tempfile
 import shutil
 import subprocess
 
 import numpy as np
 import exodusii
 
+from compgen import temp
 from compgen.exoutil import get_element_field
 from compgen.tensors import assemble_tensor
 
@@ -238,8 +238,7 @@ def execute_moose_simulations(
 
     # Temp storage
     cwd = os.getcwd()
-    tmpdir = tempfile.mkdtemp()
-    print(tmpdir)
+    tmpdir = temp.make_temp_directory(settings)
 
     # Need the mesh and the template
     shutil.copy(mesh, os.path.join(tmpdir, "mesh.exo"))

@@ -1,8 +1,8 @@
+from compgen import temp
+
 import numpy as np
 import exodusii
 import scipy.spatial as sp
-
-import tempfile
 import os
 import subprocess
 
@@ -24,7 +24,7 @@ def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}, sculpt=True):
         sculpt (bool): Whether to sculpt the mesh
     """
     cwd = os.getcwd()
-    tmpdir = tempfile.mkdtemp()
+    tmpdir = temp.make_temp_directory(settings)
     os.chdir(tmpdir)
     write_mesh(img, "temp_mesh.e", lx=lx, ly=ly)
     if sculpt:
