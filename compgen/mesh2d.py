@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}, sculpt=True):
+def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}, run_sculpt=True):
     """Run the entire process of generating a mesh for an image and write it to an exodus file.
 
     This function will access a temp directory to store intermediate files, but copy the final
@@ -27,7 +27,7 @@ def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}, sculpt=True):
     tmpdir = temp.make_temp_directory(settings)
     os.chdir(tmpdir)
     write_mesh(img, "temp_mesh.e", lx=lx, ly=ly)
-    if sculpt:
+    if run_sculpt:
         extrude("temp_mesh.e", prefix="extruded_")
         sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
         slice("sculpted_extruded_temp_mesh.e", prefix="sliced_")

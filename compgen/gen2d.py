@@ -278,13 +278,16 @@ class RandomGenerator:
 
     Keyword Args:
         seed (int): Seed for the random number generator. Defaults to None.
-
+        min_vf (float): Minimum volume fraction of phase A. Defaults to 0.
+        max_vf (float): Maximum volume fraction of phase A. Defaults to 1.
     """
 
-    def __init__(self, nx, ny, seed=None):
+    def __init__(self, nx, ny, seed=None, min_vf=0, max_vf=1.0):
         self.nx = nx
         self.ny = ny
         self.rng = np.random.default_rng(seed)
+        self.min_vf = min_vf
+        self.max_vf = max_vf
 
     def __iter__(self):
         return self
@@ -299,7 +302,7 @@ class RandomGenerator:
             np.ndarray: A 2D array of shape (nx, ny) with random bool values.
         """
         # First select the volume fraction of phase A
-        vf = self.rng.uniform(0, 1.0)
+        vf = self.rng.uniform(self.min_vf, self.max_vf)
         nf = int(self.nx * self.ny * vf)
         # Then sample a hierarchical random structure
         inds = self.rng.choice(list(range(self.nx * self.ny)), size=nf, replace=False)
