@@ -58,7 +58,7 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         cmd,
         check=True,
         env=settings["sculpt"].get("environment", {}) | os.environ,
-        capture_output=True,
+        capture_output=False,
     )
     os.rename(f"{outfile}.e.1.0", outfile)
 
