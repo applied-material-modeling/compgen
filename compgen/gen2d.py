@@ -1,4 +1,91 @@
 import numpy as np
+from numpy.fft import rfftn, irfftn
+from scipy.ndimage import gaussian_filter
+
+
+class SpectralGenerator:
+    """Generate structures based on another image by calculating its spectrum
+
+    Args:
+        reference_image (np.ndarray): 2D binary array representing the reference structure.
+        nx (int): Number of grid points in the x-direction.
+        ny (int): Number of grid points in the y-direction.
+
+    Keyword Args:
+        seed (int): Seed for the random number generator. Defaults to None.
+    """
+
+    def __init__(self, reference_image, nx, ny, seed=None, iters=100):
+        self.reference_image = reference_image
+        self.nx = nx
+        self.ny = ny
+        self.rng = np.random.default_rng(seed)
+        self.iters = iters
+        self.target_spectrum = self.compute_spectrum(reference_image)
+        self.vf = np.mean(reference_image)
+
+    def compute_spectrum(self, image):
+        """Compute the spectrum of the given image.
+
+        Args:
+            image (np.ndarray): 2D binary array.
+
+        Returns:
+            np.ndarray: image spectrum
+        """
+        # Generate the spectrum
+        f = image.astype(float) - np.mean(image)
+        spec = np.abs(rfftn(f))
+
+        # Resample to the right size
+        old_nx, old_nyh = spec.shape
+        new_nyh = self.ny // 2 + 1
+
+        resampled_spec = np.zeros((self.nx, new_nyh))
+
+        nx_min = min(old_nx, self.nx)
+        nyh_min = min(old_nyh, new_nyh)
+
+        resampled_spec[:nx_min, :nyh_min] = spec[:nx_min, :nyh_min]
+
+        if self.nx < old_nx or new_nyh < old_nyh:
+            sx = max(old_nx / self.nx, 1.0)
+            sy = max(old_nyh / new_nyh, 1.0)
+            sigma = (sx / 8.0, sy / 8.0)
+            resampled_spec = gaussian_filter(resampled_spec, sigma=sigma)
+
+        return resampled_spec
+
+    def sample(self, spectrum):
+        """
+        Sample the spectrum and binary constraint
+        """
+        field = self.rng.normal(size=(self.nx, self.ny))
+
+        for _ in range(self.iters):
+            F = rfftn(field)
+            phase = F / np.maximum(np.abs(F), 1e-12)
+            F_new = phase * spectrum
+
+            field = irfftn(F_new, s=(self.nx, self.ny))
+            # Enforce binary constraint
+            field = (field > self.vf).astype(float)
+
+        return field.astype(bool)
+
+    def next(self):
+        """Generate a new structure matching the target 2-point correlation.
+
+        Returns:
+            np.ndarray: A 2D array of shape (nx, ny) with random bool values.
+        """
+        return self.sample(self.target_spectrum)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
 
 
 class RandomGenerator:

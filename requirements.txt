@@ -3,3 +3,4 @@ exodusii
 scipy
 h5py
 matplotlib
+scikit-image
