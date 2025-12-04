@@ -12,14 +12,14 @@ if __name__ == "__main__":
 
     generator = gen2d.SpinodalGenerator(nx=n, ny=n, vf=0.3, l=100, bandwidth=3, seed=42)
 
-    img = next(generator)
+    img = gen2d.make_orthogonal(next(generator))
     global_settings = json.load(open("config.json"))
 
     tempdir = temp.make_temp_directory(global_settings)
 
     pwd = os.getcwd()
     os.chdir(tempdir)
-    mesh2d.generate_mesh(img, "mesh.exo", settings=global_settings, run_sculpt=False)
+    mesh2d.generate_mesh(img, "mesh.exo", settings=global_settings, run_sculpt=True)
 
     res = moose.execute_moose_simulations(
         "2d/elastic",

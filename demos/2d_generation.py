@@ -13,6 +13,7 @@ if __name__ == "__main__":
     print("Generating random images")
     gen = gen2d.RandomGenerator(nx=128, ny=128, seed=42)
     for i, structure in zip(range(5), gen):
+        structure = gen2d.make_orthogonal(structure)
         plt.imshow(structure.T, cmap="gray")
         plt.axis("off")
         plt.show()
@@ -29,6 +30,7 @@ if __name__ == "__main__":
                 )
             ),
         )
+        smoothed = gen2d.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()
@@ -37,6 +39,7 @@ if __name__ == "__main__":
     seg = utils.load_and_segment("composite.jpg")
     min_px = np.min(seg.shape)
     seg = seg[:min_px, :min_px]
+    seg = gen2d.make_orthogonal(seg)
 
     plt.imshow(seg.T, cmap="gray")
     plt.axis("off")
@@ -57,6 +60,7 @@ if __name__ == "__main__":
         smoothed = skimage.morphology.binary_opening(
             skimage.morphology.binary_closing(smoothed)
         )
+        smoothed = gen2d.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()

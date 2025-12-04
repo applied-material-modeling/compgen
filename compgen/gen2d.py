@@ -4,6 +4,13 @@ import gstools as gs
 from scipy.optimize import curve_fit
 
 
+def make_orthogonal(img):
+    """Mirror and tile the input image to give it orthogonal periodicity."""
+    img_h = np.hstack([img, np.flip(img, axis=1)])
+    img_v = np.vstack([img_h, np.flip(img_h, axis=0)])
+    return img_v
+
+
 class DampedOscillationCovariance(gs.CovModel):
     """Damped Oscillation covariance model.
 

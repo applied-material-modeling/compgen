@@ -245,7 +245,6 @@ def execute_moose_simulations(
     shutil.copy(template_input, os.path.join(tmpdir, "input.i"))
 
     os.chdir(tmpdir)
-    print(tmpdir)
 
     # Form the substitutions for material properties
     mat_subs = material_property_substitutions(
