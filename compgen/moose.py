@@ -275,6 +275,12 @@ def execute_moose_simulations(
             + target_subs
             + output_subs
         )
+        if "mpi" in settings:
+            cmd = (
+                [settings["mpi"]["executable"]]
+                + [settings["mpi"]["rank_command"], str(settings["mpi"]["ranks"])]
+                + cmd
+            )
 
         subprocess.run(
             cmd,
