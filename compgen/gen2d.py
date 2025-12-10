@@ -220,9 +220,9 @@ class SpinodalGenerator:
     Args:
         nx (int): Number of grid points in the x-direction.
         ny (int): Number of grid points in the y-direction.
-        vf (float): Volume fraction of phase A.
-        l (float): Characteristic length scale.
-        bandwidth (float): Bandwidth of the spinodal structure.
+        vf (float or list): Volume fraction of phase A or range for random samples.
+        l (float or list): Characteristic length scale or range for random samples.
+        bandwidth (float or list): Bandwidth of the spinodal structure or range for random samples.
 
     Keyword Args:
         seed (int): Seed for the random number generator. Defaults to None.
@@ -231,9 +231,9 @@ class SpinodalGenerator:
     def __init__(self, nx, ny, vf, l, bandwidth, seed=None):
         self.nx = nx
         self.ny = ny
-        self.vf = vf
-        self.l = l
-        self.bandwidth = bandwidth
+        self.vf_input = vf
+        self.l_input = l
+        self.bandwidth_input = bandwidth
         self.rng = np.random.default_rng(seed)
 
     def __iter__(self):
@@ -242,12 +242,36 @@ class SpinodalGenerator:
     def __next__(self):
         return self.next()
 
+    def sample(self):
+        """Sample parameters for the next structure.
+
+        Returns:
+            tuple: (vf, l, bandwidth) for the next structure.
+        """
+        if isinstance(self.vf_input, list) and len(self.vf_input) == 2:
+            self.vf = self.rng.uniform(self.vf_input[0], self.vf_input[1])
+        else:
+            self.vf = self.vf_input
+
+        if isinstance(self.l_input, list) and len(self.l_input) == 2:
+            self.l = self.rng.uniform(self.l_input[0], self.l_input[1])
+        else:
+            self.l = self.l_input
+
+        if isinstance(self.bandwidth_input, list) and len(self.bandwidth_input) == 2:
+            self.bandwidth = self.rng.uniform(
+                self.bandwidth_input[0], self.bandwidth_input[1]
+            )
+        else:
+            self.bandwidth = self.bandwidth_input
+
     def next(self):
         """Generate the next structure via spinodal decomposition.
 
         Returns:
             np.ndarray: A 2D array of shape (nx, ny) with random bool values.
         """
+        self.sample()
         kx = 2.0 * np.pi * np.fft.fftfreq(self.nx)
         ky = 2.0 * np.pi * np.fft.fftfreq(self.ny)
         KX, KY = np.meshgrid(kx, ky, indexing="ij")
