@@ -19,5 +19,10 @@
     "moose": {
         "executable": "/Users/messner/packages/moose-conda/moose/modules/solid_mechanics/solid_mechanics-opt",
         "options": []
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "8"
     }
 }
