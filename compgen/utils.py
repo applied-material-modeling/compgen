@@ -5,6 +5,10 @@ from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.segmentation import chan_vese
 
+def json_true(str_input):
+    if str_input in ["true", "True", 1, "1"]:
+        return True
+    return False
 
 def binary_smoother(binary_image, smoothing_function):
     """Apply a smoothing function to a binary image and re-binarize it.

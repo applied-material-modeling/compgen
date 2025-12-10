@@ -1,4 +1,5 @@
 from compgen import temp
+from compgen.utils import json_true
 
 import numpy as np
 import exodusii
@@ -58,7 +59,7 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         cmd,
         check=True,
         env=settings["sculpt"].get("environment", {}) | os.environ,
-        capture_output=True,
+        capture_output=(not json_true(settings["verbose"])),
     )
     os.rename(f"{outfile}.e.1.0", outfile)
 
