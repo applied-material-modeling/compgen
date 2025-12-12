@@ -23,6 +23,7 @@
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "8"
-    }
+        "ranks": "1"
+    },
+    "verbose": "true"
 }

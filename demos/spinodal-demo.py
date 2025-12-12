@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     for i in range(100):
         gen = gen2d.SpinodalGenerator(
-            nx=128, ny=128, vf=[0.01, 0.99], l=[50, 150], bandwidth=[1, 5]
+            nx=64, ny=64, vf=[0.01, 0.99], l=[50, 150], bandwidth=[1, 5]
         )
         structure = next(gen)
         smoothed = utils.binary_smoother(
