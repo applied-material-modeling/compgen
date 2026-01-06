@@ -279,6 +279,7 @@ def execute_moose_simulations(
             cmd = (
                 [settings["mpi"]["executable"]]
                 + [settings["mpi"]["rank_command"], str(settings["mpi"]["ranks"])]
+                + settings["mpi"].get("extra_args", [])
                 + cmd
             )
 
