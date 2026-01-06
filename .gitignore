@@ -3,3 +3,5 @@
 .vscode
 *.swp
 __pycache__
+demo.log
+demo_output

@@ -10,7 +10,6 @@ import exodusii
 from compgen import temp
 from compgen.exoutil import get_element_field
 from compgen.tensors import assemble_tensor
-from compgen.utils import json_true
 
 
 def get_physics(name, settings_name="settings.json", template_name="template.i"):
@@ -287,7 +286,7 @@ def execute_moose_simulations(
             cmd,
             check=True,
             env=settings["moose"].get("environment", {}) | os.environ,
-            capture_output=(not json_true(settings["verbose"])),
+            capture_output=(not settings.get("verbose", False)),
         )
 
         outputs.append(

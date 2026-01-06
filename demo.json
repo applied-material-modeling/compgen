@@ -1,0 +1,76 @@
+{
+    "number": 10,
+    "nthreads": 4,
+    "mesh_file": "mesh.exo",
+    "lx": 1.0,
+    "ly": 1.0,
+    "generator": {
+        "type": "gen2d.SpinodalGenerator",
+        "params": {
+            "nx": 128,
+            "ny": 128,
+            "vf": [
+                0.01,
+                0.99
+            ],
+            "l": [
+                50,
+                150
+            ],
+            "bandwidth": [
+                1,
+                5
+            ],
+            "seed": 1
+        }
+    },
+    "filtering": [
+        {
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "gen2d.make_orthogonal"
+        }
+    ],
+    "mesh": {
+        "type": "mesh2d.generate_mesh",
+        "params": {
+            "run_sculpt": true
+        }
+    },
+    "executor": {
+        "type": "moose.execute_moose_simulations",
+        "physics": "2d/elastic"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 70000.0,
+            "poissons_ratio": 0.3,
+            "density": 2.7
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 410000.0,
+            "poissons_ratio": 0.14,
+            "density": 3.21
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "output": {
+        "add_density": true,
+        "output_dir": "demo_output",
+        "output_prefix": "fixed_material_elastic_spinodal",
+        "grid_extractor": {
+            "type": "mesh2d.extract_grid_from_mesh"
+        }
+    }
+}

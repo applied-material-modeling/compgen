@@ -1,5 +1,4 @@
 from compgen import temp
-from compgen.utils import json_true
 
 import numpy as np
 import exodusii
@@ -59,7 +58,7 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         cmd,
         check=True,
         env=settings["sculpt"].get("environment", {}) | os.environ,
-        capture_output=(not json_true(settings["verbose"])),
+        capture_output=(not settings.get("verbose", False)),
     )
     os.rename(f"{outfile}.e.1.0", outfile)
 
@@ -120,7 +119,7 @@ def extrude(mesh, lx=1.0, ly=1.0, prefix="extruded_", lz=0.01, tol=1e-6):
         exo.put_node_set(4, node_nums[top])
 
 
-def slice(mesh, prefix="sliced_", eps=1e-6):
+def slice(mesh, prefix="sliced_", eps=1e-4):
     """Take a 2D slice of a 3D hex mesh.
 
     This function assumes that the input mesh is a single element thick in the z-direction.
@@ -156,6 +155,9 @@ def slice(mesh, prefix="sliced_", eps=1e-6):
         angles = np.arctan2(points[:, 1] - center[1], points[:, 0] - center[0])
         sorted_indices = np.argsort(angles)
         new_conn = [new_conn[i] for i in sorted_indices]
+
+        if len(new_conn) != 4:
+            raise ValueError("Element does not have 4 nodes after slicing.")
 
         return new_conn
 

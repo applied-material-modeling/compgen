@@ -23,7 +23,9 @@
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "1"
+        "ranks": "2"
     },
-    "verbose": "true"
+    "verbose": false,
+    "log_file": "demo.log",
+    "log_level": "INFO"
 }
