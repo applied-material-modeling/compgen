@@ -1,5 +1,5 @@
 numpy
-exodusii
+exodusii @ git+https://github.com/sandialabs/exodusii.git@main
 scipy
 h5py
 matplotlib
