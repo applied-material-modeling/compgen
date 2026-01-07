@@ -57,9 +57,7 @@ if __name__ == "__main__":
                 )
             ),
         )
-        smoothed = skimage.morphology.binary_opening(
-            skimage.morphology.binary_closing(smoothed)
-        )
+        smoothed = skimage.morphology.opening(skimage.morphology.closing(smoothed))
         smoothed = gen2d.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
