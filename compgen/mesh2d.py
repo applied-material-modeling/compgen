@@ -23,19 +23,15 @@ def generate_mesh(img, fname, lx=1.0, ly=1.0, settings={}, run_sculpt=True):
         settings (dict): Global settings dict
         sculpt (bool): Whether to sculpt the mesh
     """
-    cwd = os.getcwd()
-    tmpdir = temp.make_temp_directory(settings)
-    os.chdir(tmpdir)
-    write_mesh(img, "temp_mesh.e", lx=lx, ly=ly)
-    if run_sculpt:
-        extrude("temp_mesh.e", prefix="extruded_")
-        sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
-        slice("sculpted_extruded_temp_mesh.e", prefix="sliced_")
-        os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
-    else:
-        os.rename("temp_mesh.e", os.path.join(cwd, fname))
-
-    os.chdir(cwd)
+    with temp.TempDirectory(settings) as (cwd, _):
+        write_mesh(img, "temp_mesh.e", lx=lx, ly=ly)
+        if run_sculpt:
+            extrude("temp_mesh.e", prefix="extruded_")
+            sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
+            slice("sculpted_extruded_temp_mesh.e", prefix="sliced_")
+            os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
+        else:
+            os.rename("temp_mesh.e", os.path.join(cwd, fname))
 
 
 def sculpt(mesh, prefix="sculpted_", settings={}):

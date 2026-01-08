@@ -161,56 +161,49 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
         logger.info("Problem %s: Filtering complete", uid)
 
     # Move to our temp directory
-    pwd = os.getcwd()
-    temp_dir = temp.make_temp_directory(config)
-    if log:
-        logger.info("Problem %s: Changing to temporary directory %s", uid, temp_dir)
-    os.chdir(temp_dir)
-
-    # Generate mesh
-    if log:
-        logger.info("Problem %s: Generating mesh", uid)
-
-    try:
-        mesh_function = get_object_from_module(problem["mesh"]["type"])
-        mesh_file = problem["mesh_file"]
-        mesh_function(
-            img,
-            mesh_file,
-            settings=config,
-            **problem["mesh"].get("params", {}),
-        )
-    except Exception as e:
+    with temp.TempDirectory(config) as _:
+        # Generate mesh
         if log:
-            logger.error("Problem %s: Error generating mesh: %s", uid, str(e))
-        os.chdir(pwd)
-        return -1
-    if log:
-        logger.info("Problem %s: Mesh generation complete", uid)
-    # Run
-    if log:
-        logger.info("Problem %s: Running executor", uid)
+            logger.info("Problem %s: Generating mesh", uid)
 
-    try:
-        executor = get_object_from_module(problem["executor"]["type"])
-        res = executor(
-            problem["executor"]["physics"],
-            mesh_file,
-            material_properties={"A": material_A, "B": material_B, "AB": material_AB},
-            settings=config,
-            **problem["executor"].get("params", {}),
-        )
-    except Exception as e:
+        try:
+            mesh_function = get_object_from_module(problem["mesh"]["type"])
+            mesh_file = problem["mesh_file"]
+            mesh_function(
+                img,
+                mesh_file,
+                settings=config,
+                **problem["mesh"].get("params", {}),
+            )
+        except Exception as e:
+            if log:
+                logger.error("Problem %s: Error generating mesh: %s", uid, str(e))
+            return -1
         if log:
-            logger.error("Problem %s: Error running executor: %s", uid, str(e))
-        os.chdir(pwd)
-        return -1
-    if log:
-        logger.info("Problem %s: Executor run complete", uid)
-    # Move back
-    if log:
-        logger.info("Problem %s: Returning to original directory %s", uid, pwd)
-    os.chdir(pwd)
+            logger.info("Problem %s: Mesh generation complete", uid)
+        # Run
+        if log:
+            logger.info("Problem %s: Running executor", uid)
+
+        try:
+            executor = get_object_from_module(problem["executor"]["type"])
+            res = executor(
+                problem["executor"]["physics"],
+                mesh_file,
+                material_properties={
+                    "A": material_A,
+                    "B": material_B,
+                    "AB": material_AB,
+                },
+                settings=config,
+                **problem["executor"].get("params", {}),
+            )
+        except Exception as e:
+            if log:
+                logger.error("Problem %s: Error running executor: %s", uid, str(e))
+            return -1
+        if log:
+            logger.info("Problem %s: Executor run complete", uid)
 
     # Get the extractor
     try:

@@ -237,69 +237,63 @@ def execute_moose_simulations(
     template_input, physics_settings = get_physics(physics)
 
     # Temp storage
-    cwd = os.getcwd()
-    tmpdir = temp.make_temp_directory(settings)
+    with temp.TempDirectory(settings) as (cwd, tmpdir):
+        # Need the mesh and the template
+        shutil.copy(os.path.join(cwd, mesh), os.path.join(tmpdir, "mesh.exo"))
+        shutil.copy(os.path.join(cwd, template_input), os.path.join(tmpdir, "input.i"))
 
-    # Need the mesh and the template
-    shutil.copy(mesh, os.path.join(tmpdir, "mesh.exo"))
-    shutil.copy(template_input, os.path.join(tmpdir, "input.i"))
-
-    os.chdir(tmpdir)
-
-    # Form the substitutions for material properties
-    mat_subs = material_property_substitutions(
-        material_properties,
-        physics_settings["material_properties"],
-    )
-
-    outputs = []
-
-    for target in range(int(physics_settings["number_of_targets"])):
-        target_subs = target_substitutions(
-            target,
-            physics_settings["number_of_targets"],
-            physics_settings["target_substitution"],
-            physics_settings["target_name"],
-            physics_settings["zero_name"],
+        # Form the substitutions for material properties
+        mat_subs = material_property_substitutions(
+            material_properties,
+            physics_settings["material_properties"],
         )
-        output_subs = output_subsitutions(
-            target,
-            physics_settings["output_substitution"],
-            output_name,
-        )
-        cmd = (
-            [settings["moose"]["executable"]]
-            + settings["moose"]["options"]
-            + ["-i", "input.i"]
-            + mat_subs
-            + target_subs
-            + output_subs
-        )
-        if "mpi" in settings:
+
+        outputs = []
+
+        for target in range(int(physics_settings["number_of_targets"])):
+            target_subs = target_substitutions(
+                target,
+                physics_settings["number_of_targets"],
+                physics_settings["target_substitution"],
+                physics_settings["target_name"],
+                physics_settings["zero_name"],
+            )
+            output_subs = output_subsitutions(
+                target,
+                physics_settings["output_substitution"],
+                output_name,
+            )
             cmd = (
-                [settings["mpi"]["executable"]]
-                + [settings["mpi"]["rank_command"], str(settings["mpi"]["ranks"])]
-                + settings["mpi"].get("extra_args", [])
-                + cmd
+                [settings["moose"]["executable"]]
+                + settings["moose"]["options"]
+                + ["-i", "input.i"]
+                + mat_subs
+                + target_subs
+                + output_subs
+            )
+            if "mpi" in settings:
+                cmd = (
+                    [settings["mpi"]["executable"]]
+                    + [settings["mpi"]["rank_command"], str(settings["mpi"]["ranks"])]
+                    + settings["mpi"].get("extra_args", [])
+                    + cmd
+                )
+
+            subprocess.run(
+                cmd,
+                check=True,
+                env=settings["moose"].get("environment", {}) | os.environ,
+                capture_output=(not settings.get("verbose", False)),
             )
 
-        subprocess.run(
-            cmd,
-            check=True,
-            env=settings["moose"].get("environment", {}) | os.environ,
-            capture_output=(not settings.get("verbose", False)),
-        )
-
-        outputs.append(
-            process_output(
-                physics,
-                mesh,
-                material_properties,
-                f"{output_name}_{target}.e",
-                f"{output_name}_{target}.csv",
+            outputs.append(
+                process_output(
+                    physics,
+                    mesh,
+                    material_properties,
+                    f"{output_name}_{target}.e",
+                    f"{output_name}_{target}.csv",
+                )
             )
-        )
-
-    os.chdir(cwd)
 
     return outputs
