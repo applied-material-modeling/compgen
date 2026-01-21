@@ -5,10 +5,16 @@ from scipy.optimize import curve_fit
 
 
 def make_orthogonal(img):
-    """Mirror and tile the input image to give it orthogonal periodicity."""
-    img_h = np.hstack([img, np.flip(img, axis=1)])
-    img_v = np.vstack([img_h, np.flip(img_h, axis=0)])
-    return img_v
+    """Mirror and tile the input array to give it orthogonal periodicity.
+
+    This works for arrays of arbitrary dimensionality by concatenating the
+    array with its flipped version along each axis (processing axes from
+    last to first).
+    """
+    arr = np.asarray(img)
+    for axis in reversed(range(arr.ndim)):
+        arr = np.concatenate([arr, np.flip(arr, axis=axis)], axis=axis)
+    return arr
 
 
 class DampedOscillationCovariance(gs.CovModel):
@@ -89,21 +95,97 @@ class EmpiricalCovariance(gs.CovModel):
         return cov
 
 
-class TwoPointGenerator:
+class StructureGenerator:
+    """
+    Base class for structure generators.
+
+    Args:
+        N (list): Size of the generated structures in each dimension
+    """
+
+    def __init__(self, N, random_seed=None):
+        if len(N) != 2:
+            raise ValueError("N must be a list of length 2 for 2D structures.")
+        self.N = N
+        self.rng = np.random.default_rng(random_seed)
+
+    @property
+    def dim(self):
+        """Dimension of the generated structures."""
+        return len(self.N)
+
+    @property
+    def nx(self):
+        """Number of grid points in the x-direction."""
+        return self.N[0]
+
+    @property
+    def ny(self):
+        """Number of grid points in the y-direction."""
+        if self.dim < 2:
+            return 0
+        return self.N[1]
+
+    @property
+    def nz(self):
+        """Number of grid points in the z-direction."""
+        if self.dim < 3:
+            return 0
+        return self.N[2]
+
+    def _sample_value(self, v):
+        """
+        Either return a value if it's a scalar or sample from a uniform distribution if it's a list.
+
+        Args:
+            v (float or list): Value or range to sample
+        """
+        if isinstance(v, list) and len(v) == 2:
+            return self.rng.uniform(v[0], v[1])
+        else:
+            return v
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        return self.sample()
+
+    def sample(self):
+        """Generate the next structure.
+
+        Returns:
+            np.ndarray: A 2D array of shape (nx, ny) with random bool values.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+
+class TwoPointGenerator(StructureGenerator):
     """Generate structures based on two point correlations.
 
     Args:
+        N (list): Size of the generated structures in each dimension.
         reference_image (np.ndarray): 2D binary array representing the reference structure.
-        nx (int): Number of grid points in the x-direction.
-        ny (int): Number of grid points in the y-direction.
+
+    Keyword Args:
+        random_seed (int): Seed for the random number generator. Defaults to None.
+        l_guess (float): Initial guess for the correlation length scale. Defaults to 5.0.
+        radial_mask (float): Maximum radius to consider for fitting. Defaults to None.
     """
 
     def __init__(
-        self, reference_image, nx, ny, random_seed=None, l_guess=5.0, radial_mask=None
+        self, N, reference_image, random_seed=None, l_guess=5.0, radial_mask=None
     ):
-        self.nx = nx
-        self.ny = ny
-        self.rng = np.random.default_rng(random_seed)
+        super().__init__(N, random_seed=random_seed)
+
+        if self.dim != 2:
+            raise ValueError(
+                "TwoPointGenerator only supports 2D structures for the moment."
+            )
+
         self.l_guess = l_guess
         self.reference_image = self.standardize_image(reference_image)
         self.acov, self.mean, self.var = self.image_statistics(self.reference_image)
@@ -190,7 +272,7 @@ class TwoPointGenerator:
 
         return model
 
-    def next(self):
+    def sample(self):
         """Generate a new structure matching the target 2-point correlation.
 
         Returns:
@@ -207,85 +289,53 @@ class TwoPointGenerator:
 
         return generated
 
-    def __iter__(self):
-        return self
 
-    def __next__(self):
-        return self.next()
-
-
-class SpinodalGenerator:
+class SpinodalGenerator(StructureGenerator):
     """Generate structures based on spinodal decomposition.
 
     Args:
-        nx (int): Number of grid points in the x-direction.
-        ny (int): Number of grid points in the y-direction.
+        N (list): Size of the generated structures in each dimension.
         vf (float or list): Volume fraction of phase A or range for random samples.
         l (float or list): Characteristic length scale or range for random samples.
         bandwidth (float or list): Bandwidth of the spinodal structure or range for random samples.
 
     Keyword Args:
-        seed (int): Seed for the random number generator. Defaults to None.
+        random_seed (int): Seed for the random number generator. Defaults to None.
     """
 
-    def __init__(self, nx, ny, vf, l, bandwidth, seed=None):
-        self.nx = nx
-        self.ny = ny
+    def __init__(self, N, vf, l, bandwidth, random_seed=None):
+        super().__init__(N, random_seed=random_seed)
         self.vf_input = vf
         self.l_input = l
         self.bandwidth_input = bandwidth
-        self.rng = np.random.default_rng(seed)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.next()
 
     def sample(self):
         """Sample parameters for the next structure.
 
         Returns:
-            tuple: (vf, l, bandwidth) for the next structure.
+            np.ndarray: An array of shape `self.N` with random bool values.
         """
-        if isinstance(self.vf_input, list) and len(self.vf_input) == 2:
-            self.vf = self.rng.uniform(self.vf_input[0], self.vf_input[1])
-        else:
-            self.vf = self.vf_input
+        # Sample the parameters
+        vf = self._sample_value(self.vf_input)
+        l = self._sample_value(self.l_input)
+        bandwidth = self._sample_value(self.bandwidth_input)
 
-        if isinstance(self.l_input, list) and len(self.l_input) == 2:
-            self.l = self.rng.uniform(self.l_input[0], self.l_input[1])
-        else:
-            self.l = self.l_input
+        # Build k-vectors for each dimension and compute spectral magnitude
+        ks = [2.0 * np.pi * np.fft.fftfreq(n) for n in self.N]
+        K_components = np.meshgrid(*ks, indexing="ij")
+        K_mag = np.zeros_like(K_components[0])
+        for K in K_components:
+            K_mag = K_mag + K**2
+        K_mag = np.sqrt(K_mag)
 
-        if isinstance(self.bandwidth_input, list) and len(self.bandwidth_input) == 2:
-            self.bandwidth = self.rng.uniform(
-                self.bandwidth_input[0], self.bandwidth_input[1]
-            )
-        else:
-            self.bandwidth = self.bandwidth_input
-
-    def next(self):
-        """Generate the next structure via spinodal decomposition.
-
-        Returns:
-            np.ndarray: A 2D array of shape (nx, ny) with random bool values.
-        """
-        self.sample()
-        kx = 2.0 * np.pi * np.fft.fftfreq(self.nx)
-        ky = 2.0 * np.pi * np.fft.fftfreq(self.ny)
-        KX, KY = np.meshgrid(kx, ky, indexing="ij")
-        K_mag = np.sqrt(KX**2 + KY**2)
-
-        k0 = 2.0 * np.pi / self.l
-
-        sigma_k = self.bandwidth * k0
+        k0 = 2.0 * np.pi / l
+        sigma_k = bandwidth * k0
 
         assert sigma_k > 0.0
         amplitude_spectrum = np.exp(-0.5 * ((K_mag - k0) / sigma_k) ** 2)
         amplitude_spectrum[K_mag == 0] = 0.0
 
-        g = self.rng.normal(size=(self.nx, self.ny))
+        g = self.rng.normal(size=tuple(self.N))
         g_hat = np.fft.fftn(g)
 
         amp_filter = np.sqrt(amplitude_spectrum)
@@ -294,134 +344,45 @@ class SpinodalGenerator:
         h = np.fft.ifftn(h_hat).real
         h = (h - np.mean(h)) / np.std(h)
 
-        T = np.quantile(h, 1 - self.vf)
+        T = np.quantile(h, 1 - vf)
         img = h > T
 
         return img
 
 
-class RandomGenerator:
+class RandomGenerator(StructureGenerator):
     """Generate random structures of a given shape.
 
     Args:
-        nx (int): Number of grid points in the x-direction.
-        ny (int): Number of grid points in the y-direction.
+        N (list): Size of the generated structures in each dimension.
+        vf (float or list): Volume fraction of phase A or range for random samples.
 
     Keyword Args:
-        seed (int): Seed for the random number generator. Defaults to None.
-        min_vf (float): Minimum volume fraction of phase A. Defaults to 0.
-        max_vf (float): Maximum volume fraction of phase A. Defaults to 1.
+        random_seed (int): Seed for the random number generator. Defaults to None.
     """
 
-    def __init__(self, nx, ny, seed=None, min_vf=0, max_vf=1.0):
-        self.nx = nx
-        self.ny = ny
-        self.rng = np.random.default_rng(seed)
-        self.min_vf = min_vf
-        self.max_vf = max_vf
+    def __init__(self, N, vf, random_seed=None):
+        super().__init__(N, random_seed=random_seed)
+        self.vf_input = vf
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.next()
-
-    def next(self):
+    def sample(self):
         """Generate the next random structure via hierarchical sampling.
 
         Returns:
-            np.ndarray: A 2D array of shape (nx, ny) with random bool values.
+            np.ndarray: An array of shape `self.N` with random bool values.
         """
         # First select the volume fraction of phase A
-        vf = self.rng.uniform(self.min_vf, self.max_vf)
-        nf = int(self.nx * self.ny * vf)
-        # Then sample a hierarchical random structure
-        inds = self.rng.choice(list(range(self.nx * self.ny)), size=nf, replace=False)
-        img = np.zeros((self.nx * self.ny,), dtype=bool)
+        vf = self._sample_value(self.vf_input)
+        total = int(np.prod(self.N))
+        nf = int(total * vf)
+        # Handle trivial cases explicitly
+        if nf <= 0:
+            return np.zeros(tuple(self.N), dtype=bool)
+        if nf >= total:
+            return np.ones(tuple(self.N), dtype=bool)
+
+        # Then sample a hierarchical random structure across arbitrary dimensions
+        inds = self.rng.choice(total, size=nf, replace=False)
+        img = np.zeros((total,), dtype=bool)
         img[inds] = True
-        return img.reshape((self.nx, self.ny))
-
-
-class Rectangle:
-    """Represents a 2D rectangular region.
-
-    Args:
-        xmin (float): Minimum x-coordinate.
-        xmax (float): Maximum x-coordinate.
-        ymin (float): Minimum y-coordinate.
-        ymax (float): Maximum y-coordinate.
-    """
-
-    def __init__(self, xmin, xmax, ymin, ymax):
-        self.xmin = xmin
-        self.xmax = xmax
-        self.ymin = ymin
-        self.ymax = ymax
-
-    def __call__(self, x, y):
-        """Return true where (x, y) points are inside the rectangle.
-        Args:
-            x (array): x-coordinates of points.
-            y (array): y-coordinates of points.
-        """
-        return np.logical_and(
-            np.logical_and(x >= self.xmin, x <= self.xmax),
-            np.logical_and(y >= self.ymin, y <= self.ymax),
-        )
-
-
-class Rotate:
-    """Transform an object by rotating it around a given point.
-
-    Args:
-        shape (callable): The shape to be rotated.
-        angle (float): Rotation angle in radians.
-        origin (tuple): (x, y) coordinates of the rotation center.
-    """
-
-    def __init__(self, shape, angle, origin=np.array([0.0, 0.0])):
-        self.shape = shape
-        self.angle = angle
-        self.origin = origin
-        self.cos_angle = np.cos(angle)
-        self.sin_angle = np.sin(angle)
-
-    def __call__(self, x, y):
-        """Return true where (x, y) points are inside the rotated shape.
-        Args:
-            x (array): x-coordinates of points.
-            y (array): y-coordinates of points.
-        """
-        x_shifted = x - self.origin[0]
-        y_shifted = y - self.origin[1]
-        x_rotated = (
-            x_shifted * self.cos_angle - y_shifted * self.sin_angle
-        ) + self.origin[0]
-        y_rotated = (
-            x_shifted * self.sin_angle + y_shifted * self.cos_angle
-        ) + self.origin[1]
-        return self.shape(x_rotated, y_rotated)
-
-
-def generate_from_objects(objects, lx, ly, nx, ny):
-    """Generate a 2D mesh from a list of shape objects.
-
-    Args:
-        objects (list): List of shape objects defining material A.
-        lx (float): Length of the domain in x-direction.
-        ly (float): Length of the domain in y-direction.
-        nx (int): Number of elements in x-direction.
-        ny (int): Number of elements in y-direction.
-
-    Returns:
-        img (2D array): Binary image where 1 indicates material A.
-    """
-    x_vals = np.linspace(0, lx, nx)
-    y_vals = np.linspace(0, ly, ny)
-    X, Y = np.meshgrid(x_vals, y_vals, indexing="ij")
-    img = np.zeros((ny, nx), dtype=bool)
-
-    for obj in objects:
-        img[obj(X, Y)] = 1
-
-    return img
+        return img.reshape(tuple(self.N))

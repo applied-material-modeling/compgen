@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("..")
 
-from compgen import gen2d, utils
+from compgen import gen, utils
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,17 +10,23 @@ import numpy as np
 import skimage
 
 if __name__ == "__main__":
+    seed = 42
+    vf = 0.3
+    n = 128
+
     print("Generating random images")
-    gen = gen2d.RandomGenerator(nx=128, ny=128, seed=42)
-    for i, structure in zip(range(5), gen):
-        structure = gen2d.make_orthogonal(structure)
+    generator = gen.RandomGenerator(N=[n, n], vf=vf, random_seed=seed)
+    for i, structure in zip(range(5), generator):
+        structure = gen.make_orthogonal(structure)
         plt.imshow(structure.T, cmap="gray")
         plt.axis("off")
         plt.show()
 
     print("Generating spinodal-like structures")
-    gen = gen2d.SpinodalGenerator(nx=128, ny=128, vf=0.3, l=100, bandwidth=3, seed=42)
-    for i, structure in zip(range(5), gen):
+    generator = gen.SpinodalGenerator(
+        N=[n, n], vf=vf, l=100, bandwidth=3, random_seed=seed
+    )
+    for i, structure in zip(range(5), generator):
         smoothed = utils.binary_smoother(
             structure,
             lambda img: skimage.util.img_as_float(
@@ -30,7 +36,7 @@ if __name__ == "__main__":
                 )
             ),
         )
-        smoothed = gen2d.make_orthogonal(smoothed)
+        smoothed = gen.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()
@@ -39,15 +45,17 @@ if __name__ == "__main__":
     seg = utils.load_and_segment("composite.jpg")
     min_px = np.min(seg.shape)
     seg = seg[:min_px, :min_px]
-    seg = gen2d.make_orthogonal(seg)
+    seg = gen.make_orthogonal(seg)
 
     plt.imshow(seg.T, cmap="gray")
     plt.axis("off")
     plt.show()
 
-    gen = gen2d.TwoPointGenerator(seg, nx=128, ny=128, random_seed=42, radial_mask=50)
+    generator = gen.TwoPointGenerator(
+        N=[n, n], reference_image=seg, random_seed=seed, radial_mask=50
+    )
 
-    for i, structure in zip(range(5), gen):
+    for i, structure in zip(range(5), generator):
         smoothed = utils.binary_smoother(
             structure,
             lambda img: skimage.util.img_as_float(
@@ -60,7 +68,7 @@ if __name__ == "__main__":
         smoothed = skimage.morphology.binary_opening(
             skimage.morphology.binary_closing(smoothed)
         )
-        smoothed = gen2d.make_orthogonal(smoothed)
+        smoothed = gen.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()

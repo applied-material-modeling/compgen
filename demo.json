@@ -5,10 +5,12 @@
     "lx": 1.0,
     "ly": 1.0,
     "generator": {
-        "type": "gen2d.SpinodalGenerator",
+        "type": "gen.SpinodalGenerator",
         "params": {
-            "nx": 128,
-            "ny": 128,
+            "N": [
+                128,
+                128
+            ],
             "vf": [
                 0.01,
                 0.99
@@ -21,7 +23,7 @@
                 1,
                 5
             ],
-            "seed": 1
+            "random_seed": 1
         }
     },
     "filtering": [
@@ -32,7 +34,7 @@
             }
         },
         {
-            "type": "gen2d.make_orthogonal"
+            "type": "gen.make_orthogonal"
         }
     ],
     "mesh": {
