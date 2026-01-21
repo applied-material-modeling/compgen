@@ -104,8 +104,8 @@ class StructureGenerator:
     """
 
     def __init__(self, N, random_seed=None):
-        if len(N) != 2:
-            raise ValueError("N must be a list of length 2 for 2D structures.")
+        if len(N) < 1:
+            raise ValueError("N must be a list with at least one dimension.")
         self.N = N
         self.rng = np.random.default_rng(random_seed)
 
@@ -158,7 +158,7 @@ class StructureGenerator:
         """Generate the next structure.
 
         Returns:
-            np.ndarray: A 2D array of shape (nx, ny) with random bool values.
+            np.ndarray: An array of shape `self.N` with random bool values.
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
