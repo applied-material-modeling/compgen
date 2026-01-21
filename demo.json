@@ -2,8 +2,10 @@
     "number": 10,
     "nthreads": 4,
     "mesh_file": "mesh.exo",
-    "lx": 1.0,
-    "ly": 1.0,
+    "L": [
+        1.0,
+        1.0
+    ],
     "generator": {
         "type": "gen.SpinodalGenerator",
         "params": {
@@ -38,7 +40,7 @@
         }
     ],
     "mesh": {
-        "type": "mesh2d.generate_mesh",
+        "type": "mesh.generate_mesh_2d",
         "params": {
             "run_sculpt": true
         }
@@ -72,7 +74,7 @@
         "output_dir": "demo_output",
         "output_prefix": "fixed_material_elastic_spinodal",
         "grid_extractor": {
-            "type": "mesh2d.extract_grid_from_mesh"
+            "type": "mesh.extract_grid_from_mesh"
         }
     }
 }

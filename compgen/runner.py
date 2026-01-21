@@ -172,6 +172,7 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
             mesh_function(
                 img,
                 mesh_file,
+                L=problem["L"],
                 settings=config,
                 **problem["mesh"].get("params", {}),
             )
@@ -224,9 +225,7 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
     # Actually write the output
     for i, result in enumerate(res):
         try:
-            result["grid"] = extractor(
-                result["unstructured_mesh"], img, problem["lx"], problem["ly"]
-            )
+            result["grid"] = extractor(result["unstructured_mesh"], img, problem["L"])
         except Exception as e:
             if log:
                 logger.error(

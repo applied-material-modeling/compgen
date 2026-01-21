@@ -1,13 +1,14 @@
 {
     "sculpt": {
         "executable": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../MacOS/psculpt",
+        "mpi": "/Applications/Coreform-Cubit-2024.8.app/Contents/mpi/bin/mpirun",
+        "rank_command": "-np",
+        "epu": "/Applications/Coreform-Cubit-2024.8.app/Contents/MacOS/epu",
         "environment": {
             "OPAL_LIBDIR": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi/lib",
             "OPAL_PREFIX": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi"
         },
         "options": [
-            "-j",
-            "1",
             "-p",
             "1",
             "--smooth",
@@ -23,7 +24,7 @@
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "2"
+        "ranks": "4"
     },
     "storage": {
         "delete_temp_dir": true
