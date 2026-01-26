@@ -1,5 +1,7 @@
 from compgen import temp
 
+import pyvista
+
 import numpy as np
 import exodusii
 import scipy.spatial as sp
@@ -8,7 +10,7 @@ import os.path
 import subprocess
 
 
-def generate_mesh_2d(img, fname, L=(1.0, 1.0), settings={}, run_sculpt=True):
+def generate_mesh_2d(img, fname, L=(1.0, 1.0), settings={}, run_sculpt=True, quality_check = True):
     """Run the entire process of generating a 2D mesh for an image and write it to an exodus file.
 
     This function will access a temp directory to store intermediate files, but copy the final
@@ -37,8 +39,11 @@ def generate_mesh_2d(img, fname, L=(1.0, 1.0), settings={}, run_sculpt=True):
         else:
             os.rename("temp_mesh.e", os.path.join(cwd, fname))
 
+    if quality_check:
+        if not mesh_quality(fname):
+            raise ValueError("Generated mesh did not pass quality check.")
 
-def generate_mesh_3d(img, fname, L=(1.0, 1.0, 1.0), settings={}, run_sculpt=True):
+def generate_mesh_3d(img, fname, L=(1.0, 1.0, 1.0), settings={}, run_sculpt=True, quality_check = True):
     """Run the entire process of generating a 3D mesh for an image and write it to an exodus file.
 
     This function will access a temp directory to store intermediate files, but copy the final
@@ -65,6 +70,21 @@ def generate_mesh_3d(img, fname, L=(1.0, 1.0, 1.0), settings={}, run_sculpt=True
         else:
             os.rename("temp_mesh.e", os.path.join(cwd, fname))
 
+    if quality_check:
+        if not mesh_quality(fname):
+            raise ValueError("Generated mesh did not pass quality check.")
+
+def mesh_quality(exofile, min_qual = 0.025):
+    """Compute basic mesh quality metrics for a 2D exodus mesh.
+
+    Args:
+        exofile (str): Input 2D mesh filename.
+    Returns:
+        bool: True if mesh quality is acceptable, False otherwise.
+    """
+    f = pyvista.read_exodus(exofile)
+    qual = f.cell_quality(["scaled_jacobian"])
+    return qual.get_data_range("scaled_jacobian")[0] > min_qual
 
 def sculpt(mesh, prefix="sculpted_", settings={}):
     """Call sculpt on an extruded mesh.

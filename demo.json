@@ -24,8 +24,7 @@
             "bandwidth": [
                 1,
                 5
-            ],
-            "random_seed": 1
+            ]
         }
     },
     "filtering": [

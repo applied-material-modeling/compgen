@@ -8,3 +8,4 @@ tqdm
 gstools
 multiprocess
 pytest
+pyvista
