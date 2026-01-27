@@ -75,11 +75,14 @@ def run(problem, config):
         )
 
     # Create the output directory if it doesn't exist
-    output_info = problem_data.get("output", {})
-    output_dir = output_info.get("output_dir", "output")
-    os.makedirs(output_dir, exist_ok=True)
-    if log:
-        logger.info("Output directory set to %s", output_dir)
+    write_files = problem_data.get("output", {}).get("write_files", True)
+
+    if write_files:
+        output_info = problem_data.get("output", {})
+        output_dir = output_info.get("output_dir", "output")
+        os.makedirs(output_dir, exist_ok=True)
+        if log:
+            logger.info("Output directory set to %s", output_dir)
 
     # Setup material and structure generator
     if log:
@@ -112,11 +115,25 @@ def run(problem, config):
         generator, material_a, material_b, material_ab, range(problem_data["number"])
     )
 
-    with multiprocess.Pool(problem_data.get("nthreads", 1)) as pool:
-        results = pool.map(
-            lambda x: run_single(x[0], x[1], x[2], x[3], problem_data, config_data),
-            composite,
+    nthreads = problem_data.get("nthreads", 1)
+    if log:
+        logger.info("Using %d threads for computation", nthreads)
+
+    if nthreads == 1:
+        results = list(
+            map(
+                lambda x: run_single(x[0], x[1], x[2], x[3], problem_data, config_data),
+                composite,
+            )
         )
+    else:
+        with multiprocess.Pool(problem_data.get("nthreads", 1)) as pool:
+            results = pool.map(
+                lambda x: run_single(x[0], x[1], x[2], x[3], problem_data, config_data),
+                composite,
+            )
+
+    return results
 
 
 def run_single(img, material_A, material_B, material_AB, problem, config):
@@ -134,13 +151,19 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
     if log:
         logger.info("Starting a new computation on an image of shape %s", img.shape)
 
-    # Get unique ID
-    output_dir = problem.get("output", {}).get("output_dir", "output")
-    output_prefix = problem.get("output", {}).get("output_prefix", "result")
-    uid = unique_id(directory=output_dir, prefix=output_prefix, suffix="0.h5")
-    if log:
-        logger.info("Generated unique ID %s for output files", uid)
+    write_files = problem.get("output", {}).get("write_files", True)
 
+    # Get unique ID
+    if write_files:
+        output_dir = problem.get("output", {}).get("output_dir", "output")
+        output_prefix = problem.get("output", {}).get("output_prefix", "result")
+        uid = unique_id(directory=output_dir, prefix=output_prefix, suffix="0.h5")
+        if log:
+            logger.info("Generated unique ID %s for output files", uid)
+    else:
+        uid = "no_output"
+        if log:
+            logger.info("No output files will be written for this computation")
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
@@ -207,34 +230,44 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
             logger.info("Problem %s: Executor run complete", uid)
 
     # Get the extractor
-    try:
-        extractor = get_object_from_module(problem["output"]["grid_extractor"]["type"])
-    except Exception as e:
+    if problem.get("output", {}) == {} or "grid_extractor" not in problem["output"]:
         if log:
-            logger.error(
-                "Problem %s: Error setting up grid extractor %s: %s",
-                uid,
-                problem["output"]["grid_extractor"]["type"],
-                str(e),
+            logger.info("Problem %s: No grid extraction requested.", uid)
+        extractor = None
+    else:
+        try:
+            extractor = get_object_from_module(
+                problem["output"]["grid_extractor"]["type"]
             )
-        return -1
+        except Exception as e:
+            if log:
+                logger.error(
+                    "Problem %s: Error setting up grid extractor %s: %s",
+                    uid,
+                    problem["output"]["grid_extractor"]["type"],
+                    str(e),
+                )
+            return -1
 
     if log:
         logger.info("Problem %s: Starting to write output files", uid)
 
     # Actually write the output
     for i, result in enumerate(res):
-        try:
-            result["grid"] = extractor(result["unstructured_mesh"], img, problem["L"])
-        except Exception as e:
-            if log:
-                logger.error(
-                    "Problem %s: Error extracting grid for subresult %i: %s",
-                    uid,
-                    i,
-                    str(e),
+        if extractor is not None:
+            try:
+                result["grid"] = extractor(
+                    result["unstructured_mesh"], img, problem["L"]
                 )
-            return -1
+            except Exception as e:
+                if log:
+                    logger.error(
+                        "Problem %s: Error extracting grid for subresult %i: %s",
+                        uid,
+                        i,
+                        str(e),
+                    )
+                return -1
 
         if problem.get("output", {}).get("add_density", False):
             vf = np.sum(img) / float(img.size)
@@ -249,6 +282,14 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
                     rho,
                     i,
                 )
+
+        if not write_files:
+            if log:
+                logger.info(
+                    "Problem %s: Skipping writing output files as per configuration",
+                    uid,
+                )
+            continue
 
         try:
             with open(
@@ -275,7 +316,8 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
     if log:
         logger.info("Problem %s: All output files written successfully", uid)
         logger.info("Problem %s: Completed computation successfully", uid)
-    return 0
+
+    return res
 
 
 def setup_generator(input):
