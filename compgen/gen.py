@@ -99,39 +99,12 @@ class StructureGenerator:
     """
     Base class for structure generators.
 
-    Args:
-        N (list): Size of the generated structures in each dimension
+    Keyword Args:
+        random_seed (int): Seed for the random number generator. Defaults to None.
     """
 
-    def __init__(self, N, random_seed=None):
-        if len(N) < 1:
-            raise ValueError("N must be a list with at least one dimension.")
-        self.N = N
+    def __init__(self, random_seed=None):
         self.rng = np.random.default_rng(random_seed)
-
-    @property
-    def dim(self):
-        """Dimension of the generated structures."""
-        return len(self.N)
-
-    @property
-    def nx(self):
-        """Number of grid points in the x-direction."""
-        return self.N[0]
-
-    @property
-    def ny(self):
-        """Number of grid points in the y-direction."""
-        if self.dim < 2:
-            return 0
-        return self.N[1]
-
-    @property
-    def nz(self):
-        """Number of grid points in the z-direction."""
-        if self.dim < 3:
-            return 0
-        return self.N[2]
 
     def _sample_value(self, v):
         """
@@ -163,7 +136,47 @@ class StructureGenerator:
         raise NotImplementedError("Subclasses must implement this method.")
 
 
-class TwoPointGenerator(StructureGenerator):
+class GenerativeStructureGenerator(StructureGenerator):
+    """
+    Makes new structures from scratch
+
+    Args:
+        N (list): Size of the generated structures in each dimension
+    """
+
+    def __init__(self, N, random_seed=None):
+        super().__init__(random_seed=random_seed)
+        if len(N) < 1:
+            raise ValueError("N must be a list with at least one dimension.")
+        self.N = N
+        self.rng = np.random.default_rng(random_seed)
+
+    @property
+    def dim(self):
+        """Dimension of the generated structures."""
+        return len(self.N)
+
+    @property
+    def nx(self):
+        """Number of grid points in the x-direction."""
+        return self.N[0]
+
+    @property
+    def ny(self):
+        """Number of grid points in the y-direction."""
+        if self.dim < 2:
+            return 0
+        return self.N[1]
+
+    @property
+    def nz(self):
+        """Number of grid points in the z-direction."""
+        if self.dim < 3:
+            return 0
+        return self.N[2]
+
+
+class TwoPointGenerator(GenerativeStructureGenerator):
     """Generate structures based on two point correlations.
 
     Args:
@@ -290,7 +303,7 @@ class TwoPointGenerator(StructureGenerator):
         return generated
 
 
-class SpinodalGenerator(StructureGenerator):
+class SpinodalGenerator(GenerativeStructureGenerator):
     """Generate structures based on spinodal decomposition.
 
     Args:
@@ -350,7 +363,7 @@ class SpinodalGenerator(StructureGenerator):
         return img
 
 
-class RandomGenerator(StructureGenerator):
+class RandomGenerator(GenerativeStructureGenerator):
     """Generate random structures of a given shape.
 
     Args:
@@ -386,3 +399,30 @@ class RandomGenerator(StructureGenerator):
         img = np.zeros((total,), dtype=bool)
         img[inds] = True
         return img.reshape(tuple(self.N))
+
+
+class FromNumpyGenerator(StructureGenerator):
+    """
+    Just read a npy file.  The assumption is the first axis is the number of structures and then the rest are the dimensions.
+
+    Args:
+        filename (str): Path to the .npy file containing the structures.
+    """
+
+    def __init__(self, filename, random_seed=None):
+        super().__init__(random_seed=random_seed)
+        self.data = np.load(filename)
+        self.index = 0
+        self.total = self.data.shape[0]
+
+    def sample(self):
+        """Generate the next structure from the loaded data.
+
+        Returns:
+            np.ndarray: An array of shape corresponding to the loaded structures.
+        """
+        if self.index >= self.total:
+            self.index = 0  # Reset to the beginning if we reach the end
+        generated = self.data[self.index]
+        self.index += 1
+        return generated
