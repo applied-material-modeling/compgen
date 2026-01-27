@@ -90,7 +90,6 @@ def mesh_quality(exofile, min_qual=0.025):
     """
     f = pyvista.read_exodus(exofile)
     qual = f.cell_quality(["scaled_jacobian"])
-    print(qual.get_data_range("scaled_jacobian"))
     return qual.get_data_range("scaled_jacobian")[0] > min_qual
 
 

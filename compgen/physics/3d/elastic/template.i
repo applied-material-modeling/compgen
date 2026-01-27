@@ -213,13 +213,15 @@
     [u_hvar]
       splitting = 'u hvar'
       splitting_type = schur
+      petsc_options = '-ksp_monitor'
       petsc_options_iname = '-pc_fieldsplit_schur_fact_type  -pc_fieldsplit_schur_precondition -ksp_max_it -ksp_gmres_restart -ksp_type -ksp_pc_side -ksp_rtol'
       petsc_options_value = 'full                            selfp                             100         101                fgmres    right        1e-4'
     []
     [u]
       vars = 'disp_x disp_y disp_z'
+      petsc_options = '-ksp_monitor'
       petsc_options_iname = '-ksp_type -ksp_gmres_restart -pc_type -pc_gamg_type -pc_gamg_threshold -pc_gamg_aggressive_square_graph -pc_gamg_aggressive_coarsening -pc_gamg_coarse_eq_limit -pc_gamg_process_eq_limit -mg_levels_ksp_type -mg_levels_ksp_max_it -mg_levels_pc_type -mg_coarse_ksp_type -mg_coarse_pc_type -mg_coarse_pc_factor_mat_solver_type -ksp_atol -ksp_rtol'
-        petsc_options_value = 'fgmres 50 gamg agg 0.15 true 1 1000 5000 chebyshev 1 sor preonly lu superlu_dist 1e-10 1e-8'
+      petsc_options_value = 'fgmres 50 gamg agg 0.45 true 1 1000 5000 chebyshev 1 sor preonly lu superlu_dist 1e-3 1e-4'
     []
     [hvar]
       vars = 'hvar'
@@ -240,8 +242,8 @@
   l_max_its = 500
   l_tol = 1e-12
   nl_max_its = 2
-  nl_rel_tol = 1e-6
-  nl_abs_tol = 1e-8
+  nl_rel_tol = 1e-4
+  nl_abs_tol = 1e-4
 []
 
 [Outputs]

@@ -11,9 +11,9 @@
         "type": "gen.SpinodalGenerator",
         "params": {
             "N": [
-                64,
-                64,
-                64
+                16,
+                16,
+                16
             ],
             "vf": [
                 0.01,

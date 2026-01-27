@@ -24,7 +24,7 @@
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "10"
+        "ranks": "2"
     },
     "storage": {
         "delete_temp_dir": true
