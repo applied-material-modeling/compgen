@@ -143,11 +143,12 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         env=settings["sculpt"].get("environment", {}) | os.environ,
         capture_output=(not settings.get("verbose", False)),
     )
-
+    
+    ranks = int(settings["mpi"]["ranks"])
     epu_cmd = [
         settings["sculpt"]["epu"],
         "-auto",
-        outfile + ".e" + f".{settings["mpi"]["ranks"]}.0",
+        outfile + ".e" + f".{ranks}.0",
     ]
     subprocess.run(
         epu_cmd,
