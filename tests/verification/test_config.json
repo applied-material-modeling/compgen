@@ -30,5 +30,5 @@
     "storage": {
         "delete_temp_dir": true
     },
-    "verbose": false
+    "verbose": true
 }

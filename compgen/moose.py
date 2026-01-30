@@ -39,19 +39,29 @@ def material_property_substitutions(material_properties, physics_properties):
         physics_properties (dict): Dictionary defining physics properties.
     """
     subs = []
-    for prop in physics_properties["bulk_material_properties"]:
+    for ind, prop in enumerate(physics_properties["bulk_material_properties"]):
         if prop not in material_properties["A"]:
             raise ValueError(f"Material property '{prop}' not defined for material A.")
         if prop not in material_properties["B"]:
             raise ValueError(f"Material property '{prop}' not defined for material B.")
-
-        ind = physics_properties["bulk_material_properties"].index(prop)
 
         subs.append(
             f"{physics_properties['material_A_substitutions'][ind]}={material_properties['A'][prop]}"
         )
         subs.append(
             f"{physics_properties['material_B_substitutions'][ind]}={material_properties['B'][prop]}"
+        )
+
+    for ind, prop in enumerate(
+        physics_properties.get("interface_material_properties", [])
+    ):
+        if prop not in material_properties.get("AB", {}):
+            raise ValueError(
+                f"Material property '{prop}' not defined for material interface AB."
+            )
+
+        subs.append(
+            f"{physics_properties['interface_substitutions'][ind]}={material_properties['AB'][prop]}"
         )
 
     return subs
