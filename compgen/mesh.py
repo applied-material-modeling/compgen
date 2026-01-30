@@ -131,7 +131,7 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         [
             settings["sculpt"]["mpi"],
             settings["sculpt"]["rank_command"],
-            settings["mpi"]["ranks"],
+            str(settings["mpi"]["ranks"]),
         ]
         + [settings["sculpt"]["executable"]]
         + settings["sculpt"]["options"]
