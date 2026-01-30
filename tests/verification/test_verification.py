@@ -10,7 +10,7 @@ config_file = "tests/verification/test_config.json"
     "input,solution",
     [
         (
-            "2d/elasticity.json",
+            ["2d/elasticity.json", "elastic_moose.json"],
             [
                 {
                     "density": 5.0,
@@ -57,7 +57,40 @@ config_file = "tests/verification/test_config.json"
             ],
         ),
         (
-            "3d/elasticity.json",
+            ["2d/thermal_conductivity.json", "thermal_moose.json"],
+            [
+                {
+                    "density": 5.0,
+                    "heat_flux": np.stack(
+                        [
+                            np.zeros(
+                                2,
+                            ),
+                            np.array(
+                                [10.0, 0.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+                {
+                    "density": 5.0,
+                    "heat_flux": np.stack(
+                        [
+                            np.zeros(
+                                2,
+                            ),
+                            np.array(
+                                [0.0, 10.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+            ],
+        ),
+        (
+            ["3d/elasticity.json", "elastic_moose.json"],
             [
                 {
                     "density": 5.0,
@@ -148,8 +181,10 @@ config_file = "tests/verification/test_config.json"
     ],
 )
 def test_verification(input, solution):
-    problem_file = f"tests/verification/{input}"
-    result = run(problem_file, config_file)
+    problem, moose = input
+    problem_file = f"tests/verification/{problem}"
+    moose_file = f"tests/verification/{moose}"
+    result = run(problem_file, config_file, moose_file)
 
     for simul, correct in zip(result[0], solution):
         for field, value in correct.items():

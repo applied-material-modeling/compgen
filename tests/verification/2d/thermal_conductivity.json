@@ -1,0 +1,54 @@
+{
+    "number": 1,
+    "nthreads": 1,
+    "mesh_file": "mesh.exo",
+    "L": [
+        1.0,
+        1.0
+    ],
+    "generator": {
+        "type": "gen.RandomGenerator",
+        "params": {
+            "N": [
+                32,
+                32
+            ],
+            "vf": [
+                0.01,
+                0.99
+            ]
+        }
+    },
+    "mesh": {
+        "type": "mesh.generate_mesh_2d",
+        "params": {
+            "run_sculpt": false
+        }
+    },
+    "executor": {
+        "type": "moose.execute_moose_simulations",
+        "physics": "2d/thermal_conductivity"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "conductivity": 10.0,
+            "density": 5.0
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "conductivity": 10.0,
+            "density": 5.0
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "output": {
+        "write_files": false,
+        "add_density": true
+    }
+}

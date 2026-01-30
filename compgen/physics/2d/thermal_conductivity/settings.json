@@ -1,0 +1,49 @@
+{
+    "type": "steady",
+    "number_of_targets": 2,
+    "target_name": "value",
+    "zero_name": "zero",
+    "material_properties": {
+        "bulk_material_properties": [
+            "conductivity"
+        ],
+        "interface_material_properties": [],
+        "material_A_substitutions": [
+            "Materials/mat_k_1/prop_values"
+        ],
+        "material_B_substitutions": [
+            "Materials/mat_k_2/prop_values"
+        ],
+        "interface_substitutions": []
+    },
+    "target_substitution": "GlobalParams/targets",
+    "output_substitution": "Outputs/file_base",
+    "stimuli_fields": {
+        "temperature_gradient": {
+            "type": "vector",
+            "dim": 2,
+            "field_components": [
+                "gradient_x",
+                "gradient_y"
+            ],
+            "postprocessor_components": [
+                "gradient_x",
+                "gradient_y"
+            ]
+        }
+    },
+    "response_fields": {
+        "heat_flux": {
+            "type": "vector",
+            "dim": 2,
+            "field_components": [
+                "q_x",
+                "q_y"
+            ],
+            "postprocessor_components": [
+                "q_x",
+                "q_y"
+            ]
+        }
+    }
+}
