@@ -7,7 +7,7 @@ import logging
 import numpy as np
 import multiprocess
 
-from compgen import temp, hdfwriter
+from compgen import temp, hdfwriter, utils
 
 logger = logging.getLogger(__name__)
 
@@ -44,24 +44,23 @@ def unique_id(directory=".", prefix="", suffix=""):
         return uid
 
 
-def run(problem, config):
+def run(*config_files):
     """Run a set of computations defined by input files
 
     Args:
         problem (str): Path to a problem definition file.
         config (str): Path to a configuration file.
     """
-    problem_data = json.load(open(problem, "r"))
-    config_data = json.load(open(config, "r"))
+    config = utils.load_json(config_files)
 
     log = False
-    if "log_file" in config_data:
+    if "log_file" in config:
         log = True
         logging.basicConfig(
-            filename=config_data["log_file"],
+            filename=config["log_file"],
             level=(
                 logging.DEBUG
-                if config_data.get("log_level", "DEBUG") == "DEBUG"
+                if config.get("log_level", "DEBUG") == "DEBUG"
                 else logging.INFO
             ),
             format="%(asctime)s %(levelname)s:%(message)s",
@@ -69,16 +68,13 @@ def run(problem, config):
 
     if log:
         logger.info(
-            "Starting to run problem with definition file %s and config file %s",
-            problem,
-            config,
+            "Running compgen with configuration files: %s", ", ".join(config_files)
         )
 
     # Create the output directory if it doesn't exist
-    write_files = problem_data.get("output", {}).get("write_files", True)
-
+    write_files = config.get("output", {}).get("write_files", True)
     if write_files:
-        output_info = problem_data.get("output", {})
+        output_info = config.get("output", {})
         output_dir = output_info.get("output_dir", "output")
         os.makedirs(output_dir, exist_ok=True)
         if log:
@@ -88,7 +84,7 @@ def run(problem, config):
     if log:
         logger.info("Setting up generator and materials")
     try:
-        generator = setup_generator(problem_data["generator"])
+        generator = setup_generator(config["generator"])
     except Exception as e:
         if log:
             logger.error("Error setting up generator: %s", str(e))
@@ -97,9 +93,9 @@ def run(problem, config):
         logger.info("Generator set up successfully")
 
     try:
-        material_a = setup_material(problem_data["material_A"])
-        material_b = setup_material(problem_data["material_B"])
-        material_ab = setup_material(problem_data.get("material_AB", {}))
+        material_a = setup_material(config["material_A"])
+        material_b = setup_material(config["material_B"])
+        material_ab = setup_material(config.get("material_AB", {}))
     except Exception as e:
         if log:
             logger.error("Error setting up materials: %s", str(e))
@@ -112,31 +108,31 @@ def run(problem, config):
 
     # The full iterator
     composite = zip(
-        generator, material_a, material_b, material_ab, range(problem_data["number"])
+        generator, material_a, material_b, material_ab, range(config["number"])
     )
 
-    nthreads = problem_data.get("nthreads", 1)
+    nthreads = config.get("nthreads", 1)
     if log:
         logger.info("Using %d threads for computation", nthreads)
 
     if nthreads == 1:
         results = list(
             map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], problem_data, config_data),
+                lambda x: run_single(x[0], x[1], x[2], x[3], config),
                 composite,
             )
         )
     else:
-        with multiprocess.Pool(problem_data.get("nthreads", 1)) as pool:
+        with multiprocess.Pool(config.get("nthreads", 1)) as pool:
             results = pool.map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], problem_data, config_data),
+                lambda x: run_single(x[0], x[1], x[2], x[3], config),
                 composite,
             )
 
     return results
 
 
-def run_single(img, material_A, material_B, material_AB, problem, config):
+def run_single(img, material_A, material_B, material_AB, config):
     """Run a single computation defined by input files and an image.
 
     Args:
@@ -144,19 +140,18 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
         material_A (dict): Material A properties
         material_B (dict): Material B properties
         material_AB (dict): Material interface properties
-        problem (dict): Problem configuration.
-        config (dict): Configuration settings.
+        config (dict): Problem configuration.
     """
     log = config.get("log_file", False) is not False
     if log:
         logger.info("Starting a new computation on an image of shape %s", img.shape)
 
-    write_files = problem.get("output", {}).get("write_files", True)
+    write_files = config.get("output", {}).get("write_files", True)
 
     # Get unique ID
     if write_files:
-        output_dir = problem.get("output", {}).get("output_dir", "output")
-        output_prefix = problem.get("output", {}).get("output_prefix", "result")
+        output_dir = config.get("output", {}).get("output_dir", "output")
+        output_prefix = config.get("output", {}).get("output_prefix", "result")
         uid = unique_id(directory=output_dir, prefix=output_prefix, suffix="0.h5")
         if log:
             logger.info("Generated unique ID %s for output files", uid)
@@ -167,7 +162,7 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
-    for filter in problem.get("filtering", []):
+    for filter in config.get("filtering", []):
         try:
             filter_func = get_object_from_module(filter.get("type"))
             img = filter_func(img, **filter.get("params", {}))
@@ -190,14 +185,14 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
             logger.info("Problem %s: Generating mesh", uid)
 
         try:
-            mesh_function = get_object_from_module(problem["mesh"]["type"])
-            mesh_file = problem["mesh_file"]
+            mesh_function = get_object_from_module(config["mesh"]["type"])
+            mesh_file = config["mesh_file"]
             mesh_function(
                 img,
                 mesh_file,
-                L=problem["L"],
+                L=config["L"],
                 settings=config,
-                **problem["mesh"].get("params", {}),
+                **config["mesh"].get("params", {}),
             )
         except Exception as e:
             if log:
@@ -210,9 +205,9 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
             logger.info("Problem %s: Running executor", uid)
 
         try:
-            executor = get_object_from_module(problem["executor"]["type"])
+            executor = get_object_from_module(config["executor"]["type"])
             res = executor(
-                problem["executor"]["physics"],
+                config["executor"]["physics"],
                 mesh_file,
                 material_properties={
                     "A": material_A,
@@ -220,7 +215,7 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
                     "AB": material_AB,
                 },
                 settings=config,
-                **problem["executor"].get("params", {}),
+                **config["executor"].get("params", {}),
             )
         except Exception as e:
             if log:
@@ -230,21 +225,21 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
             logger.info("Problem %s: Executor run complete", uid)
 
     # Get the extractor
-    if problem.get("output", {}) == {} or "grid_extractor" not in problem["output"]:
+    if config.get("output", {}) == {} or "grid_extractor" not in config["output"]:
         if log:
             logger.info("Problem %s: No grid extraction requested.", uid)
         extractor = None
     else:
         try:
             extractor = get_object_from_module(
-                problem["output"]["grid_extractor"]["type"]
+                config["output"]["grid_extractor"]["type"]
             )
         except Exception as e:
             if log:
                 logger.error(
                     "Problem %s: Error setting up grid extractor %s: %s",
                     uid,
-                    problem["output"]["grid_extractor"]["type"],
+                    config["output"]["grid_extractor"]["type"],
                     str(e),
                 )
             return -1
@@ -257,7 +252,7 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
         if extractor is not None:
             try:
                 result["grid"] = extractor(
-                    result["unstructured_mesh"], img, problem["L"]
+                    result["unstructured_mesh"], img, config["L"]
                 )
             except Exception as e:
                 if log:
@@ -269,7 +264,7 @@ def run_single(img, material_A, material_B, material_AB, problem, config):
                     )
                 return -1
 
-        if problem.get("output", {}).get("add_density", False):
+        if config.get("output", {}).get("add_density", False):
             vf = np.sum(img) / float(img.size)
             rho = vf * material_A.get("density", 0) + (1 - vf) * material_B.get(
                 "density", 0

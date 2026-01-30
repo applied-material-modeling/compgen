@@ -7,24 +7,11 @@
         "environment": {
             "OPAL_LIBDIR": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi/lib",
             "OPAL_PREFIX": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi"
-        },
-        "options": [
-            "-p",
-            "1",
-            "--smooth",
-            "8",
-            "--csmooth",
-            "5"
-        ]
-    },
-    "moose": {
-        "executable": "/Users/messner/packages/moose-conda/moose/modules/solid_mechanics/solid_mechanics-opt",
-        "options": []
+        }
     },
     "mpi": {
         "executable": "mpirun",
-        "rank_command": "-np",
-        "ranks": "4"
+        "rank_command": "-np"
     },
     "storage": {
         "delete_temp_dir": true

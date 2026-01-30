@@ -1,4 +1,5 @@
 import numpy as np
+import json
 
 import skimage as sk
 from skimage.io import imread
@@ -39,3 +40,68 @@ def load_and_segment(fname, miter=100):
 
     cv = chan_vese(img, max_num_iter=miter)
     return cv.T  # ij convention
+
+
+def load_json(fnames):
+    """Load and merge multiple JSON files into a single dictionary.
+
+    Args:
+        fnames (list[str]): List of JSON file paths.
+    Returns:
+        dict: Merged dictionary.
+    """
+    dicts = []
+    for fname in fnames:
+        try:
+            with open(fname, "r") as f:
+                dicts.append(json.load(f))
+        except Exception as e:
+            raise RuntimeError(f"Error loading JSON file {fname}: {e}")
+
+    return dict_merge(dicts)
+
+
+def dict_merge(dict_list):
+    """Merge a list of recursive dictionaries of dictionaries.
+
+    Args:
+        dict_list (list[dict]): List of dictionaries to merge.
+
+    Returns:
+        dict: Merged dictionary.
+
+    Raises:
+        ValueError: If a key exists in multiple dicts with non-dict values or
+            incompatible types.
+        TypeError: If the input is not a list of dicts.
+    """
+    if not isinstance(dict_list, list):
+        raise TypeError("dict_list must be a list of dictionaries")
+
+    merged = {}
+    for d in dict_list:
+        if not isinstance(d, dict):
+            raise TypeError("dict_list must be a list of dictionaries")
+        merged = _merge_dicts_recursive(merged, d)
+
+    return merged
+
+
+def _merge_dicts_recursive(a, b):
+    """Recursively merge two dictionaries with strict conflict handling."""
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        raise TypeError("Both inputs must be dictionaries")
+
+    merged = dict(a)
+    for key, b_val in b.items():
+        if key not in merged:
+            merged[key] = b_val
+            continue
+
+        a_val = merged[key]
+        if isinstance(a_val, dict) and isinstance(b_val, dict):
+            merged[key] = _merge_dicts_recursive(a_val, b_val)
+        else:
+            raise ValueError(f"Conflict at key '{key}': cannot merge non-dict values")
+
+    return merged

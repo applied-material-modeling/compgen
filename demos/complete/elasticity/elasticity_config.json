@@ -1,18 +1,22 @@
 {
-    "number": 10,
-    "nthreads": 4,
     "mesh_file": "mesh.exo",
-    "L": [
-        1.0,
-        1.0
-    ],
+    "sculpt": {
+        "options": [
+            "-df",
+            "1",
+            "-S",
+            "2",
+            "-CS",
+            "4"
+        ]
+    },
+    "moose": {
+        "executable": "/Users/messner/packages/moose-conda/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "options": []
+    },
     "generator": {
         "type": "gen.SpinodalGenerator",
         "params": {
-            "N": [
-                128,
-                128
-            ],
             "vf": [
                 0.01,
                 0.99
@@ -39,14 +43,13 @@
         }
     ],
     "mesh": {
-        "type": "mesh.generate_mesh_2d",
+        "type": "mesh.generate_mesh",
         "params": {
             "run_sculpt": true
         }
     },
     "executor": {
-        "type": "moose.execute_moose_simulations",
-        "physics": "2d/elastic"
+        "type": "moose.execute_moose_simulations"
     },
     "material_A": {
         "type": "materials.FixedMaterialGenerator",

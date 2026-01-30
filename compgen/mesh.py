@@ -10,6 +10,29 @@ import os.path
 import subprocess
 
 
+def generate_mesh(img, fname, **kwargs):
+    """Run the entire process of generating a mesh for an image and write it to an exodus file.
+
+    This function will access a temp directory to store intermediate files, but copy the final
+    mesh to the cwd.
+
+    Args:
+        img (2D or 3D array): Binary image where 1 indicates material A
+        fname (str): Output filename for the mesh.
+    Keyword Args:
+        L (tuple): Lengths of the domain in each direction.
+        settings (dict): Global settings dict
+        run_sculpt (bool): Whether to sculpt the mesh
+        quality_check (bool): Whether to run a mesh quality check
+    """
+    if len(img.shape) == 2:
+        generate_mesh_2d(img, fname, **kwargs)
+    elif len(img.shape) == 3:
+        generate_mesh_3d(img, fname, **kwargs)
+    else:
+        raise ValueError("Input image must be 2D or 3D.")
+
+
 def generate_mesh_2d(
     img, fname, L=(1.0, 1.0), settings={}, run_sculpt=True, quality_check=True
 ):
