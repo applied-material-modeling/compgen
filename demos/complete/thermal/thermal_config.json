@@ -1,0 +1,80 @@
+{
+    "mesh_file": "mesh.exo",
+    "sculpt": {
+        "options": [
+            "-df",
+            "1",
+            "-S",
+            "2",
+            "-CS",
+            "4"
+        ]
+    },
+    "moose": {
+        "executable": "/Users/messner/packages/moose-conda/moose/modules/heat_transfer/heat_transfer-opt",
+        "options": []
+    },
+    "generator": {
+        "type": "gen.SpinodalGenerator",
+        "params": {
+            "vf": [
+                0.01,
+                0.99
+            ],
+            "l": [
+                50,
+                150
+            ],
+            "bandwidth": [
+                1,
+                5
+            ]
+        }
+    },
+    "filtering": [
+        {
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "gen.make_orthogonal"
+        }
+    ],
+    "mesh": {
+        "type": "mesh.generate_mesh",
+        "params": {
+            "run_sculpt": true
+        }
+    },
+    "executor": {
+        "type": "moose.execute_moose_simulations"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "conductivity": 235.0,
+            "density": 2.7
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "conductivity": 120.0,
+            "density": 3.21
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "output": {
+        "add_density": true,
+        "output_dir": "demo_output",
+        "output_prefix": "fixed_material_thermal_spinodal",
+        "grid_extractor": {
+            "type": "mesh.extract_grid_from_mesh"
+        }
+    }
+}

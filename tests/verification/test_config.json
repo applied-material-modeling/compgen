@@ -1,4 +1,9 @@
 {
+    "generator": {
+        "params": {
+            "random_seed": 42
+        }
+    },
     "sculpt": {
         "executable": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../MacOS/psculpt",
         "mpi": "/Applications/Coreform-Cubit-2024.8.app/Contents/mpi/bin/mpirun",

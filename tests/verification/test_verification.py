@@ -178,6 +178,53 @@ config_file = "tests/verification/test_config.json"
                 },
             ],
         ),
+        (
+            ["3d/thermal_conductivity.json", "thermal_moose.json"],
+            [
+                {
+                    "density": 5.0,
+                    "heat_flux": np.stack(
+                        [
+                            np.zeros(
+                                3,
+                            ),
+                            np.array(
+                                [10.0, 0.0, 0.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+                {
+                    "density": 5.0,
+                    "heat_flux": np.stack(
+                        [
+                            np.zeros(
+                                3,
+                            ),
+                            np.array(
+                                [0.0, 10.0, 0.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+                {
+                    "density": 5.0,
+                    "heat_flux": np.stack(
+                        [
+                            np.zeros(
+                                3,
+                            ),
+                            np.array(
+                                [0.0, 0.0, 10.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+            ],
+        ),
     ],
 )
 def test_verification(input, solution):
