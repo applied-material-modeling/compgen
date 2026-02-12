@@ -1,0 +1,60 @@
+{
+    "number": 1,
+    "nthreads": 1,
+    "mesh_file": "mesh.exo",
+    "L": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "generator": {
+        "type": "gen.RandomGenerator",
+        "params": {
+            "N": [
+                8,
+                8,
+                8
+            ],
+            "vf": [
+                0.01,
+                0.99
+            ]
+        }
+    },
+    "mesh": {
+        "type": "mesh.generate_mesh_3d",
+        "params": {
+            "run_sculpt": false
+        }
+    },
+    "executor": {
+        "type": "moose.execute_moose_simulations",
+        "physics": "3d/thermal_expansion"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 100000.0,
+            "poissons_ratio": 0.3,
+            "density": 5.0,
+            "thermal_expansion_coefficient": 1
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 100000.0,
+            "poissons_ratio": 0.3,
+            "density": 5.0,
+            "thermal_expansion_coefficient": 1
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "output": {
+        "write_files": false,
+        "add_density": true
+    }
+}

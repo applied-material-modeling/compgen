@@ -1,12 +1,12 @@
 {
     "sculpt": {
-        "executable": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../MacOS/psculpt",
-        "mpi": "/Applications/Coreform-Cubit-2024.8.app/Contents/mpi/bin/mpirun",
+        "executable": "/home/messner/packages/Coreform-Cubit-2025.12/bin/psculpt",
+        "mpi": "/home/messner/packages/Coreform-Cubit-2025.12/bin/mpiexec",
         "rank_command": "-np",
-        "epu": "/Applications/Coreform-Cubit-2024.8.app/Contents/MacOS/epu",
+        "epu": "/home/messner/packages/Coreform-Cubit-2025.12/bin/epu",
         "environment": {
-            "OPAL_LIBDIR": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi/lib",
-            "OPAL_PREFIX": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi"
+            "OPAL_LIBDIR": "/home/messner/packages/Coreform-Cubit-2025.12/bin/mpi/lib",
+            "OPAL_PREFIX": "/home/messner/packages/Coreform-Cubit-2025.12/bin/mpi"
         }
     },
     "mpi": {

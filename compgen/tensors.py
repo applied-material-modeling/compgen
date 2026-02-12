@@ -25,7 +25,7 @@ def assemble_tensor(tensor_type, dim, components):
         )
 
     if tensor_type == "scalar":
-        return ("scalar", tuple(), components[0])
+        return {"type": "scalar", "shape": tuple(), "data": components[0]}
 
     orig_shape = components[0].shape
 

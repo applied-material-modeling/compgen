@@ -1,0 +1,6 @@
+{
+    "nthreads": 5,
+    "mpi": {
+        "ranks": "2"
+    }
+}

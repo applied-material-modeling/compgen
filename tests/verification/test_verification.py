@@ -305,6 +305,44 @@ config_file = "tests/verification/test_config.json"
                 },
             ],
         ),
+        (
+            ["2d/thermal_expansion.json", "elastic_moose.json"],
+            [
+                {
+                    "density": 5.0,
+                    "total_strain": np.stack(
+                        [
+                            np.zeros(
+                                3,
+                            ),
+                            np.array(
+                                [1, 1, 0.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+            ],
+        ),
+        (
+            ["3d/thermal_expansion.json", "elastic_moose.json"],
+            [
+                {
+                    "density": 5.0,
+                    "total_strain": np.stack(
+                        [
+                            np.zeros(
+                                6,
+                            ),
+                            np.array(
+                                [1, 1, 1, 0.0, 0.0, 0.0],
+                            ),
+                        ],
+                        axis=0,
+                    ),
+                },
+            ],
+        ),
     ],
 )
 def test_verification(input, solution):
