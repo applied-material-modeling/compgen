@@ -40,16 +40,16 @@
 
 [AuxVariables]
   [temp]
-    order = FIRST
-    family = LAGRANGE
+    order = CONSTANT
+    family = MONOMIAL
   []
 []
 
 [AuxKernels]
   [temp]
-    type = ConstantAux
+    type = FunctionAux
     variable = temp
-    value = 1
+    function = value
   []
 []
 
@@ -62,8 +62,8 @@
         new_system = true
         formulation = TOTAL
         volumetric_locking_correction = true
-        constraint_types =  'stress none none stress stress none none none none' 
-        targets = 'zero zero zero'
+        constraint_types =  'stress none none stress stress none none none stress' 
+        targets = 'zero zero zero zero'
         generate_output = 'cauchy_stress_xx cauchy_stress_xy cauchy_stress_xz cauchy_stress_yy '
                           'cauchy_stress_yz cauchy_stress_zz '
                           'strain_xx strain_xy strain_xz strain_yy '
@@ -140,7 +140,7 @@
   [thermal_strain_1]
     type = ComputeThermalExpansionEigenstrain
     stress_free_temperature = 0
-    thermal_expansion_coefficient = 1e-5
+    thermal_expansion_coeff = 1e-5
     eigenstrain_name = thermal_strain
     block = '1'
     temperature = temp
@@ -148,7 +148,7 @@
   [thermal_strain_2]
     type = ComputeThermalExpansionEigenstrain
     stress_free_temperature = 0
-    thermal_expansion_coefficient = 2e-5
+    thermal_expansion_coeff = 2e-5
     eigenstrain_name = thermal_strain
     block = '2'
     temperature = temp
@@ -177,7 +177,7 @@
   []
   [temperature]
     type = ElementAverageValue
-    variable = "temperature"
+    variable = "temp"
   []
 []
 

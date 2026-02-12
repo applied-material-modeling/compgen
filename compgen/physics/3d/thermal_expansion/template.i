@@ -1,5 +1,4 @@
-# 2D elastic solid under periodic boundary conditions
-# The model is a unit square with two materials
+# 3D thermal expansion under stress-free conditions
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
@@ -50,16 +49,16 @@
 
 [AuxVariables]
   [temp]
-    order = FIRST
-    family = LAGRANGE
+    order = CONSTANT
+    family = MONOMIAL
   []
 []
 
 [AuxKernels]
   [temp]
-    type = ConstantAux
+    type = FunctionAux
     variable = temp
-    value = 1
+    function = value
   []
 []
 
@@ -172,7 +171,7 @@
   [thermal_strain_1]
     type = ComputeThermalExpansionEigenstrain
     stress_free_temperature = 0
-    thermal_expansion_coefficient = 1e-5
+    thermal_expansion_coeff = 1e-5
     eigenstrain_name = thermal_strain
     block = '1'
     temperature = temp
@@ -180,7 +179,7 @@
   [thermal_strain_2]
     type = ComputeThermalExpansionEigenstrain
     stress_free_temperature = 0
-    thermal_expansion_coefficient = 2e-5
+    thermal_expansion_coeff = 2e-5
     eigenstrain_name = thermal_strain
     block = '2'
     temperature = temp
@@ -221,7 +220,7 @@
   []
   [temperature]
     type = ElementAverageValue
-    variable = "temperature"
+    variable = "temp"
   []
 []
 

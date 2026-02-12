@@ -11,7 +11,7 @@
         ]
     },
     "moose": {
-        "executable": "/Users/messner/packages/moose-conda/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "executable": "/home/messner/packages/conda-moose/moose/modules/solid_mechanics/solid_mechanics-opt",
         "options": []
     },
     "generator": {

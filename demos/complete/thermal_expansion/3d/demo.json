@@ -1,5 +1,5 @@
 {
-    "number": 4,
+    "number": 10,
     "L": [
         1.0,
         1.0,
@@ -15,6 +15,6 @@
         }
     },
     "executor": {
-        "physics": "3d/elastic"
+        "physics": "3d/thermal_expansion"
     }
 }

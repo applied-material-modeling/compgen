@@ -1,6 +1,6 @@
 {
     "type": "steady",
-    "number_of_targets": 3,
+    "number_of_targets": 1,
     "target_name": "value",
     "zero_name": "zero",
     "material_properties": {
@@ -13,23 +13,23 @@
         "material_A_substitutions": [
             "Materials/elastic_tensor_1/youngs_modulus",
             "Materials/elastic_tensor_1/poissons_ratio",
-            "Materials/thermal_strain_1/thermal_expansion_coefficient"
+            "Materials/thermal_strain_1/thermal_expansion_coeff"
         ],
         "material_B_substitutions": [
             "Materials/elastic_tensor_2/youngs_modulus",
             "Materials/elastic_tensor_2/poissons_ratio",
-            "Materials/thermal_strain_2/thermal_expansion_coefficient"
+            "Materials/thermal_strain_2/thermal_expansion_coeff"
         ],
         "interface_substitutions": []
     },
-    "target_substitution": "Physics/SolidMechanics/QuasiStatic/all/targets",
+    "target_substitution": "AuxKernels/temp/function",
     "output_substitution": "Outputs/file_base",
     "stimuli_fields": {
-        "mechanical_strain": {
+        "temperature": {
             "type": "scalar",
             "dim": 2,
             "field_components": [
-                "temperature"
+                "temp"
             ],
             "postprocessor_components": [
                 "temperature"
@@ -37,13 +37,13 @@
         }
     },
     "response_fields": {
-        "cauchy_stress": {
+        "total_strain": {
             "type": "symmetric_rank_two_tensor",
             "dim": 2,
             "field_components": [
-                "total_strain_xx",
-                "total_strain_yy",
-                "total_strain_xy"
+                "strain_xx",
+                "strain_yy",
+                "strain_xy"
             ],
             "postprocessor_components": [
                 "strain_xx",
