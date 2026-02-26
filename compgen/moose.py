@@ -260,14 +260,32 @@ def execute_moose_simulations(
 
         outputs = []
 
-        for target in range(int(physics_settings["number_of_targets"])):
-            target_subs = target_substitutions(
-                target,
-                physics_settings["number_of_targets"],
-                physics_settings["target_substitution"],
-                physics_settings["target_name"],
-                physics_settings["zero_name"],
-            )
+        sub_type = physics_settings.get("substitution_mode", "iterative")
+        if sub_type == "dictlist":
+            sub_dict = physics_settings["substitution_dictionary"]
+            # Check that all values in the dictionary have the same length
+            lengths = [len(v) for v in sub_dict.values()]
+            if len(set(lengths)) != 1:
+                raise ValueError("All values in the substitution dictionary must have the same length.")
+            N = lengths[0]
+        elif sub_type == "iterative":
+            N = int(physics_settings["number_of_targets"])
+        else:
+            raise ValueError(f"Unknown substitution mode '{sub_type}'.")
+
+        for target in range(N):
+            if sub_type == "dictlist":
+                target_subs = [f"{key}={sub_dict[key][target]}" for key in sub_dict]
+            elif sub_type == "iterative":
+                target_subs = target_substitutions(
+                    target,
+                    physics_settings["number_of_targets"],
+                    physics_settings["target_substitution"],
+                    physics_settings["target_name"],
+                    physics_settings["zero_name"],
+                )
+            else:
+                raise ValueError(f"Unknown substitution mode '{sub_type}'.")
             output_subs = output_subsitutions(
                 target,
                 physics_settings["output_substitution"],

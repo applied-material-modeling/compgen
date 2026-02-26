@@ -1,0 +1,157 @@
+{
+    "type": "transient",
+    "substitution_mode": "dictlist",
+    "material_properties": {
+        "bulk_material_properties": [
+            "youngs_modulus",
+            "poissons_ratio",
+            "yield_strength",
+            "hardening_modulus"
+        ],
+        "interface_material_properties": [],
+        "material_A_substitutions": [
+            "Materials/elastic_tensor_1/youngs_modulus",
+            "Materials/elastic_tensor_1/poissons_ratio",
+            "sy1",
+            "k1"
+        ],
+        "material_B_substitutions": [
+            "Materials/elastic_tensor_2/youngs_modulus",
+            "Materials/elastic_tensor_2/poissons_ratio",
+            "sy2",
+            "k2"
+        ],
+        "interface_substitutions": []
+    },
+    "substitution_dictionary": {
+        "phi": [
+            0.000,
+            0.785,
+            1.571,
+            2.356,
+            3.142,
+            3.927,
+            4.712,
+            5.498,
+            0.000,
+            0.785,
+            1.571,
+            2.356,
+            3.142,
+            3.927,
+            4.712,
+            5.498,
+            0.000,
+            0.785,
+            1.571,
+            2.356,
+            3.142,
+            3.927,
+            4.712,
+            5.498,
+            0.000,
+            0.785,
+            1.571,
+            2.356,
+            3.142,
+            3.927,
+            4.712,
+            5.498,
+            0.000,
+            0.785,
+            1.571,
+            2.356,
+            3.142,
+            3.927,
+            4.712,
+            5.498
+        ],
+        "theta": [
+            0.000,
+            0.000,
+            0.000,
+            0.000,
+            0.000,
+            0.000,
+            0.000,
+            0.000,
+            0.785,
+            0.785,
+            0.785,
+            0.785,
+            0.785,
+            0.785,
+            0.785,
+            0.785,
+            1.571,
+            1.571,
+            1.571,
+            1.571,
+            1.571,
+            1.571,
+            1.571,
+            1.571,
+            2.356,
+            2.356,
+            2.356,
+            2.356,
+            2.356,
+            2.356,
+            2.356,
+            2.356,
+            3.142,
+            3.142,
+            3.142,
+            3.142,
+            3.142,
+            3.142,
+            3.142,
+            3.142
+        ]
+    },
+    "output_substitution": "Outputs/file_base",
+    "response_fields": {
+        "mechanical_strain": {
+            "type": "symmetric_rank_two_tensor",
+            "dim": 3,
+            "field_components": [
+                "mechanical_strain_xx",
+                "mechanical_strain_yy",
+                "mechanical_strain_zz",
+                "mechanical_strain_yz",
+                "mechanical_strain_xz",
+                "mechanical_strain_xy"
+            ],
+            "postprocessor_components": [
+                "strain_xx",
+                "strain_yy",
+                "strain_zz",
+                "strain_yz",
+                "strain_xz",
+                "strain_xy"
+            ]
+        }
+    },
+    "stimuli_fields": {
+        "cauchy_stress": {
+            "type": "symmetric_rank_two_tensor",
+            "dim": 3,
+            "field_components": [
+                "cauchy_stress_xx",
+                "cauchy_stress_yy",
+                "cauchy_stress_zz",
+                "cauchy_stress_yz",
+                "cauchy_stress_xz",
+                "cauchy_stress_xy"
+            ],
+            "postprocessor_components": [
+                "stress_xx",
+                "stress_yy",
+                "stress_zz",
+                "stress_yz",
+                "stress_xz",
+                "stress_xy"
+            ]
+        }
+    }
+}

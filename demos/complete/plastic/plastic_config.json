@@ -1,0 +1,86 @@
+{
+    "mesh_file": "mesh.exo",
+    "sculpt": {
+        "options": [
+            "-df",
+            "1",
+            "-S",
+            "2",
+            "-CS",
+            "4"
+        ]
+    },
+    "moose": {
+        "executable": "/home/messner/packages/conda-moose/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "options": []
+    },
+    "generator": {
+        "type": "gen.SpinodalGenerator",
+        "params": {
+            "vf": [
+                0.01,
+                0.99
+            ],
+            "l": [
+                50,
+                150
+            ],
+            "bandwidth": [
+                1,
+                5
+            ]
+        }
+    },
+    "filtering": [
+        {
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "gen.make_orthogonal"
+        }
+    ],
+    "mesh": {
+        "type": "mesh.generate_mesh",
+        "params": {
+            "run_sculpt": true
+        }
+    },
+    "executor": {
+        "type": "moose.execute_moose_simulations"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 70000.0,
+            "poissons_ratio": 0.3,
+            "density": 2.7,
+            "yield_strength": 100.0,
+            "hardening_modulus": 1000.0
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 410000.0,
+            "poissons_ratio": 0.14,
+            "density": 3.21,
+            "yield_strength": 500.0,
+            "hardening_modulus": 100.0
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "output": {
+        "add_density": true,
+        "output_dir": "demo_output",
+        "output_prefix": "fixed_material_plastic_spinodal",
+        "grid_extractor": {
+            "type": "mesh.extract_grid_from_mesh"
+        }
+    }
+}

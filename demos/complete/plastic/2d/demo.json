@@ -1,0 +1,18 @@
+{
+    "number": 1,
+    "L": [
+        1.0,
+        1.0
+    ],
+    "generator": {
+        "params": {
+            "N": [
+                128,
+                128
+            ]
+        }
+    },
+    "executor": {
+        "physics": "2d/plastic"
+    }
+}
