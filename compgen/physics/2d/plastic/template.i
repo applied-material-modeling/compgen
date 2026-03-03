@@ -9,11 +9,12 @@ k1 = 1000.0
 sy2 = 120.0
 k2 = 1200.0
 
-stress_max = 1000.0 # Should not control
-eq_strain_max = 0.1 # Should cause termination
+stress_max = 1200.0 # Should not control
+eq_strain_max = 0.02 # Should cause termination
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
+  large_kinematics = true
 []
 
 [Mesh]
@@ -200,6 +201,12 @@ eq_strain_max = 0.1 # Should cause termination
     rank_two_tensor = mechanical_strain
     invariant = EffectiveStrain
   []
+  [equivalent_stress_all]
+    type = RankTwoInvariant
+    property_name = equivalent_stress
+    rank_two_tensor = cauchy_stress
+    invariant = VonMisesStress
+  []
 
   [elastic_tensor_1]
     type = ComputeIsotropicElasticityTensor
@@ -324,6 +331,11 @@ eq_strain_max = 0.1 # Should cause termination
     property = equivalent_strain
     variable = equivalent_strain
   []
+  [equivalent_stress_all]
+    type = MaterialRealAux
+    property = equivalent_stress
+    variable = equivalent_stress
+  []
 []
 
 [AuxVariables]
@@ -392,29 +404,32 @@ eq_strain_max = 0.1 # Should cause termination
     family = MONOMIAL
     order = CONSTANT
   []
+  [equivalent_stress]
+    type = MooseVariableConstMonomial
+    family = MONOMIAL
+    order = CONSTANT
+  []
 []
 
 [Kernels]
   [TM_all0]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 0
-    constraint_types = 'stress none none stress stress none none none none'
-    large_kinematics = false
+    constraint_types = 'stress stress none stress stress none none none none'
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
-    targets = 'value_xx zero value_yy'
+    targets = 'value_xx zero zero value_yy'
     variable = disp_x
   []
   [TM_all1]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 1
-    constraint_types = 'stress none none stress stress none none none none'
-    large_kinematics = false
+    constraint_types = 'stress stress none stress stress none none none none'
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
-    targets = 'value_xx zero value_yy'
+    targets = 'value_xx zero zero value_yy'
     variable = disp_y
   []
 []
@@ -424,15 +439,14 @@ eq_strain_max = 0.1 # Should cause termination
     type = ComputeLagrangianStrain
     displacements = 'disp_x disp_y'
     homogenization_gradient_names = homogenization_gradient
-    large_kinematics = true
     stabilize_strain = true
   []
   [all_compute_homogenization_gradient]
     type = ComputeHomogenizedLagrangianStrain
-    constraint_types = 'stress none none stress stress none none none none'
+    constraint_types = 'stress stress none stress stress none none none none'
     homogenization_gradient_name = homogenization_gradient
     macro_gradient = hvar
-    targets = 'value_xx zero value_yy'
+    targets = 'value_xx zero zero value_yy'
   []
 []
 
@@ -440,7 +454,7 @@ eq_strain_max = 0.1 # Should cause termination
   [hvar]
     type = MooseVariableScalar
     family = SCALAR
-    order = THIRD
+    order = FOURTH
   []
 []
 
@@ -473,6 +487,10 @@ eq_strain_max = 0.1 # Should cause termination
     type = ElementAverageValue
     variable = equivalent_strain
   []
+  [equivalent_stress]
+    type = ElementAverageValue
+    variable = equivalent_stress
+  []
 []
 
 [Executioner]
@@ -484,13 +502,11 @@ eq_strain_max = 0.1 # Should cause termination
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -ksp_type'
   petsc_options_value = 'lu superlu_dist gmres'
 
-  reuse_preconditioner = true
-  reuse_preconditioner_max_linear_its = 20
+  end_time = 5.0
+  dtmin = 1e-4
+  dt = 0.01
 
-  end_time = 1.0
-  num_steps = 200
-
-  l_max_its = 50
+  l_max_its = 1
   l_tol = 1e-6
   nl_max_its = 30
   nl_rel_tol = 1e-6

@@ -25,13 +25,18 @@
     },
     "substitution_dictionary": {
         "theta": [
-            0.0000,
-            0.7854,
-            1.5708,
-            2.3562,
-            3.1416,
-            3.9270,
-            4.7124
+            0.0,
+            0.5235987755982988,
+            1.0471975511965976,
+            1.5707963267948966,
+            2.0943951023931953,
+            2.617993877991494,
+            3.141592653589793,
+            3.665191429188092,
+            4.1887902047863905,
+            4.71238898038469,
+            5.235987755982988,
+            5.759586531581287
         ]
     },
     "output_substitution": "Outputs/file_base",
@@ -49,6 +54,16 @@
                 "strain_yy",
                 "strain_xy"
             ]
+        },
+        "equivalent_strain": {
+            "type": "scalar",
+            "dim": 2,
+            "field_components": [
+                "equivalent_strain"
+            ],
+            "postprocessor_components": [
+                "equivalent_strain"
+            ]
         }
     },
     "stimuli_fields": {
@@ -64,6 +79,16 @@
                 "stress_xx",
                 "stress_yy",
                 "stress_xy"
+            ]
+        },
+        "equivalent_stress": {
+            "type": "scalar",
+            "dim": 2,
+            "field_components": [
+                "equivalent_stress"
+            ],
+            "postprocessor_components": [
+                "equivalent_stress"
             ]
         }
     }

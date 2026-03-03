@@ -10,11 +10,12 @@ k1 = 1000.0
 sy2 = 120.0
 k2 = 1200.0
 
-stress_max = 1000.0 # Should not control
-eq_strain_max = 0.1 # Should cause termination
+stress_max = 1200.0 # Should not control
+eq_strain_max = 0.02 # Should cause termination
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
+  large_kinematics = true
 []
 
 [Mesh]
@@ -240,6 +241,12 @@ eq_strain_max = 0.1 # Should cause termination
     rank_two_tensor = mechanical_strain
     invariant = EffectiveStrain
   []
+  [equivalent_stress_all]
+    type = RankTwoInvariant
+    property_name = equivalent_stress
+    rank_two_tensor = cauchy_stress
+    invariant = VonMisesStress
+  []
 
   [elastic_tensor_1]
     type = ComputeIsotropicElasticityTensor
@@ -369,6 +376,11 @@ eq_strain_max = 0.1 # Should cause termination
     property = equivalent_strain
     variable = equivalent_strain
   []
+  [equivalent_stress_all]
+    type = MaterialRealAux
+    property = equivalent_stress
+    variable = equivalent_stress
+  []
 []
 
 [AuxVariables]
@@ -437,40 +449,42 @@ eq_strain_max = 0.1 # Should cause termination
     family = MONOMIAL
     order = CONSTANT
   []
+  [equivalent_stress]
+    type = MooseVariableConstMonomial
+    family = MONOMIAL
+    order = CONSTANT
+  []
 []
 
 [Kernels]
   [TM_all0]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 0
-    constraint_types = 'stress none none stress stress none stress stress stress' 
-    large_kinematics = false
+    constraint_types = 'stress strain strain stress stress strain stress stress stress' 
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
-    targets = 'value_xx zero value_yy zero zero value_zz'
+    targets = 'value_xx zero zero zero value_yy zero zero zero value_zz'
     variable = disp_x
   []
   [TM_all1]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 1
-    constraint_types = 'stress none none stress stress none stress stress stress'  
-    large_kinematics = false
+    constraint_types = 'stress strain strain stress stress strain stress stress stress'  
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
-    targets = 'value_xx zero value_yy zero zero value_zz'
+    targets = 'value_xx zero zero zero value_yy zero zero zero value_zz'
     variable = disp_y
   []
   [TM_all2]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 2
-    constraint_types = 'stress none none stress stress none stress stress stress' 
-    large_kinematics = false
+    constraint_types = 'stress strain strain stress stress strain stress stress stress' 
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
-    targets = 'value_xx zero value_yy zero zero value_zz'
+    targets = 'value_xx zero zero zero value_yy zero zero zero value_zz'
     variable = disp_z
   []
 []
@@ -479,15 +493,14 @@ eq_strain_max = 0.1 # Should cause termination
   [all_strain]
     type = ComputeLagrangianStrain
     homogenization_gradient_names = homogenization_gradient
-    large_kinematics = true
     stabilize_strain = true
   []
   [all_compute_homogenization_gradient]
     type = ComputeHomogenizedLagrangianStrain
-    constraint_types = 'stress none none stress stress none stress stress stress' 
+    constraint_types = 'stress strain strain stress stress strain stress stress stress' 
     homogenization_gradient_name = homogenization_gradient
     macro_gradient = hvar
-    targets = 'value_xx zero value_yy zero zero value_zz'
+    targets = 'value_xx zero zero zero value_yy zero zero zero value_zz'
   []
 []
 
@@ -495,7 +508,7 @@ eq_strain_max = 0.1 # Should cause termination
   [hvar]
     type = MooseVariableScalar
     family = SCALAR
-    order = SIXTH
+    order = NINTH
   []
 []
 
@@ -554,6 +567,10 @@ eq_strain_max = 0.1 # Should cause termination
     type = ElementAverageValue
     variable = equivalent_strain
   []
+  [equivalent_stress]
+    type = ElementAverageValue
+    variable = equivalent_stress
+  []
 []
 
 [Preconditioning]
@@ -585,11 +602,12 @@ eq_strain_max = 0.1 # Should cause termination
   solve_type = 'newton'
   line_search = none
 
-  end_time = 1.0
-  num_steps = 200
+  end_time = 5.0
+  dtmin = 1e-4
+  dt = 0.01
 
   l_max_its = 500
-  l_tol = 1e-6
+  l_tol = 1e-3
   nl_max_its = 30
   nl_rel_tol = 1e-6
   nl_abs_tol = 1e-8
