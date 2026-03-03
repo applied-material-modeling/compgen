@@ -5,13 +5,13 @@
         }
     },
     "sculpt": {
-        "executable": "/home/messner/packages/Coreform-Cubit-2025.12/bin/psculpt",
-        "mpi": "/home/messner/packages/Coreform-Cubit-2025.12/bin/mpirun",
+        "executable": "/home/messner/packages/Cubit-16.08/bin/psculpt",
+        "mpi": "/home/messner/packages/Cubit-16.08/bin/mpiexec",
         "rank_command": "-np",
-        "epu": "/home/messner/packages/Coreform-Cubit-2025.12/bin/epu",
+        "epu": "/home/messner/packages/Cubit-16.08/bin/epu",
         "environment": {
-            "OPAL_LIBDIR": "/home/messner/packages/Coreform-Cubit-2025.12/bin/mpi/lib",
-            "OPAL_PREFIX": "/home/messner/packages/Coreform-Cubit-2025.12/bin/mpi"
+            "OPAL_LIBDIR": "/home/messner/packages/Cubit-16.08/bin/mpi/lib",
+            "OPAL_PREFIX": "/home/messner/packages/Cubit-16.08/bin/mpi"
         },
         "options": [
             "-df",

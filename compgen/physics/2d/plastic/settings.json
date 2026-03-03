@@ -1,0 +1,95 @@
+{
+    "type": "transient",
+    "substitution_mode": "dictlist",
+    "material_properties": {
+        "bulk_material_properties": [
+            "youngs_modulus",
+            "poissons_ratio",
+            "yield_strength",
+            "hardening_modulus"
+        ],
+        "interface_material_properties": [],
+        "material_A_substitutions": [
+            "Materials/elastic_tensor_1/youngs_modulus",
+            "Materials/elastic_tensor_1/poissons_ratio",
+            "sy1",
+            "k1"
+        ],
+        "material_B_substitutions": [
+            "Materials/elastic_tensor_2/youngs_modulus",
+            "Materials/elastic_tensor_2/poissons_ratio",
+            "sy2",
+            "k2"
+        ],
+        "interface_substitutions": []
+    },
+    "substitution_dictionary": {
+        "theta": [
+            0.0,
+            0.5235987755982988,
+            1.0471975511965976,
+            1.5707963267948966,
+            2.0943951023931953,
+            2.617993877991494,
+            3.141592653589793,
+            3.665191429188092,
+            4.1887902047863905,
+            4.71238898038469,
+            5.235987755982988,
+            5.759586531581287
+        ]
+    },
+    "output_substitution": "Outputs/file_base",
+    "response_fields": {
+        "mechanical_strain": {
+            "type": "symmetric_rank_two_tensor",
+            "dim": 2,
+            "field_components": [
+                "mechanical_strain_xx",
+                "mechanical_strain_yy",
+                "mechanical_strain_xy"
+            ],
+            "postprocessor_components": [
+                "strain_xx",
+                "strain_yy",
+                "strain_xy"
+            ]
+        },
+        "equivalent_strain": {
+            "type": "scalar",
+            "dim": 2,
+            "field_components": [
+                "equivalent_strain"
+            ],
+            "postprocessor_components": [
+                "equivalent_strain"
+            ]
+        }
+    },
+    "stimuli_fields": {
+        "cauchy_stress": {
+            "type": "symmetric_rank_two_tensor",
+            "dim": 2,
+            "field_components": [
+                "cauchy_stress_xx",
+                "cauchy_stress_yy",
+                "cauchy_stress_xy"
+            ],
+            "postprocessor_components": [
+                "stress_xx",
+                "stress_yy",
+                "stress_xy"
+            ]
+        },
+        "equivalent_stress": {
+            "type": "scalar",
+            "dim": 2,
+            "field_components": [
+                "equivalent_stress"
+            ],
+            "postprocessor_components": [
+                "equivalent_stress"
+            ]
+        }
+    }
+}
