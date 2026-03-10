@@ -347,8 +347,10 @@ config_file = "tests/verification/test_config.json"
         ),
     ],
 )
-def test_verification(input, solution):
-    problem, moose = input
+def test_verification(input_info, solution):
+    """Test that the solver outputs match the reference solutions for a set
+    of verification problems."""
+    problem, moose = input_info
     problem_file = f"tests/verification/{problem}"
     moose_file = f"tests/verification/{moose}"
     result = run(problem_file, config_file, moose_file)

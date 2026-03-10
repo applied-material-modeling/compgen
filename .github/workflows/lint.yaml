@@ -31,5 +31,5 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-      - name: Run pylint on module
-        run: pylint compgen
+      - name: Run pylint on module and tests
+        run: pylint compgen tests
