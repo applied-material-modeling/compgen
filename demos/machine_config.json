@@ -1,14 +1,9 @@
 {
     "sculpt": {
-        "executable": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../MacOS/psculpt",
-        "mpi": "/Applications/Coreform-Cubit-2024.8.app/Contents/mpi/bin/mpirun",
-        "rank_command": "-np",
-        "epu": "/Applications/Coreform-Cubit-2024.8.app/Contents/MacOS/epu",
-        "environment": {
-            "OPAL_LIBDIR": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi/lib",
-            "OPAL_PREFIX": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi"
-        },
+        "executable": "/users/rghill/Cubit-16.14/bin/psculpt",
         "options": [
+            "-j",
+            "1",
             "-p",
             "1",
             "--smooth",
@@ -18,8 +13,11 @@
         ]
     },
     "moose": {
-        "executable": "/Users/messner/packages/moose-conda/moose/modules/solid_mechanics/solid_mechanics-opt",
-        "options": []
+        "executable": "/users/rghill/projects/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "options": [],
+        "environment": {
+            "FI_PROVIDER": "tcp"
+        }
     },
     "mpi": {
         "executable": "mpirun",
@@ -29,5 +27,7 @@
     "storage": {
         "delete_temp_dir": true
     },
-    "verbose": false
+    "verbose": false,
+    "log_file": "demo.log",
+    "log_level": "INFO"
 }
