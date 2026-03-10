@@ -1,3 +1,5 @@
+"""Methods for generating random composite structures."""
+
 import numpy as np
 from skimage.transform import resize
 import gstools as gs
@@ -91,6 +93,10 @@ class EmpiricalCovariance(gs.CovModel):
         self.c = c
 
     def variogram(self, h):
+        """Evaluate the variogram at given lag distances by interpolating the empirical data.
+        Args:
+            h (np.ndarray): Lag distances.
+        """
         cov = np.interp(h, self.r, self.c, left=self.c[0], right=self.c[-1])
         return cov
 
@@ -115,8 +121,7 @@ class StructureGenerator:
         """
         if isinstance(v, list) and len(v) == 2:
             return self.rng.uniform(v[0], v[1])
-        else:
-            return v
+        return v
 
     def __iter__(self):
         return self
@@ -125,6 +130,7 @@ class StructureGenerator:
         return self.next()
 
     def next(self):
+        """Generate the next structure."""
         return self.sample()
 
     def sample(self):
@@ -174,6 +180,14 @@ class GenerativeStructureGenerator(StructureGenerator):
         if self.dim < 3:
             return 0
         return self.N[2]
+
+    def sample(self):
+        """Generate the next structure.
+
+        Returns:
+            np.ndarray: An array of shape `self.N` with random bool values.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
 
 class TwoPointGenerator(GenerativeStructureGenerator):
@@ -403,7 +417,8 @@ class RandomGenerator(GenerativeStructureGenerator):
 
 class FromNumpyGenerator(StructureGenerator):
     """
-    Just read a npy file.  The assumption is the first axis is the number of structures and then the rest are the dimensions.
+    Just read a npy file. The assumption is the first axis is the number of
+    structures and then the rest are the dimensions.
 
     Args:
         filename (str): Path to the .npy file containing the structures.

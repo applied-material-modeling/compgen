@@ -1,7 +1,8 @@
-import numpy as np
+"""General utilities for image segmentation, smoothing, and JSON config merging."""
+
 import json
 
-import skimage as sk
+import numpy as np
 from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.segmentation import chan_vese
@@ -12,7 +13,8 @@ def binary_smoother(binary_image, smoothing_function):
 
     Args:
         binary_image (np.ndarray): 2D binary array.
-        smoothing_function (callable): Function that takes a 2D array and returns a smoothed 2D array.
+        smoothing_function (callable): Function that takes a 2D array and
+            returns a smoothed 2D array.
 
     Returns:
         np.ndarray: Smoothed binary image.
@@ -53,10 +55,10 @@ def load_json(fnames):
     dicts = []
     for fname in fnames:
         try:
-            with open(fname, "r") as f:
+            with open(fname, "r", encoding="utf-8") as f:
                 dicts.append(json.load(f))
         except Exception as e:
-            raise RuntimeError(f"Error loading JSON file {fname}: {e}")
+            raise RuntimeError(f"Error loading JSON file {fname}: {e}") from e
 
     return dict_merge(dicts)
 

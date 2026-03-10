@@ -1,6 +1,8 @@
-from compgen import utils
+"""Image filtering utilities for preprocessing generated microstructures."""
 
 import skimage
+
+from compgen import utils
 
 
 def mean_filter(img, radius=3):

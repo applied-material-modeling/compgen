@@ -1,3 +1,5 @@
+"""Tests for fixed and random material property generator behavior."""
+
 from compgen.materials import FixedMaterialGenerator, RandomMaterialGenerator
 
 

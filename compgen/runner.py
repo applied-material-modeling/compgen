@@ -1,4 +1,6 @@
-import json
+# pylint: disable=broad-exception-caught, too-many-branches, too-many-statements
+"""High-level orchestration for generating structures, meshing, solving, and writing outputs."""
+
 import os
 import uuid
 import importlib
@@ -162,16 +164,16 @@ def run_single(img, material_A, material_B, material_AB, config):
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
-    for filter in config.get("filtering", []):
+    for filter_spec in config.get("filtering", []):
         try:
-            filter_func = get_object_from_module(filter.get("type"))
-            img = filter_func(img, **filter.get("params", {}))
+            filter_func = get_object_from_module(filter_spec.get("type"))
+            img = filter_func(img, **filter_spec.get("params", {}))
         except Exception as e:
             if log:
                 logger.error(
                     "Problem %s: Error applying filter %s: %s",
                     uid,
-                    filter.get("type"),
+                    filter_spec.get("type"),
                     str(e),
                 )
             return -1
@@ -315,27 +317,27 @@ def run_single(img, material_A, material_B, material_AB, config):
     return res
 
 
-def setup_generator(input):
+def setup_generator(config_input):
     """Set up a generator based on input specifications.
 
     Args:
-        input (dict): Input specifications for the generator.
+        config_input (dict): Input specifications for the generator.
 
     Returns:
         object: An instance of the generator.
     """
-    gen = get_object_from_module(input.get("type"))
-    return gen(**input.get("params", {}))
+    gen = get_object_from_module(config_input.get("type"))
+    return gen(**config_input.get("params", {}))
 
 
-def setup_material(input):
+def setup_material(config_input):
     """Set up a material generator based on input specifications.
 
     Args:
-        input (dict): Input specifications for the material generator.
+        config_input (dict): Input specifications for the material generator.
 
     Returns:
         object: An instance of the material generator.
     """
-    mat_gen = get_object_from_module(input.get("type"))
-    return mat_gen(**input.get("params", {}))
+    mat_gen = get_object_from_module(config_input.get("type"))
+    return mat_gen(**config_input.get("params", {}))

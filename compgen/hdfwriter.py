@@ -1,3 +1,5 @@
+"""Utilities for helping read/write HDF5 files."""
+
 import h5py
 import numpy as np
 

@@ -1,3 +1,5 @@
+"""Temporary directory context manager used to isolate intermediate workflow files."""
+
 import tempfile
 import os
 import shutil
@@ -12,6 +14,8 @@ class TempDirectory:
     def __init__(self, options):
         self.base_dir = options.get("storage", {}).get("temp_dir", None)
         self.delete_after = options.get("storage", {}).get("delete_temp_dir", False)
+        self.temp_dir = None
+        self.orig_cwd = None
 
     def __enter__(self):
         self.temp_dir = tempfile.mkdtemp(dir=self.base_dir)

@@ -1,3 +1,5 @@
+"""End-to-end verification tests comparing solver outputs to reference physics responses."""
+
 import numpy as np
 import pytest
 

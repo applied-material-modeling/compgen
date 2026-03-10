@@ -1,3 +1,5 @@
+"""Tests for structure generation utilities and stochastic generator outputs."""
+
 import numpy as np
 import pytest
 

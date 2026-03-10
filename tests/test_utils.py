@@ -1,3 +1,5 @@
+"""Tests for dictionary merge utilities and conflict/type handling."""
+
 import pytest
 
 from compgen.utils import dict_merge

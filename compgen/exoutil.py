@@ -1,3 +1,5 @@
+"""Various helpers for reading Exodus II files."""
+
 import numpy as np
 
 
