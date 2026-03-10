@@ -1,4 +1,4 @@
-name: Enfofce code style and linting
+name: Enforce code style and linting
 
 on: [push, pull_request]
 
