@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from compgen.gen import RandomGenerator, SpinodalGenerator, TwoPointGenerator, make_orthogonal
+from compgen.gen import (
+    RandomGenerator,
+    SpinodalGenerator,
+    TwoPointGenerator,
+    make_orthogonal,
+)
 
 
 @pytest.mark.parametrize(

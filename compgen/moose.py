@@ -266,7 +266,9 @@ def execute_moose_simulations(
             # Check that all values in the dictionary have the same length
             lengths = [len(v) for v in sub_dict.values()]
             if len(set(lengths)) != 1:
-                raise ValueError("All values in the substitution dictionary must have the same length.")
+                raise ValueError(
+                    "All values in the substitution dictionary must have the same length."
+                )
             N = lengths[0]
         elif sub_type == "iterative":
             N = int(physics_settings["number_of_targets"])
