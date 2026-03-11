@@ -9,7 +9,7 @@ config_file = "tests/verification/test_config.json"
 
 
 @pytest.mark.parametrize(
-    "input,solution",
+    "input_info,solution",
     [
         (
             ["2d/elasticity.json", "elastic_moose.json"],
