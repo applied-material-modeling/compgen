@@ -1,5 +1,8 @@
 """Tests for runner setup and dispatch behavior."""
 
+import sys
+import types
+
 import numpy as np
 
 from compgen import runner
@@ -25,6 +28,33 @@ def test_setup_runner_explicit_threaded_runner_config():
 
     assert isinstance(r, runner.ThreadedRunner)
     assert r.nthreads == 2
+
+
+def test_setup_runner_explicit_mpi_runner_config(monkeypatch):
+    """An explicit MPIRunner section should instantiate MPIRunner."""
+
+    class FakeComm:
+        def Get_rank(self):
+            return 0
+
+        def Get_size(self):
+            return 1
+
+        def gather(self, data, root=0):
+            _ = root
+            return [data]
+
+    fake_mpi4py = types.SimpleNamespace(MPI=types.SimpleNamespace(COMM_WORLD=FakeComm()))
+    monkeypatch.setitem(sys.modules, "mpi4py", fake_mpi4py)
+
+    r = runner.setup_runner(
+        {
+            "type": "runner.MPIRunner",
+            "params": {},
+        }
+    )
+
+    assert isinstance(r, runner.MPIRunner)
 
 
 def test_threaded_runner_single_thread_executes_all_tasks(monkeypatch):
@@ -92,3 +122,66 @@ def test_run_uses_default_runner_when_runner_section_missing(monkeypatch):
     assert captured["config_input"] is None
     assert captured["default_nthreads"] == 3
     assert len(captured["composite"]) == 2
+
+
+def test_mpi_runner_rank0_gathers_and_orders_results(monkeypatch):
+    """MPIRunner should return ordered gathered results on rank 0."""
+
+    class FakeComm:
+        def Get_rank(self):
+            return 0
+
+        def Get_size(self):
+            return 2
+
+        def gather(self, data, root=0):
+            assert root == 0
+            return [
+                data,
+                [(1, 10), (3, 30)],
+            ]
+
+    fake_mpi4py = types.SimpleNamespace(MPI=types.SimpleNamespace(COMM_WORLD=FakeComm()))
+    monkeypatch.setitem(sys.modules, "mpi4py", fake_mpi4py)
+
+    monkeypatch.setattr(runner, "_run_single_task", lambda task: task[0] * 10)
+
+    composite = [
+        (0, {}, {}, {}, 0),
+        (1, {}, {}, {}, 1),
+        (2, {}, {}, {}, 2),
+        (3, {}, {}, {}, 3),
+    ]
+    cfg = {}
+
+    out = runner.MPIRunner().run(composite, config=cfg)
+    assert out == [0, 10, 20, 30]
+
+
+def test_mpi_runner_non_root_returns_empty_list(monkeypatch):
+    """MPIRunner should return an empty list on non-root ranks."""
+
+    class FakeComm:
+        def Get_rank(self):
+            return 1
+
+        def Get_size(self):
+            return 2
+
+        def gather(self, data, root=0):
+            _ = data
+            assert root == 0
+            return None
+
+    fake_mpi4py = types.SimpleNamespace(MPI=types.SimpleNamespace(COMM_WORLD=FakeComm()))
+    monkeypatch.setitem(sys.modules, "mpi4py", fake_mpi4py)
+
+    monkeypatch.setattr(runner, "_run_single_task", lambda task: task[0] * 10)
+
+    composite = [
+        (0, {}, {}, {}, 0),
+        (1, {}, {}, {}, 1),
+    ]
+
+    out = runner.MPIRunner().run(composite, config={})
+    assert out == []

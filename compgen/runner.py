@@ -65,6 +65,51 @@ class ThreadedRunner(Runner):
             return pool.map(_run_single_task, tasks)
 
 
+class MPIRunner(Runner):
+    """Runner that executes tasks across MPI ranks via mpi4py.
+
+    Each rank receives tasks by index striding (`idx % size == rank`) and
+    executes them locally. Results are gathered on rank 0 and re-ordered to
+    match input ordering.
+
+    Non-root ranks return an empty list.
+    """
+
+    def __init__(self):
+        try:
+            from mpi4py import MPI  # pylint: disable=import-outside-toplevel
+        except ImportError as e:
+            raise RuntimeError(
+                "MPIRunner requires mpi4py. Install it and launch with mpiexec/mpirun."
+            ) from e
+
+        self.comm = MPI.COMM_WORLD
+
+    def run(self, composite, config, log=False):
+        rank = self.comm.Get_rank()
+        size = self.comm.Get_size()
+
+        if log:
+            logger.info("Using MPI for computation on rank %d/%d", rank, size)
+
+        indexed_local_results = []
+        for idx, (img, material_a, material_b, material_ab, _) in enumerate(composite):
+            if idx % size != rank:
+                continue
+
+            result = _run_single_task((img, material_a, material_b, material_ab, config))
+            indexed_local_results.append((idx, result))
+
+        gathered = self.comm.gather(indexed_local_results, root=0)
+
+        if rank != 0:
+            return []
+
+        all_results = [item for rank_results in gathered for item in rank_results]
+        all_results.sort(key=lambda x: x[0])
+        return [result for _, result in all_results]
+
+
 def get_object_from_module(name, prefix="compgen"):
     """Dynamically import an object from a module.
 
@@ -101,8 +146,7 @@ def run(*config_files):
     """Run a set of computations defined by input files
 
     Args:
-        problem (str): Path to a problem definition file.
-        config (str): Path to a configuration file.
+        *config_files: Paths to configuration files, all of which will be loaded and merged.
     """
     config = utils.load_json(config_files)
 
