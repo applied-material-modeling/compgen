@@ -26,21 +26,17 @@ compgen provides a simple API (`runner.run`) for doing all of this based on json
 
 There are examples of each file type to make up the 2D and 3D demos, described below.
 
+## Tests and demos
+
+First set environment variables:
+1. `MOOSE_DIR` to the root directory of your moose installation
+2. `CUBIT_DIR` to the root directory of your CUBIT directory, if you want to run the demos using sculpt.  This is not necessary for the verification tests.
+
 ## Run the tests
 
-First you'll need to update `tests/verification/test_config.json` to let compgen know where your physics codes and meshers are and how to run them on your system.  Then just run
-`pytest`
-to start the tests.  These check basic correctness of the structure generators and basic results for each type of supported physics.
+Run the tests with `pytest`.  The general tests in the `tests` directory do not require MOOSE and will quick/cheap to run.  The verification tests in `tests/verification` are more expensive and require MOOSE.
 
-## Run the demo
-The repository includes example configurations and runner scripts.
+## Run the demos
 
-2D demo:
-- `python demo.py`
-
-3D demo:
-- `python demo3d.py`
-
-Before running these you'll need to update `demo_config.json` and `demo_config_3d.json`, again to point compgen to your meshers and physics solvers.
-
-Results will be generated in `demo_output` and `3d_demo_output`.
+There are complete demos that generate random structures, call MOOSE to solve for some material properties, and store the results.  These demos live in `demos/complete`.  The subdirectories first split
+the problems into different physics/types of material properties and then into 2D and 3D examples.

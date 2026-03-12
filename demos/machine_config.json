@@ -1,12 +1,12 @@
 {
     "sculpt": {
-        "executable": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../MacOS/psculpt",
-        "mpi": "/Applications/Coreform-Cubit-2024.8.app/Contents/mpi/bin/mpirun",
+        "executable": "${CUBIT_DIR}/bin/psculpt",
+        "mpi": "${CUBIT_DIR}/bin/mpiexec",
         "rank_command": "-np",
-        "epu": "/Applications/Coreform-Cubit-2024.8.app/Contents/MacOS/epu",
+        "epu": "${CUBIT_DIR}/bin/epu",
         "environment": {
-            "OPAL_LIBDIR": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi/lib",
-            "OPAL_PREFIX": "/Applications/Coreform-Cubit-2024.8.app/Contents/lib/../mpi"
+            "OPAL_LIBDIR": "${CUBIT_DIR}/bin/mpi/lib",
+            "OPAL_PREFIX": "${CUBIT_DIR}/bin/mpi"
         },
         "options": [
             "-p",
@@ -18,7 +18,7 @@
         ]
     },
     "moose": {
-        "executable": "/Users/messner/packages/moose-conda/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "executable": "${MOOSE_DIR}/modules/solid_mechanics/solid_mechanics-opt",
         "options": []
     },
     "mpi": {
