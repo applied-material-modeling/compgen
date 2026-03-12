@@ -1,6 +1,7 @@
 """General utilities for image segmentation, smoothing, and JSON config merging."""
 
 import json
+import os
 
 import numpy as np
 from skimage.io import imread
@@ -47,6 +48,8 @@ def load_and_segment(fname, miter=100):
 def load_json(fnames):
     """Load and merge multiple JSON files into a single dictionary.
 
+    Substitute environment variables in the JSON values if present.
+
     Args:
         fnames (list[str]): List of JSON file paths.
     Returns:
@@ -56,7 +59,9 @@ def load_json(fnames):
     for fname in fnames:
         try:
             with open(fname, "r", encoding="utf-8") as f:
-                dicts.append(json.load(f))
+                str_json = f.read()
+                sub_str = os.path.expandvars(str_json)
+                dicts.append(json.loads(sub_str))
         except Exception as e:
             raise RuntimeError(f"Error loading JSON file {fname}: {e}") from e
 

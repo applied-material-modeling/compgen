@@ -55,16 +55,8 @@ jobs:
           make -j 4
           cd ../../..
 
-      - name: Configure tests/verification/elastic_moose.json
-        shell: bash -el {0}
-        run: |
-          sed -i 's|/path/to/moose|'"$GITHUB_WORKSPACE"'/moose|g' tests/verification/elastic_moose.json
-
-      - name: Configure tests/verification/thermal_moose.json
-        shell: bash -el {0}
-        run: |
-          sed -i 's|/path/to/moose|'"$GITHUB_WORKSPACE"'/moose|g' tests/verification/thermal_moose.json
-
       - name: Run verification tests
+        env:
+          MOOSE_DIR: ${{ github.workspace }}/moose
         shell: bash -el {0}
         run: pytest tests/verification
