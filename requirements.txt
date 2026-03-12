@@ -9,3 +9,4 @@ gstools
 multiprocess
 pytest
 pyvista
+mpi4py

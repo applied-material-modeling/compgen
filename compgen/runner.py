@@ -14,6 +14,57 @@ from compgen import temp, hdfwriter, utils
 logger = logging.getLogger(__name__)
 
 
+def _run_single_task(task):
+    """Run one computation task tuple.
+
+    Args:
+        task (tuple): Tuple of (img, material_A, material_B, material_AB, config).
+
+    Returns:
+        list[dict] | int: Result from `run_single`.
+    """
+    img, material_a, material_b, material_ab, config = task
+    return run_single(img, material_a, material_b, material_ab, config)
+
+
+class Runner:
+    """Base runner abstraction for dispatching batches of computations."""
+
+    def run(self, composite, config, log=False):
+        """Execute all tasks in a composite iterator."""
+        raise NotImplementedError("Subclasses must implement run().")
+
+
+class ThreadedRunner(Runner):
+    """Runner that executes tasks serially or via a multiprocess pool.
+
+    Args:
+        nthreads (int | None): Number of worker threads/processes. If None,
+            falls back to legacy `config["nthreads"]` with default 1.
+    """
+
+    def __init__(self, nthreads=None):
+        self.nthreads = nthreads
+
+    def _resolve_nthreads(self, config):
+        if self.nthreads is not None:
+            return self.nthreads
+        return config.get("nthreads", 1)
+
+    def run(self, composite, config, log=False):
+        nthreads = self._resolve_nthreads(config)
+        if log:
+            logger.info("Using %d threads for computation", nthreads)
+
+        tasks = ((x[0], x[1], x[2], x[3], config) for x in composite)
+
+        if nthreads == 1:
+            return list(map(_run_single_task, tasks))
+
+        with multiprocess.Pool(nthreads) as pool:
+            return pool.map(_run_single_task, tasks)
+
+
 def get_object_from_module(name, prefix="compgen"):
     """Dynamically import an object from a module.
 
@@ -105,6 +156,18 @@ def run(*config_files):
     if log:
         logger.info("Materials set up successfully")
 
+    try:
+        runner = setup_runner(
+            config.get("runner"),
+            default_nthreads=config.get("nthreads", 1),
+        )
+    except Exception as e:
+        if log:
+            logger.error("Error setting up runner: %s", str(e))
+        raise e
+    if log:
+        logger.info("Runner set up successfully")
+
     if log:
         logger.info("Starting computations")
 
@@ -113,23 +176,7 @@ def run(*config_files):
         generator, material_a, material_b, material_ab, range(config["number"])
     )
 
-    nthreads = config.get("nthreads", 1)
-    if log:
-        logger.info("Using %d threads for computation", nthreads)
-
-    if nthreads == 1:
-        results = list(
-            map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], config),
-                composite,
-            )
-        )
-    else:
-        with multiprocess.Pool(config.get("nthreads", 1)) as pool:
-            results = pool.map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], config),
-                composite,
-            )
+    results = runner.run(composite, config=config, log=log)
 
     return results
 
@@ -341,3 +388,22 @@ def setup_material(config_input):
     """
     mat_gen = get_object_from_module(config_input.get("type"))
     return mat_gen(**config_input.get("params", {}))
+
+
+def setup_runner(config_input=None, default_nthreads=1):
+    """Set up a computation runner from input specifications.
+
+    Args:
+        config_input (dict | None): Runner config block from input JSON.
+        default_nthreads (int): Backward-compatible default thread count from
+            legacy top-level `nthreads`.
+
+    Returns:
+        Runner: Configured runner implementation.
+    """
+    if config_input is None:
+        return ThreadedRunner(nthreads=default_nthreads)
+
+    runner_type = config_input.get("type", "runner.ThreadedRunner")
+    runner = get_object_from_module(runner_type)
+    return runner(**config_input.get("params", {}))
