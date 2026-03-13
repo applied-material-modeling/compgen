@@ -38,21 +38,21 @@ jobs:
         shell: bash -el {0}
         run: |
           cd moose/framework
-          make -j 4
+          make -j 2
           cd ../..
 
       - name: Compile solid_mechanics
         shell: bash -el {0}
         run: |
           cd moose/modules/solid_mechanics
-          make -j 4
+          make -j 2
           cd ../../..
 
       - name: Compile heat_transfer
         shell: bash -el {0}
         run: |
           cd moose/modules/heat_transfer
-          make -j 4
+          make -j 2
           cd ../../..
 
       - name: Run verification tests
