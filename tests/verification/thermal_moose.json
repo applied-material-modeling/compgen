@@ -1,6 +1,6 @@
 {
     "moose": {
-        "executable": "/home/messner/packages/conda-moose/moose/modules/heat_transfer/heat_transfer-opt",
+        "executable": "${MOOSE_DIR}/modules/heat_transfer/heat_transfer-opt",
         "options": []
     }
 }

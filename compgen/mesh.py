@@ -1,13 +1,14 @@
-from compgen import temp
+"""Mesh generation and mesh-processing utilities for 2D and 3D binary structures."""
 
-import pyvista
-
-import numpy as np
-import exodusii
-import scipy.spatial as sp
 import os
-import os.path
 import subprocess
+
+import exodusii
+import numpy as np
+import pyvista
+import scipy.spatial as sp
+
+from compgen import temp
 
 
 def generate_mesh(img, fname, **kwargs):
@@ -34,7 +35,7 @@ def generate_mesh(img, fname, **kwargs):
 
 
 def generate_mesh_2d(
-    img, fname, L=(1.0, 1.0), settings={}, run_sculpt=True, quality_check=True
+    img, fname, L=(1.0, 1.0), settings=None, run_sculpt=True, quality_check=True
 ):
     """Run the entire process of generating a 2D mesh for an image and write it to an exodus file.
 
@@ -51,6 +52,8 @@ def generate_mesh_2d(
         run_sculpt (bool): Whether to sculpt the mesh
     """
     assert len(img.shape) == 2, "Input image must be 2D."
+    if settings is None:
+        settings = {}
 
     lx, ly = L
 
@@ -59,7 +62,7 @@ def generate_mesh_2d(
         if run_sculpt:
             extrude("temp_mesh.e", prefix="extruded_", lx=lx, ly=ly)
             sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
-            slice("sculpted_extruded_temp_mesh.e", prefix="sliced_")
+            slice_mesh("sculpted_extruded_temp_mesh.e", prefix="sliced_")
             os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
         else:
             os.rename("temp_mesh.e", os.path.join(cwd, fname))
@@ -70,7 +73,7 @@ def generate_mesh_2d(
 
 
 def generate_mesh_3d(
-    img, fname, L=(1.0, 1.0, 1.0), settings={}, run_sculpt=True, quality_check=True
+    img, fname, L=(1.0, 1.0, 1.0), settings=None, run_sculpt=True, quality_check=True
 ):
     """Run the entire process of generating a 3D mesh for an image and write it to an exodus file.
 
@@ -87,6 +90,8 @@ def generate_mesh_3d(
         run_sculpt (bool): Whether to sculpt the mesh
     """
     assert len(img.shape) == 3, "Input image must be 3D."
+    if settings is None:
+        settings = {}
 
     lx, ly, lz = L
 
@@ -116,7 +121,7 @@ def mesh_quality(exofile, min_qual=0.025):
     return qual.get_data_range("scaled_jacobian")[0] > min_qual
 
 
-def sculpt(mesh, prefix="sculpted_", settings={}):
+def sculpt(mesh, prefix="sculpted_", settings=None):
     """Call sculpt on an extruded mesh.
 
     Args:
@@ -126,6 +131,9 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         prefix (str): Prefix for the output sculpted mesh filename.
         settings (dict): Global settings dict
     """
+    if settings is None:
+        settings = {}
+
     outfile = os.path.splitext(f"{prefix}{mesh}")[0]
     cmd = (
         [
@@ -143,7 +151,7 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         env=settings["sculpt"].get("environment", {}) | os.environ,
         capture_output=(not settings.get("verbose", False)),
     )
-    
+
     ranks = int(settings["mpi"]["ranks"])
     epu_cmd = [
         settings["sculpt"]["epu"],
@@ -214,7 +222,7 @@ def extrude(mesh, lx=1.0, ly=1.0, prefix="extruded_", lz=0.01, tol=1e-6):
         exo.put_node_set(4, node_nums[top])
 
 
-def slice(mesh, prefix="sliced_", eps=1e-4):
+def slice_mesh(mesh, prefix="sliced_", eps=1e-4):
     """Take a 2D slice of a 3D hex mesh.
 
     This function assumes that the input mesh is a single element thick in the z-direction.
@@ -415,7 +423,7 @@ def project_element_field_to_grid(mesh_coords, mesh_conn, element_field, L, N):
     }
 
 
-def extract_grid_from_mesh(mesh_data, img, L, length_names=["lx", "ly", "lz"]):
+def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
     """Extract grid information from mesh data.
 
     Args:
@@ -429,6 +437,9 @@ def extract_grid_from_mesh(mesh_data, img, L, length_names=["lx", "ly", "lz"]):
     Returns:
         dict: Extracted grid information.
     """
+    if length_names is None:
+        length_names = ["lx", "ly", "lz"]
+
     grid = {
         "cell_fields": {
             "material": {"type": "scalar", "shape": tuple(), "data": img},

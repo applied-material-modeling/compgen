@@ -1,3 +1,5 @@
+"""Material property generators for fixed and randomized simulation inputs."""
+
 import random
 
 
@@ -13,6 +15,7 @@ class MaterialGenerator:
         return self.next()
 
     def next(self):
+        """Generate the next set of material properties."""
         raise NotImplementedError("Subclasses must implement the next() method.")
 
 
@@ -28,6 +31,7 @@ class FixedMaterialGenerator(MaterialGenerator):
         self.props = props
 
     def next(self):
+        """Simply return the fixed properties."""
         return self.props
 
 
@@ -36,13 +40,15 @@ class RandomMaterialGenerator(MaterialGenerator):
     Generate random material properties.
 
     Args:
-        prop_ranges (dict): A dictionary where keys are property names and values are tuples of (min, max) ranges.
+        prop_ranges (dict): A dictionary where keys are property names and
+            values are tuples of (min, max) ranges.
     """
 
     def __init__(self, **prop_ranges):
         self.prop_ranges = prop_ranges
 
     def next(self):
+        """Generate a random sample of material properties within the specified ranges."""
         return {
             prop: random.uniform(*range_) for prop, range_ in self.prop_ranges.items()
         }

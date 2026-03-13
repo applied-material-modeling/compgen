@@ -1,3 +1,5 @@
+"""Tensor metadata and routines for assembling structured tensor outputs."""
+
 import numpy as np
 
 tensor_info = {
@@ -13,7 +15,8 @@ def assemble_tensor(tensor_type, dim, components):
     Assemble a tensor from its components.
 
     Args:
-        tensor_type (str): Type of the tensor.  One of "scalar", "vector", "rank_two_tensor", "symmetric_rank_two_tensor".
+        tensor_type (str): Type of the tensor. One of "scalar", "vector",
+            "rank_two_tensor", or "symmetric_rank_two_tensor".
         dim (int): Dimension of the tensor.  One of 2, 3.
         components (list of np.ndarray): List of components of the tensor.
     """
@@ -21,7 +24,9 @@ def assemble_tensor(tensor_type, dim, components):
 
     if len(components) != np.prod(shape):
         raise ValueError(
-            f"Number of components {len(components)} does not match expected number {np.prod(shape)} for tensor type {tensor_type} and dimension {dim}."
+            f"Number of components {len(components)} does not match expected "
+            f"number {np.prod(shape)} for tensor type {tensor_type} and "
+            f"dimension {dim}."
         )
 
     if tensor_type == "scalar":

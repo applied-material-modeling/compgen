@@ -1,0 +1,62 @@
+name: Physics validation tests
+
+on: [push, pull_request]
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: moose
+          condarc: |
+            channels:
+              - https://conda.software.inl.gov/public
+              - conda-forge
+            channel_priority: flexible
+          init-shell: bash
+          create-args: moose-dev=2026.02.20=mpich
+        continue-on-error: false
+
+      - name: Install dependencies
+        shell: bash -el {0}
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Checkout MOOSE
+        shell: bash -el {0}
+        run: git clone https://github.com/reverendbedford/moose.git --branch off_diagonal_off
+
+      - name: Compile framework
+        shell: bash -el {0}
+        run: |
+          cd moose/framework
+          make -j 2
+          cd ../..
+
+      - name: Compile solid_mechanics
+        shell: bash -el {0}
+        run: |
+          cd moose/modules/solid_mechanics
+          make -j 2
+          cd ../../..
+
+      - name: Compile heat_transfer
+        shell: bash -el {0}
+        run: |
+          cd moose/modules/heat_transfer
+          make -j 2
+          cd ../../..
+
+      - name: Run verification tests
+        env:
+          MOOSE_DIR: ${{ github.workspace }}/moose
+        shell: bash -el {0}
+        run: pytest tests/verification

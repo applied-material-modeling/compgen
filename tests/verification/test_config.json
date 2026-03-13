@@ -4,24 +4,6 @@
             "random_seed": 42
         }
     },
-    "sculpt": {
-        "executable": "/home/messner/packages/Cubit-16.08/bin/psculpt",
-        "mpi": "/home/messner/packages/Cubit-16.08/bin/mpiexec",
-        "rank_command": "-np",
-        "epu": "/home/messner/packages/Cubit-16.08/bin/epu",
-        "environment": {
-            "OPAL_LIBDIR": "/home/messner/packages/Cubit-16.08/bin/mpi/lib",
-            "OPAL_PREFIX": "/home/messner/packages/Cubit-16.08/bin/mpi"
-        },
-        "options": [
-            "-df",
-            "1",
-            "-S",
-            "2",
-            "-CS",
-            "4"
-        ]
-    },
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",

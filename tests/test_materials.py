@@ -1,7 +1,10 @@
+"""Tests for fixed and random material property generator behavior."""
+
 from compgen.materials import FixedMaterialGenerator, RandomMaterialGenerator
 
 
 def test_fixed_material_generator_returns_same_values_each_time():
+    """Test that the FixedMaterialGenerator returns the same properties on each call."""
     gen = FixedMaterialGenerator(thermal_conductivity=12.5, youngs_modulus=210.0)
 
     first = gen.next()
@@ -12,6 +15,8 @@ def test_fixed_material_generator_returns_same_values_each_time():
 
 
 def test_fixed_material_generator_iterator_protocol_returns_fixed_values():
+    """Test that the FixedMaterialGenerator iterator protocol returns the same properties
+    on each call."""
     gen = FixedMaterialGenerator(alpha=1.2, beta=3.4)
 
     value = next(gen)
@@ -20,6 +25,7 @@ def test_fixed_material_generator_iterator_protocol_returns_fixed_values():
 
 
 def test_random_material_generator_values_stay_within_ranges():
+    """Test that the RandomMaterialGenerator produces values within the specified ranges."""
     ranges = {
         "thermal_conductivity": (5.0, 20.0),
         "youngs_modulus": (100.0, 250.0),

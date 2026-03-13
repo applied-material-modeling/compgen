@@ -1,3 +1,5 @@
+"""Interfaces for running physics templates and postprocessing outputs."""
+
 import os
 import os.path
 import json
@@ -27,7 +29,7 @@ def get_physics(name, settings_name="settings.json", template_name="template.i")
         raise ValueError(f"Physics '{name}' not found.")
 
     return os.path.join(base, template_name), json.load(
-        open(os.path.join(base, settings_name))
+        open(os.path.join(base, settings_name), "r", encoding="utf-8")
     )
 
 
@@ -46,10 +48,12 @@ def material_property_substitutions(material_properties, physics_properties):
             raise ValueError(f"Material property '{prop}' not defined for material B.")
 
         subs.append(
-            f"{physics_properties['material_A_substitutions'][ind]}={material_properties['A'][prop]}"
+            f"{physics_properties['material_A_substitutions'][ind]}="
+            f"{material_properties['A'][prop]}"
         )
         subs.append(
-            f"{physics_properties['material_B_substitutions'][ind]}={material_properties['B'][prop]}"
+            f"{physics_properties['material_B_substitutions'][ind]}="
+            f"{material_properties['B'][prop]}"
         )
 
     for ind, prop in enumerate(
@@ -61,14 +65,19 @@ def material_property_substitutions(material_properties, physics_properties):
             )
 
         subs.append(
-            f"{physics_properties['interface_substitutions'][ind]}={material_properties['AB'][prop]}"
+            f"{physics_properties['interface_substitutions'][ind]}="
+            f"{material_properties['AB'][prop]}"
         )
 
     return subs
 
 
 def target_substitutions(
-    target, number_of_targets, target_substitution, target_name, zero_name
+    target,
+    number_of_targets,
+    target_substitution,
+    target_name,
+    zero_name,
 ):
     """Generate substitutions for a given target.
 
@@ -230,7 +239,7 @@ def process_output(physics, mesh, material_properties, output_exo, output_csv):
 
 
 def execute_moose_simulations(
-    physics, mesh, material_properties, settings={}, output_name="output"
+    physics, mesh, material_properties, settings=None, output_name="output"
 ):
     """
     Execute the MOOSE simulations for a given physics template and mesh.
@@ -244,6 +253,9 @@ def execute_moose_simulations(
         settings (dict): Global settings dict
         output_name (str): Base name for output files
     """
+    if settings is None:
+        settings = {}
+
     template_input, physics_settings = get_physics(physics)
 
     # Temp storage
@@ -266,7 +278,9 @@ def execute_moose_simulations(
             # Check that all values in the dictionary have the same length
             lengths = [len(v) for v in sub_dict.values()]
             if len(set(lengths)) != 1:
-                raise ValueError("All values in the substitution dictionary must have the same length.")
+                raise ValueError(
+                    "All values in the substitution dictionary must have the same length."
+                )
             N = lengths[0]
         elif sub_type == "iterative":
             N = int(physics_settings["number_of_targets"])
