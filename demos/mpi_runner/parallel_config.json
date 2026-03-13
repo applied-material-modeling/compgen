@@ -1,0 +1,8 @@
+{
+    "runner": {
+        "type": "runner.MPIRunner"
+    },
+    "mpi": {
+        "ranks": "2"
+    }
+}

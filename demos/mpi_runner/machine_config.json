@@ -1,0 +1,22 @@
+{
+    "sculpt": {
+        "executable": "${CUBIT_DIR}/bin/psculpt",
+        "mpi": "${CUBIT_DIR}/bin/mpiexec",
+        "rank_command": "-np",
+        "epu": "${CUBIT_DIR}/bin/epu",
+        "environment": {
+            "OPAL_LIBDIR": "${CUBIT_DIR}/bin/mpi/lib",
+            "OPAL_PREFIX": "${CUBIT_DIR}/bin/mpi"
+        }
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np"
+    },
+    "storage": {
+        "delete_temp_dir": true
+    },
+    "verbose": false,
+    "log_file": "demo.log",
+    "log_level": "INFO"
+}
