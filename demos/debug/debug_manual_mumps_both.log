@@ -1,0 +1,263 @@
+ERROR conda.cli.main_run:execute(142): `conda run mpirun -np 4 /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt -i input.i E_A=100000.0 E_B=100000.0 nu_A=0.3 nu_B=0.3 l=0.03 Gc_A=1.0 Gc_B=1.0 psic_A=2.64 psic_B=2.64 Outputs/file_base=debug_manual_mumps_both` failed. (See above for error)
+
+[36m
+*** Info ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/input.i:217.1:
+The following occurred in the Convergence 'default_nonlinear_convergencenl0' of type ReferenceResidualConvergence.
+
+Neither the `reference_residual_variables` nor `reference_vector` parameter is specified, which means that no reference quantites are set. Because of this, the standard technique of comparing the norm of the full residual vector with its initial value will be used.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in X due to the presence of 0 -X normal and 0 +X normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Y due to the presence of 0 -Y normal and 0 +Y normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 1 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+Currently Setting Up
+  Finished Instantiating Sub-Apps                                                        [[33m  3.52 s[39m] [[33m  899 MB[39m]
+[36mThe following total 27 aux variables:
+  mechanical_strain_00
+  mechanical_strain_01
+  mechanical_strain_02
+  mechanical_strain_10
+  mechanical_strain_11
+  mechanical_strain_12
+  mechanical_strain_20
+  mechanical_strain_21
+  mechanical_strain_22
+  stress_00
+  stress_01
+  stress_02
+  stress_10
+  stress_11
+  stress_12
+  stress_20
+  stress_21
+  stress_22
+  total_strain_00
+  total_strain_01
+  total_strain_02
+  total_strain_10
+  total_strain_11
+  total_strain_12
+  total_strain_20
+  total_strain_21
+  total_strain_22
+are added for automatic output by MaterialOutputAction.[39m
+  Initializing
+    Finished Initializing Equation Systems                                               [[33m  2.00 s[39m] [[33m 1057 MB[39m]
+  Finished Initializing                                                                  [[33m  3.90 s[39m] [[33m 1144 MB[39m]
+Finished Setting Up                                                                      [[33m 10.01 s[39m] [[33m 1144 MB[39m]
+Framework Information:
+MOOSE Version:           git commit a8c9d0838e on 2026-03-10
+LibMesh Version:         
+PETSc Version:           3.24.4
+SLEPc Version:           3.24.0
+Current Time:            Mon Mar 16 10:06:34 2026
+Executable Timestamp:    Wed Mar 11 18:51:24 2026
+
+Input File(s):
+  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/input.i
+
+Command Line Input Argument(s):
+  E_A=100000.0
+  E_B=100000.0
+  nu_A=0.3
+  nu_B=0.3
+  l=0.03
+  Gc_A=1.0
+  Gc_B=1.0
+  psic_A=2.64
+  psic_B=2.64
+  Outputs/file_base=debug_manual_mumps_both
+
+Checkpoint:
+  Wall Time Interval:      Every 3600 s
+  User Checkpoint:         Disabled
+  # Checkpoints Kept:      2
+  Execute On:              TIMESTEP_END 
+
+Parallelism:
+  Num Processors:          4
+  Num Threads:             1
+
+Mesh: 
+  Parallel Type:           replicated
+  Mesh Dimension:          2
+  Spatial Dimension:       2
+  Nodes:                   
+    Total:                 263169
+    Local:                 66081
+    Min/Max/Avg:           65527/66081/65792
+  Elems:                   
+    Total:                 262144
+    Local:                 65536
+    Min/Max/Avg:           65536/65536/65536
+  Num Subdomains:          2
+  Num Partitions:          4
+  Partitioner:             metis
+
+Nonlinear System:
+  Num DOFs:                526338
+  Num Local DOFs:          132162
+  Variables:               { "disp_x" "disp_y" } 
+  Finite Element Types:    "LAGRANGE" 
+  Approximation Orders:    "FIRST" 
+
+Auxiliary System:
+  Num DOFs:                7866370
+  Num Local DOFs:          1967170
+  Variables:               "d" "psie_active" "react_y" { "mechanical_strain_00" "mechanical_strain_01" 
+                             "mechanical_strain_02" "mechanical_strain_10" "mechanical_strain_11" ... 
+                             "total_strain_11" "total_strain_12" "total_strain_20" "total_strain_21" 
+                             "total_strain_22" } 
+  Finite Element Types:    "LAGRANGE" "MONOMIAL" "LAGRANGE" "MONOMIAL" 
+  Approximation Orders:    "FIRST" "CONSTANT" "FIRST" "CONSTANT" 
+
+Execution Information:
+  Executioner:             Transient
+  TimeStepper:             ConstantDT
+  TimeIntegrator(s):       ImplicitEuler
+  Solver Mode:             NEWTON 
+  PETSc Preconditioner:    lu 
+  MOOSE Preconditioner:    SMP (auto) 
+
+Currently Executing
+  Performing Initial Setup
+    Finished Reinitializing Because of Geometric Search Objects                          [[33m  5.93 s[39m] [[33m 1419 MB[39m]
+[36mfracture0: [39mFramework Information:
+[36mfracture0: [39mMOOSE Version:           git commit a8c9d0838e on 2026-03-10
+[36mfracture0: [39mLibMesh Version:         
+[36mfracture0: [39mPETSc Version:           3.24.4
+[36mfracture0: [39mSLEPc Version:           3.24.0
+[36mfracture0: [39mCurrent Time:            Mon Mar 16 10:06:41 2026
+[36mfracture0: [39mExecutable Timestamp:    Wed Mar 11 18:51:24 2026
+[36mfracture0: [39m
+[36mfracture0: [39mInput File(s):
+[36mfracture0: [39m  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/fracture.i
+[36mfracture0: [39m
+[36mfracture0: [39mCommand Line Input Argument(s):
+[36mfracture0: [39m  psic_A=2.64
+[36mfracture0: [39m  Gc_A=1.0
+[36mfracture0: [39m  psic_B=2.64
+[36mfracture0: [39m  Gc_B=1.0
+[36mfracture0: [39m  l=0.03
+[36mfracture0: [39m
+[36mfracture0: [39mParallelism:
+[36mfracture0: [39m  Num Processors:          4
+[36mfracture0: [39m  Num Threads:             1
+[36mfracture0: [39m
+[36mfracture0: [39mMesh: 
+[36mfracture0: [39m  Parallel Type:           replicated
+[36mfracture0: [39m  Mesh Dimension:          2
+[36mfracture0: [39m  Spatial Dimension:       2
+[36mfracture0: [39m  Nodes:                   
+[36mfracture0: [39m    Total:                 263169
+[36mfracture0: [39m    Local:                 66081
+[36mfracture0: [39m    Min/Max/Avg:           65527/66081/65792
+[36mfracture0: [39m  Elems:                   
+[36mfracture0: [39m    Total:                 262144
+[36mfracture0: [39m    Local:                 65536
+[36mfracture0: [39m    Min/Max/Avg:           65536/65536/65536
+[36mfracture0: [39m  Num Subdomains:          2
+[36mfracture0: [39m  Num Partitions:          4
+[36mfracture0: [39m  Partitioner:             metis
+[36mfracture0: [39m
+[36mfracture0: [39mNonlinear System:
+[36mfracture0: [39m  Num DOFs:                263169
+[36mfracture0: [39m  Num Local DOFs:          66081
+[36mfracture0: [39m  Num Constrained DOFs:    1025
+[36mfracture0: [39m  Local Constrained DOFs:  199
+[36mfracture0: [39m  Variables:               "d" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" 
+[36mfracture0: [39m
+[36mfracture0: [39mAuxiliary System:
+[36mfracture0: [39m  Num DOFs:                525313
+[36mfracture0: [39m  Num Local DOFs:          131617
+[36mfracture0: [39m  Num Constrained DOFs:    1025
+[36mfracture0: [39m  Local Constrained DOFs:  199
+[36mfracture0: [39m  Variables:               "bounds_dummy" "psie_active" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" "MONOMIAL" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" "CONSTANT" 
+[36mfracture0: [39m
+[36mfracture0: [39mExecution Information:
+[36mfracture0: [39m  Executioner:             Transient
+[36mfracture0: [39m  TimeStepper:             ConstantDT
+[36mfracture0: [39m  TimeIntegrator(s):       ImplicitEuler
+[36mfracture0: [39m  Solver Mode:             NEWTON 
+[36mfracture0: [39m  PETSc Preconditioner:    lu 
+[36mfracture0: [39m  MOOSE Preconditioner:    SMP (auto) 
+[36mfracture0: [39m
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 0, time = 0
+  Finished Performing Initial Setup                                                      [[33m  9.63 s[39m] [[33m 1430 MB[39m]
+
+Time Step 0, time = 0
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
++----------------+----------------+
+
+  Currently Outputting
+    Finished Outputting Step                                                             [[33m  2.06 s[39m] [[33m 2113 MB[39m]
+  Finished Outputting                                                                    [[33m  2.06 s[39m] [[33m 2113 MB[39m]
+
+Time Step 1, time = 0.0001, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 1, time = 0.0001, dt = 0.0001
+[36mfracture0: [39m 0 Nonlinear |R| = [32m5.514294e-01[39m
+[36mfracture0: [39m 1 Nonlinear |R| = [32m9.307868e-03[39m
+[36mfracture0: [39m 2 Nonlinear |R| = [32m5.838900e-03[39m
+[36mfracture0: [39m 3 Nonlinear |R| = [32m4.071704e-03[39m
+[36mfracture0: [39m 4 Nonlinear |R| = [32m2.981093e-03[39m
+[36mfracture0: [39m 5 Nonlinear |R| = [32m2.229741e-03[39m
+[36mfracture0: [39m 6 Nonlinear |R| = [32m1.676194e-03[39m
+[36mfracture0: [39m 7 Nonlinear |R| = [32m1.259683e-03[39m
+[36mfracture0: [39m 8 Nonlinear |R| = [32m9.483307e-04[39m
+[36mfracture0: [39m 9 Nonlinear |R| = [32m7.130450e-04[39m
+[36mfracture0: [39m10 Nonlinear |R| = [32m5.292274e-04[39m
+[36mfracture0: [39m11 Nonlinear |R| = [32m3.826098e-04[39m
+[36mfracture0: [39m12 Nonlinear |R| = [32m2.676751e-04[39m
+[36mfracture0: [39m13 Nonlinear |R| = [32m1.792845e-04[39m
+[36mfracture0: [39m14 Nonlinear |R| = [32m1.114657e-04[39m
+[36mfracture0: [39m15 Nonlinear |R| = [32m6.321122e-05[39m
+[36mfracture0: [39m16 Nonlinear |R| = [32m3.086185e-05[39m
+[36mfracture0: [39m17 Nonlinear |R| = [32m1.128926e-05[39m
+[36mfracture0: [39m18 Nonlinear |R| = [32m1.895249e-06[39m
+[36mfracture0: [39m19 Nonlinear |R| = [32m1.291451e-16[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39mFinished Solving                                                              [[33m 28.54 s[39m] [[33m 2126 MB[39m]
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m5.686710e-02[39m
+    Finished Executing MultiApps                                                         [[33m 28.58 s[39m] [[33m 2126 MB[39m]
+  Finished Executing MultiApps                                                           [[33m 28.58 s[39m] [[33m 2126 MB[39m]
+ 0 Nonlinear |R| = [32m2.264950e-03[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 1
+ 1 Nonlinear |R| = [32m1.517979e-11[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m  7.57 s[39m] [[33m 2527 MB[39m]
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   PID 19809 RUNNING AT pn2405227.lanl.gov
+=   EXIT CODE: 11
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+===================================================================================
+YOUR APPLICATION TERMINATED WITH THE EXIT STRING: Segmentation fault: 11 (signal 11)
+This typically refers to a problem with your application.
+Please see the FAQ page for debugging suggestions

@@ -1,0 +1,62 @@
+
+[36m
+*** Info ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/input.i:217.1:
+The following occurred in the Convergence 'default_nonlinear_convergencenl0' of type ReferenceResidualConvergence.
+
+Neither the `reference_residual_variables` nor `reference_vector` parameter is specified, which means that no reference quantites are set. Because of this, the standard technique of comparing the norm of the full residual vector with its initial value will be used.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in X due to the presence of 0 -X normal and 0 +X normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Y due to the presence of 0 -Y normal and 0 +Y normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 1 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+sh: mpicxx: command not found
+JIT compile failed.
+
+[31m
+*** ERROR ***
+ADFParser::JITCompile() failed. Evaluation not possible.[39m
+
+Stack frames: 30
+0: 0   libmesh_opt.0.dylib                 0x0000000107afb7a8 libMesh::print_trace(std::__1::basic_ostream<char, std::__1::char_traits<char>>&) + 1008
+1: 1   libmoose-opt.0.dylib                0x0000000104892db4 moose::internal::mooseErrorRaw(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, hit::Node const*) + 276
+2: 2   libmoose-opt.0.dylib                0x00000001036a38ac void mooseError<char const (&) [57]>(char const (&) [57]) + 256
+3: 3   libmoose-opt.0.dylib                0x0000000103f7b7dc ADFParser::JITCompile() + 976
+4: 4   libmoose-opt.0.dylib                0x0000000103f78470 FunctionParserUtils<true>::functionsOptimize(std::__1::shared_ptr<ADFParser>&) + 76
+5: 5   libmoose-opt.0.dylib                0x0000000103892738 DerivativeParsedMaterialHelperTempl<true>::functionsPostParse() + 1048
+6: 6   libmoose-opt.0.dylib                0x00000001038be1ac ParsedMaterialHelper<true>::functionParse(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<PostprocessorName, std::__1::allocator<PostprocessorName>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<double, std::__1::allocator<double>> const&, std::__1::vector<MooseFunctorName, std::__1::allocator<MooseFunctorName>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&) + 3364
+7: 7   libmoose-opt.0.dylib                0x000000010390c674 ParsedMaterialHelper<true>::functionParse(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<PostprocessorName, std::__1::allocator<PostprocessorName>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<double, std::__1::allocator<double>> const&) + 64
+8: 8   libmoose-opt.0.dylib                0x000000010390c59c ParsedMaterialHelper<true>::functionParse(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>> const&, std::__1::vector<double, std::__1::allocator<double>> const&) + 56
+9: 9   libraccoon-opt.0.dylib              0x0000000101127e14 CustomParsedFunctionBase::CustomParsedFunctionBase(InputParameters const&) + 768
+10: 10  libraccoon-opt.0.dylib              0x000000010112772c CrackGeometricFunction::CrackGeometricFunction(InputParameters const&) + 48
+11: 11  libraccoon-opt.0.dylib              0x0000000101125ee0 _ZNSt3__115allocate_sharedB8ne190107I22CrackGeometricFunctionNS_9allocatorIS1_EEJRK15InputParametersETnNS_9enable_ifIXntsr8is_arrayIT_EE5valueEiE4typeELi0EEENS_10shared_ptrIS8_EERKT0_DpOT1_ + 72
+12: 12  libraccoon-opt.0.dylib              0x0000000101125e5c RegistryEntry<CrackGeometricFunction>::buildShared(InputParameters const&) + 48
+13: 13  libmoose-opt.0.dylib                0x000000010492f2b0 std::__1::shared_ptr<MooseObject> Factory::createTempl<std::__1::shared_ptr<MooseObject>>(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, InputParameters const&, unsigned int, std::__1::optional<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>> const&) + 612
+14: 14  libmoose-opt.0.dylib                0x000000010492efcc Factory::create(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, InputParameters const&, unsigned int, bool) + 84
+15: 15  libmoose-opt.0.dylib                0x0000000103e9b4ac FEProblemBase::addMaterialHelper(std::__1::vector<MaterialWarehouse*, std::__1::allocator<MaterialWarehouse*>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, InputParameters&) + 584
+16: 16  libmoose-opt.0.dylib                0x0000000103eade7c FEProblemBase::addMaterial(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, InputParameters&) + 108
+17: 17  libmoose-opt.0.dylib                0x00000001044cd8ac ActionWarehouse::executeActionsWithAction(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&) + 1172
+18: 18  libmoose-opt.0.dylib                0x00000001044cd284 ActionWarehouse::executeAllActions() + 256
+19: 19  libmoose-opt.0.dylib                0x000000010488d1a0 MooseApp::runInputFile() + 160
+20: 20  libmoose-opt.0.dylib                0x00000001043a52b8 MultiApp::createApp(unsigned int, double) + 4996
+21: 21  libmoose-opt.0.dylib                0x00000001043a2f50 MultiApp::createApps() + 1108
+22: 22  libmoose-opt.0.dylib                0x0000000103eafd98 FEProblemBase::addMultiApp(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&, InputParameters&) + 880
+23: 23  libmoose-opt.0.dylib                0x00000001044cd8ac ActionWarehouse::executeActionsWithAction(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&) + 1172
+24: 24  libmoose-opt.0.dylib                0x00000001044cd284 ActionWarehouse::executeAllActions() + 256
+25: 25  libmoose-opt.0.dylib                0x000000010488d1a0 MooseApp::runInputFile() + 160
+26: 26  libmoose-opt.0.dylib                0x0000000104888b00 MooseApp::run() + 1600
+27: 27  raccoon-opt                         0x000000010096bcd8 int Moose::main<raccoonTestApp>(int, char**) + 160
+28: 28  raccoon-opt                         0x000000010096bc2c main + 12
+29: 29  dyld                                0x0000000193ad7154 start + 2476
+Abort(1) on node 0 (rank 0 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 0

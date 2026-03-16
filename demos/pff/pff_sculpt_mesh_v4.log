@@ -1,0 +1,210 @@
+
+[31m
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:39.3:
+The following occurred in the Transfer 'to_fracture' of type MultiAppCopyTransfer.
+
+The meshes must be identical to utilize MultiAppDofCopyTransfer::transfer.[39m
+
+Abort(1) on node 0 (rank 0 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 0
+
+[31m
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:39.3:
+The following occurred in the Transfer 'to_fracture' of type MultiAppCopyTransfer.
+
+The meshes must be identical to utilize MultiAppDofCopyTransfer::transfer.[39m
+
+Abort(1) on node 2 (rank 2 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 2
+
+[31m
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:39.3:
+The following occurred in the Transfer 'to_fracture' of type MultiAppCopyTransfer.
+
+The meshes must be identical to utilize MultiAppDofCopyTransfer::transfer.[39m
+
+Abort(1) on node 1 (rank 1 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 1
+libc++abi: terminating
+libc++abi: terminating
+
+[31m
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:39.3:
+The following occurred in the Transfer 'to_fracture' of type MultiAppCopyTransfer.
+
+The meshes must be identical to utilize MultiAppDofCopyTransfer::transfer.[39m
+
+Abort(1) on node 3 (rank 3 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 3
+libc++abi: terminating
+libc++abi: terminating
+ERROR conda.cli.main_run:execute(142): `conda run mpirun -np 4 /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt -i mechanics_sculpt.i` failed. (See above for error)
+
+[36m
+*** Info ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:215.1:
+The following occurred in the Convergence 'default_nonlinear_convergencenl0' of type ReferenceResidualConvergence.
+
+Neither the `reference_residual_variables` nor `reference_vector` parameter is specified, which means that no reference quantites are set. Because of this, the standard technique of comparing the norm of the full residual vector with its initial value will be used.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in X due to the presence of 0 -X normal and 0 +X normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Y due to the presence of 0 -Y normal and 0 +Y normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 1 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+Currently Setting Up
+  Initializing
+    Finished Initializing Equation Systems                                               [[33m  1.85 s[39m] [[33m  732 MB[39m]
+  Finished Initializing                                                                  [[33m  3.58 s[39m] [[33m  781 MB[39m]
+Finished Setting Up                                                                      [[33m  6.48 s[39m] [[33m  781 MB[39m]
+Framework Information:
+MOOSE Version:           git commit a8c9d0838e on 2026-03-10
+LibMesh Version:         
+PETSc Version:           3.24.4
+SLEPc Version:           3.24.0
+Current Time:            Mon Mar 16 10:24:32 2026
+Executable Timestamp:    Wed Mar 11 18:51:24 2026
+
+Input File(s):
+  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i
+
+Checkpoint:
+  Wall Time Interval:      Every 3600 s
+  User Checkpoint:         Disabled
+  # Checkpoints Kept:      2
+  Execute On:              TIMESTEP_END 
+
+Parallelism:
+  Num Processors:          4
+  Num Threads:             1
+
+Mesh: 
+  Parallel Type:           replicated
+  Mesh Dimension:          2
+  Spatial Dimension:       2
+  Nodes:                   
+    Total:                 263169
+    Local:                 66081
+    Min/Max/Avg:           65527/66081/65792
+  Elems:                   
+    Total:                 262144
+    Local:                 65536
+    Min/Max/Avg:           65536/65536/65536
+  Num Subdomains:          2
+  Num Partitions:          4
+  Partitioner:             metis
+
+Nonlinear System:
+  Num DOFs:                526338
+  Num Local DOFs:          132162
+  Variables:               { "disp_x" "disp_y" } 
+  Finite Element Types:    "LAGRANGE" 
+  Approximation Orders:    "FIRST" 
+
+Auxiliary System:
+  Num DOFs:                788482
+  Num Local DOFs:          197698
+  Variables:               "d" "psie_active" "react_y" 
+  Finite Element Types:    "LAGRANGE" "MONOMIAL" "LAGRANGE" 
+  Approximation Orders:    "FIRST" "CONSTANT" "FIRST" 
+
+Execution Information:
+  Executioner:             Transient
+  TimeStepper:             ConstantDT
+  TimeIntegrator(s):       ImplicitEuler
+  Solver Mode:             NEWTON 
+  PETSc Preconditioner:    lu mat_superlu_dist_fact: SamePattern  mat_superlu_dist_replacetinypivot: true 
+  MOOSE Preconditioner:    SMP (auto) 
+
+Currently Executing
+  Performing Initial Setup
+    Finished Reinitializing Because of Geometric Search Objects                          [[33m  4.49 s[39m] [[33m  981 MB[39m]
+[36mfracture0: [39mFramework Information:
+[36mfracture0: [39mMOOSE Version:           git commit a8c9d0838e on 2026-03-10
+[36mfracture0: [39mLibMesh Version:         
+[36mfracture0: [39mPETSc Version:           3.24.4
+[36mfracture0: [39mSLEPc Version:           3.24.0
+[36mfracture0: [39mCurrent Time:            Mon Mar 16 10:24:37 2026
+[36mfracture0: [39mExecutable Timestamp:    Wed Mar 11 18:51:24 2026
+[36mfracture0: [39m
+[36mfracture0: [39mInput File(s):
+[36mfracture0: [39m  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/fracture.i
+[36mfracture0: [39m
+[36mfracture0: [39mCommand Line Input Argument(s):
+[36mfracture0: [39m  psic_A=2.64
+[36mfracture0: [39m  Gc_A=1
+[36mfracture0: [39m  psic_B=2.64
+[36mfracture0: [39m  Gc_B=1
+[36mfracture0: [39m  l=0.03
+[36mfracture0: [39m
+[36mfracture0: [39mParallelism:
+[36mfracture0: [39m  Num Processors:          4
+[36mfracture0: [39m  Num Threads:             1
+[36mfracture0: [39m
+[36mfracture0: [39mMesh: 
+[36mfracture0: [39m  Parallel Type:           replicated
+[36mfracture0: [39m  Mesh Dimension:          2
+[36mfracture0: [39m  Spatial Dimension:       2
+[36mfracture0: [39m  Nodes:                   
+[36mfracture0: [39m    Total:                 12056
+[36mfracture0: [39m    Local:                 3071
+[36mfracture0: [39m    Min/Max/Avg:           2944/3071/3014
+[36mfracture0: [39m  Elems:                   
+[36mfracture0: [39m    Total:                 23710
+[36mfracture0: [39m    Local:                 5927
+[36mfracture0: [39m    Min/Max/Avg:           5927/5928/5927
+[36mfracture0: [39m  Num Subdomains:          2
+[36mfracture0: [39m  Num Partitions:          4
+[36mfracture0: [39m  Partitioner:             metis
+[36mfracture0: [39m
+[36mfracture0: [39mNonlinear System:
+[36mfracture0: [39m  Num DOFs:                12056
+[36mfracture0: [39m  Num Local DOFs:          3071
+[36mfracture0: [39m  Num Constrained DOFs:    201
+[36mfracture0: [39m  Local Constrained DOFs:  89
+[36mfracture0: [39m  Variables:               "d" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" 
+[36mfracture0: [39m
+[36mfracture0: [39mAuxiliary System:
+[36mfracture0: [39m  Num DOFs:                35766
+[36mfracture0: [39m  Num Local DOFs:          8998
+[36mfracture0: [39m  Num Constrained DOFs:    201
+[36mfracture0: [39m  Local Constrained DOFs:  89
+[36mfracture0: [39m  Variables:               "bounds_dummy" "psie_active" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" "MONOMIAL" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" "CONSTANT" 
+[36mfracture0: [39m
+[36mfracture0: [39mExecution Information:
+[36mfracture0: [39m  Executioner:             Transient
+[36mfracture0: [39m  TimeStepper:             ConstantDT
+[36mfracture0: [39m  TimeIntegrator(s):       ImplicitEuler
+[36mfracture0: [39m  Solver Mode:             NEWTON 
+[36mfracture0: [39m  PETSc Preconditioner:    lu 
+[36mfracture0: [39m  MOOSE Preconditioner:    SMP (auto) 
+[36mfracture0: [39m
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 0, time = 0
+  Finished Performing Initial Setup                                                      [[33m  6.57 s[39m] [[33m  994 MB[39m]
+
+Time Step 0, time = 0
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
++----------------+----------------+
+
+
+Time Step 1, time = 0.0001, dt = 0.0001

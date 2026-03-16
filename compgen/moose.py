@@ -8,7 +8,7 @@ import numpy as np
 import exodusii
 
 from compgen import temp
-from compgen.exoutil import get_element_field
+from compgen.exoutil import get_element_field, get_node_field_aligned
 from compgen.tensors import assemble_tensor
 
 
@@ -139,21 +139,47 @@ def append_field_results(mesh, physics, output_exo):
     """
     _, physics_settings = get_physics(physics)
 
+    def append_fields(target_group, fields, getter):
+        for field, info in fields.items():
+            target_group[field] = assemble_tensor(
+                info["type"],
+                int(info["dim"]),
+                [getter(comp) for comp in info["field_components"]],
+            )
+
     with exodusii.File(output_exo, mode="r") as exo:
         mesh["element_fields"]["stimuli"] = {}
-        for field, info in physics_settings["stimuli_fields"].items():
-            mesh["element_fields"]["stimuli"][field] = assemble_tensor(
-                info["type"],
-                int(info["dim"]),
-                [get_element_field(exo, comp) for comp in info["field_components"]],
-            )
         mesh["element_fields"]["responses"] = {}
-        for field, info in physics_settings["response_fields"].items():
-            mesh["element_fields"]["responses"][field] = assemble_tensor(
-                info["type"],
-                int(info["dim"]),
-                [get_element_field(exo, comp) for comp in info["field_components"]],
+        mesh["node_fields"] = {"stimuli": {}, "responses": {}}
+
+        for category, settings_key in (
+            ("stimuli", "stimuli_fields"),
+            ("responses", "response_fields"),
+        ):
+            field_info = physics_settings[settings_key]
+            element_fields = {
+                field: info
+                for field, info in field_info.items()
+                if info.get("location", "element") == "element"
+            }
+            node_fields = {
+                field: info
+                for field, info in field_info.items()
+                if info.get("location") == "node"
+            }
+            append_fields(
+                mesh["element_fields"][category],
+                element_fields,
+                lambda comp: get_element_field(exo, comp),
             )
+            append_fields(
+                mesh["node_fields"][category],
+                node_fields,
+                lambda comp: get_node_field_aligned(output_exo, comp, mesh["coords"]),
+            )
+
+        if not mesh["node_fields"]["stimuli"] and not mesh["node_fields"]["responses"]:
+            del mesh["node_fields"]
 
     return mesh
 
@@ -171,19 +197,21 @@ def generalized_stimuli_and_forces(physics, output_csv):
 
     stimuli = {}
     for field, info in physics_settings["stimuli_fields"].items():
-        stimuli[field] = assemble_tensor(
-            info["type"],
-            int(info["dim"]),
-            [data[comp] for comp in info["postprocessor_components"]],
-        )
+        if "postprocessor_components" in info:
+            stimuli[field] = assemble_tensor(
+                info["type"],
+                int(info["dim"]),
+                [data[comp] for comp in info["postprocessor_components"]],
+            )
 
     responses = {}
     for field, info in physics_settings["response_fields"].items():
-        responses[field] = assemble_tensor(
-            info["type"],
-            int(info["dim"]),
-            [data[comp] for comp in info["postprocessor_components"]],
-        )
+        if "postprocessor_components" in info:
+            responses[field] = assemble_tensor(
+                info["type"],
+                int(info["dim"]),
+                [data[comp] for comp in info["postprocessor_components"]],
+            )
 
     return {"stimuli": stimuli, "responses": responses}
 

@@ -1,0 +1,285 @@
+
+
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+
+
+
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+
+Abort(1) on node 1 (rank 1 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 1
+libc++abi: terminating due to uncaught exception of type Parser::Error: /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rgAbort(1) on node 2 (rank 2 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 2
+libc++abi: terminating due to uncaught exception of type Parser::Error: /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+
+
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+
+Abort(1) on node 0 (rank 0 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 0
+libc++abi: terminating due to uncaught exception of type Parser::Error: /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+hill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+
+
+*** ERROR ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+
+Abort(1) on node 3 (rank 3 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 3
+libc++abi: terminating due to uncaught exception of type Parser::Error: /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:32.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:31.447-31.448: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:44.618-44.619: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:46.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:45.663-45.664: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:53.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:52.628-52.629: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:58.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:57.802-57.803: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:59.801-59.802: syntax error, 'variable' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:65.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:64.866-64.867: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:75.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:74.949-74.950: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:79.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:78.1015-78.1016: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:81.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:80.1140-80.1141: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:82.1139-82.1140: syntax error, 'property_name' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:85.1149-85.1150: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:88.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:87.1161-87.1162: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:92.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:91.1296-91.1297: syntax error, 'type' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:93.1318-93.1319: syntax error, 'phase_field' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:108.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:107.1558-107.1559: syntax error, 'dt' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:111.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:110.1495-110.1496: syntax error, 'order' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:116.1: syntax error, unexpected end of line
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:115.1512-115.1513: syntax error, 'csv' has a missing or malformed value
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/pff/mechanics_sculpt.i:73.924: syntax error, unexpected end of file, expecting block terminator
+ERROR conda.cli.main_run:execute(142): `conda run mpirun -np 4 /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt -i mechanics_sculpt.i` failed. (See above for error)

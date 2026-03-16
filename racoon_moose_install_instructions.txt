@@ -1,0 +1,35 @@
+conda init --all
+exit
+
+(base) ->  # Make sure you have conda should see (base) at command line..
+conda update --all --yes
+conda config --add channels https://conda.software.inl.gov/public
+conda config --add channels conda-forge
+
+conda create -n racoon moose-dev=2026.02.20=mpich
+
+conda activate racoon
+
+(racoon) ->
+cd [path where you want to install racoon]
+git clone https://github.com/hugary1995/raccoon.git
+cd raccoon
+git submodule update --init --recursive # These commands should download a copy of RACCOON and a copy of MOOSE (as a submodule) to your local projects directory.
+
+#conda install -c conda-forge bison flex
+#./moose/scripts/update_and_rebuild_petsc.sh --download-bison=1 #~ maybe not needed??
+
+
+conda install -c conda-forge python=3.10 
+#something strange about my python3 on mac
+
+# 1. Force your terminal to look in the racoon conda env first for EVERYTHING
+export PATH="/Users/rghill/miniconda3/envs/racoon/bin:$PATH"
+
+# 2. Verify that `python3` now points to conda (it MUST point to miniconda3/envs/...)
+which python3
+
+# 3. IF step 2 worked, run the basic make command without any extra variables
+make -j 4
+
+

@@ -1,0 +1,244 @@
+/var/folders/c9/s6m0yt_n19dcn6gzj3wnsh14001_fv/T/tmp2w6n1fsj: line 30: 16389 Segmentation fault: 11  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt -i input.i E_A=100000.0 E_B=100000.0 nu_A=0.3 nu_B=0.3 l=0.03 Gc_A=1.0 Gc_B=1.0 psic_A=2.64 psic_B=2.64 Outputs/file_base=debug_manual_with_conda
+ERROR conda.cli.main_run:execute(142): `conda run /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt -i input.i E_A=100000.0 E_B=100000.0 nu_A=0.3 nu_B=0.3 l=0.03 Gc_A=1.0 Gc_B=1.0 psic_A=2.64 psic_B=2.64 Outputs/file_base=debug_manual_with_conda` failed. (See above for error)
+
+[36m
+*** Info ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/input.i:217.1:
+The following occurred in the Convergence 'default_nonlinear_convergencenl0' of type ReferenceResidualConvergence.
+
+Neither the `reference_residual_variables` nor `reference_vector` parameter is specified, which means that no reference quantites are set. Because of this, the standard technique of comparing the norm of the full residual vector with its initial value will be used.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in X due to the presence of 0 -X normal and 0 +X normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Y due to the presence of 0 -Y normal and 0 +Y normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 1 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+[36mfracture0: [39mInitializing[36mfracture0: [39m
+[36mfracture0: [39m  Finished Initializing Equation Systems                                      [[33m  1.83 s[39m] [[33m  679 MB[39m]
+[36mfracture0: [39mFinished Initializing                                                         [[33m  1.99 s[39m] [[33m  679 MB[39m]
+  Finished Instantiating Sub-Apps                                                        [[33m 11.49 s[39m] [[33m  679 MB[39m]
+[36mThe following total 27 aux variables:
+  mechanical_strain_00
+  mechanical_strain_01
+  mechanical_strain_02
+  mechanical_strain_10
+  mechanical_strain_11
+  mechanical_strain_12
+  mechanical_strain_20
+  mechanical_strain_21
+  mechanical_strain_22
+  stress_00
+  stress_01
+  stress_02
+  stress_10
+  stress_11
+  stress_12
+  stress_20
+  stress_21
+  stress_22
+  total_strain_00
+  total_strain_01
+  total_strain_02
+  total_strain_10
+  total_strain_11
+  total_strain_12
+  total_strain_20
+  total_strain_21
+  total_strain_22
+are added for automatic output by MaterialOutputAction.[39m
+  Initializing
+    Finished Initializing Equation Systems                                               [[33m  2.04 s[39m] [[33m 1181 MB[39m]
+    Finished Initializing Displaced Equation System                                      [[33m  0.46 s[39m] [[33m 1358 MB[39m]
+  Finished Initializing                                                                  [[33m  2.97 s[39m] [[33m 1354 MB[39m]
+Finished Setting Up                                                                      [[33m 15.55 s[39m] [[33m 1354 MB[39m]
+Framework Information:
+MOOSE Version:           git commit a8c9d0838e on 2026-03-10
+LibMesh Version:         
+PETSc Version:           3.24.4
+SLEPc Version:           3.24.0
+Current Time:            Mon Mar 16 09:55:20 2026
+Executable Timestamp:    Wed Mar 11 18:51:24 2026
+
+Input File(s):
+  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/input.i
+
+Command Line Input Argument(s):
+  E_A=100000.0
+  E_B=100000.0
+  nu_A=0.3
+  nu_B=0.3
+  l=0.03
+  Gc_A=1.0
+  Gc_B=1.0
+  psic_A=2.64
+  psic_B=2.64
+  Outputs/file_base=debug_manual_with_conda
+
+Checkpoint:
+  Wall Time Interval:      Every 3600 s
+  User Checkpoint:         Disabled
+  # Checkpoints Kept:      2
+  Execute On:              TIMESTEP_END 
+
+Parallelism:
+  Num Processors:          1
+  Num Threads:             1
+
+Mesh: 
+  Parallel Type:           replicated
+  Mesh Dimension:          2
+  Spatial Dimension:       2
+  Nodes:                   263169
+  Elems:                   262144
+  Num Subdomains:          2
+
+Nonlinear System:
+  Num DOFs:                526338
+  Num Local DOFs:          526338
+  Variables:               { "disp_x" "disp_y" } 
+  Finite Element Types:    "LAGRANGE" 
+  Approximation Orders:    "FIRST" 
+
+Auxiliary System:
+  Num DOFs:                7866370
+  Num Local DOFs:          7866370
+  Variables:               "d" "psie_active" "react_y" { "mechanical_strain_00" "mechanical_strain_01" 
+                             "mechanical_strain_02" "mechanical_strain_10" "mechanical_strain_11" ... 
+                             "total_strain_11" "total_strain_12" "total_strain_20" "total_strain_21" 
+                             "total_strain_22" } 
+  Finite Element Types:    "LAGRANGE" "MONOMIAL" "LAGRANGE" "MONOMIAL" 
+  Approximation Orders:    "FIRST" "CONSTANT" "FIRST" "CONSTANT" 
+
+Execution Information:
+  Executioner:             Transient
+  TimeStepper:             ConstantDT
+  TimeIntegrator(s):       ImplicitEuler
+  Solver Mode:             NEWTON 
+  PETSc Preconditioner:    lu 
+  MOOSE Preconditioner:    SMP (auto) 
+
+[36mfracture0: [39mFramework Information:
+[36mfracture0: [39mMOOSE Version:           git commit a8c9d0838e on 2026-03-10
+[36mfracture0: [39mLibMesh Version:         
+[36mfracture0: [39mPETSc Version:           3.24.4
+[36mfracture0: [39mSLEPc Version:           3.24.0
+[36mfracture0: [39mCurrent Time:            Mon Mar 16 09:55:23 2026
+[36mfracture0: [39mExecutable Timestamp:    Wed Mar 11 18:51:24 2026
+[36mfracture0: [39m
+[36mfracture0: [39mInput File(s):
+[36mfracture0: [39m  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/debug/fracture.i
+[36mfracture0: [39m
+[36mfracture0: [39mCommand Line Input Argument(s):
+[36mfracture0: [39m  psic_A=2.64
+[36mfracture0: [39m  Gc_A=1.0
+[36mfracture0: [39m  psic_B=2.64
+[36mfracture0: [39m  Gc_B=1.0
+[36mfracture0: [39m  l=0.03
+[36mfracture0: [39m
+[36mfracture0: [39mParallelism:
+[36mfracture0: [39m  Num Processors:          1
+[36mfracture0: [39m  Num Threads:             1
+[36mfracture0: [39m
+[36mfracture0: [39mMesh: 
+[36mfracture0: [39m  Parallel Type:           replicated
+[36mfracture0: [39m  Mesh Dimension:          2
+[36mfracture0: [39m  Spatial Dimension:       2
+[36mfracture0: [39m  Nodes:                   263169
+[36mfracture0: [39m  Elems:                   262144
+[36mfracture0: [39m  Num Subdomains:          2
+[36mfracture0: [39m
+[36mfracture0: [39mNonlinear System:
+[36mfracture0: [39m  Num DOFs:                263169
+[36mfracture0: [39m  Num Local DOFs:          263169
+[36mfracture0: [39m  Num Constrained DOFs:    1025
+[36mfracture0: [39m  Local Constrained DOFs:  1025
+[36mfracture0: [39m  Variables:               "d" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" 
+[36mfracture0: [39m
+[36mfracture0: [39mAuxiliary System:
+[36mfracture0: [39m  Num DOFs:                525313
+[36mfracture0: [39m  Num Local DOFs:          525313
+[36mfracture0: [39m  Num Constrained DOFs:    1025
+[36mfracture0: [39m  Local Constrained DOFs:  1025
+[36mfracture0: [39m  Variables:               "bounds_dummy" "psie_active" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" "MONOMIAL" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" "CONSTANT" 
+[36mfracture0: [39m
+[36mfracture0: [39mExecution Information:
+[36mfracture0: [39m  Executioner:             Transient
+[36mfracture0: [39m  TimeStepper:             ConstantDT
+[36mfracture0: [39m  TimeIntegrator(s):       ImplicitEuler
+[36mfracture0: [39m  Solver Mode:             NEWTON 
+[36mfracture0: [39m  PETSc Preconditioner:    lu 
+[36mfracture0: [39m  MOOSE Preconditioner:    SMP (auto) 
+[36mfracture0: [39m
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 0, time = 0
+Currently Executing
+  Performing Initial Setup
+  Finished Performing Initial Setup                                                      [[33m 11.11 s[39m] [[33m 1451 MB[39m]
+
+Time Step 0, time = 0
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
++----------------+----------------+
+
+  Currently Outputting
+    Finished Outputting Step                                                             [[33m  2.36 s[39m] [[33m 1624 MB[39m]
+  Finished Outputting                                                                    [[33m  2.36 s[39m] [[33m 1624 MB[39m]
+
+Time Step 1, time = 0.0001, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 1, time = 0.0001, dt = 0.0001
+[36mfracture0: [39m 0 Nonlinear |R| = [32m3.400205e-01[39m
+[36mfracture0: [39m 1 Nonlinear |R| = [32m4.549663e-02[39m
+[36mfracture0: [39m 2 Nonlinear |R| = [32m2.746977e-02[39m
+[36mfracture0: [39m 3 Nonlinear |R| = [32m1.963166e-02[39m
+[36mfracture0: [39m 4 Nonlinear |R| = [32m1.531114e-02[39m
+[36mfracture0: [39m 5 Nonlinear |R| = [32m1.236137e-02[39m
+[36mfracture0: [39m 6 Nonlinear |R| = [32m1.017907e-02[39m
+[36mfracture0: [39m 7 Nonlinear |R| = [32m8.488587e-03[39m
+[36mfracture0: [39m 8 Nonlinear |R| = [32m7.138838e-03[39m
+[36mfracture0: [39m 9 Nonlinear |R| = [32m6.034496e-03[39m
+[36mfracture0: [39m10 Nonlinear |R| = [32m5.109925e-03[39m
+[36mfracture0: [39m11 Nonlinear |R| = [32m4.321304e-03[39m
+[36mfracture0: [39m12 Nonlinear |R| = [32m3.634362e-03[39m
+[36mfracture0: [39m13 Nonlinear |R| = [32m3.028663e-03[39m
+[36mfracture0: [39m14 Nonlinear |R| = [32m2.490196e-03[39m
+[36mfracture0: [39m15 Nonlinear |R| = [32m2.008598e-03[39m
+[36mfracture0: [39m16 Nonlinear |R| = [32m1.576512e-03[39m
+[36mfracture0: [39m17 Nonlinear |R| = [32m1.188958e-03[39m
+[36mfracture0: [39m18 Nonlinear |R| = [32m8.429738e-04[39m
+[36mfracture0: [39m19 Nonlinear |R| = [32m5.377375e-04[39m
+[36mfracture0: [39m20 Nonlinear |R| = [32m2.758440e-04[39m
+[36mfracture0: [39m21 Nonlinear |R| = [32m6.757550e-05[39m
+[36mfracture0: [39m22 Nonlinear |R| = [32m9.817218e-17[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39mFinished Solving                                                              [[33m 46.46 s[39m] [[33m 1847 MB[39m]
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m1.677682e-01[39m
+    Finished Executing MultiApps                                                         [[33m 46.60 s[39m] [[33m 1855 MB[39m]
+  Finished Executing MultiApps                                                           [[33m 46.60 s[39m] [[33m 1855 MB[39m]
+ 0 Nonlinear |R| = [32m2.264950e-03[39m
+
+    Computing Jacobian                                                                   [[33m  6.23 s[39m] [[33m 1930 MB[39m]
+    Linear solve converged due to CONVERGED_RTOL iterations 1
+ 1 Nonlinear |R| = [32m3.158127e-11[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m 16.72 s[39m] [[33m 3325 MB[39m]

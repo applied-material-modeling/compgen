@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/run_fracture_predefined.py", line 12, in <module>
+    results = runner.run("fracture_predefined.json", "machine_config.json")
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/../compgen/runner.py", line 119, in run
+    results = list(
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/../compgen/runner.py", line 121, in <lambda>
+    lambda x: run_single(x[0], x[1], x[2], x[3], config),
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/../compgen/runner.py", line 182, in run_single
+    with temp.TempDirectory(config) as _:
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/../compgen/temp.py", line 17, in __enter__
+    self.temp_dir = tempfile.mkdtemp(dir=self.base_dir)
+  File "/Users/rghill/miniconda3/envs/racoon/lib/python3.10/tempfile.py", line 384, in mkdtemp
+    _os.mkdir(file, 0o700)
+FileNotFoundError: [Errno 2] No such file or directory: './results/tmpzp3ptj84'
+ERROR conda.cli.main_run:execute(142): `conda run python run_fracture_predefined.py` failed. (See above for error)

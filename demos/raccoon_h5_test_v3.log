@@ -1,0 +1,375 @@
+
+[36m
+*** Info ***
+/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/results/tmp_k8lcqix/input.i:228.1:
+The following occurred in the Convergence 'default_nonlinear_convergencenl0' of type ReferenceResidualConvergence.
+
+Neither the `reference_residual_variables` nor `reference_vector` parameter is specified, which means that no reference quantites are set. Because of this, the standard technique of comparing the norm of the full residual vector with its initial value will be used.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in X due to the presence of 0 -X normal and 0 +X normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Y due to the presence of 0 -Y normal and 0 +Y normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 0 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+
+[36m
+*** Info ***
+For side dimension 1 we did not find paired boundaries (sidesets) in Z due to the presence of 0 -Z normal and 0 +Z normal boundaries.[39m
+  Finished Instantiating Sub-Apps                                                        [[33m 12.30 s[39m] [[33m  845 MB[39m]
+  Finished Initializing                                                                  [[33m  3.49 s[39m] [[33m  964 MB[39m]
+Finished Setting Up                                                                      [[33m 18.25 s[39m] [[33m  964 MB[39m]
+Framework Information:
+MOOSE Version:           git commit a8c9d0838e on 2026-03-10
+LibMesh Version:         
+PETSc Version:           3.24.4
+SLEPc Version:           3.24.0
+Current Time:            Mon Mar 16 13:29:05 2026
+Executable Timestamp:    Wed Mar 11 18:51:24 2026
+
+Input File(s):
+  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/results/tmp_k8lcqix/input.i
+
+Command Line Input Argument(s):
+  E_A=100000.0
+  E_B=100000.0
+  nu_A=0.3
+  nu_B=0.3
+  l=0.03
+  l=0.03
+  Gc_A=1.0
+  Gc_B=1.0
+  psic_A=2.64
+  psic_B=2.64
+  Outputs/file_base=output_0
+
+Checkpoint:
+  Wall Time Interval:      Every 3600 s
+  User Checkpoint:         Disabled
+  # Checkpoints Kept:      2
+  Execute On:              TIMESTEP_END 
+
+Parallelism:
+  Num Processors:          4
+  Num Threads:             1
+
+Mesh: 
+  Parallel Type:           replicated
+  Mesh Dimension:          2
+  Spatial Dimension:       2
+  Nodes:                   
+    Total:                 263169
+    Local:                 66081
+    Min/Max/Avg:           65527/66081/65792
+  Elems:                   
+    Total:                 262144
+    Local:                 65536
+    Min/Max/Avg:           65536/65536/65536
+  Num Subdomains:          2
+  Num Partitions:          4
+  Partitioner:             metis
+
+Nonlinear System:
+  Num DOFs:                526338
+  Num Local DOFs:          132162
+  Variables:               { "disp_x" "disp_y" } 
+  Finite Element Types:    "LAGRANGE" 
+  Approximation Orders:    "FIRST" 
+
+Auxiliary System:
+  Num DOFs:                1311745
+  Num Local DOFs:          328225
+  Variables:               "d" { "psie_active" "stress_xx" "stress_yy" "stress_xy" } 
+  Finite Element Types:    "LAGRANGE" "MONOMIAL" 
+  Approximation Orders:    "FIRST" "CONSTANT" 
+
+Execution Information:
+  Executioner:             Transient
+  TimeStepper:             ConstantDT
+  TimeIntegrator(s):       ImplicitEuler
+  Solver Mode:             NEWTON 
+  PETSc Preconditioner:    lu mat_superlu_dist_fact: SamePattern  mat_superlu_dist_replacetinypivot: true 
+  MOOSE Preconditioner:    SMP (auto) 
+
+[36mfracture0: [39mFramework Information:
+[36mfracture0: [39mMOOSE Version:           git commit a8c9d0838e on 2026-03-10
+[36mfracture0: [39mLibMesh Version:         
+[36mfracture0: [39mPETSc Version:           3.24.4
+[36mfracture0: [39mSLEPc Version:           3.24.0
+[36mfracture0: [39mCurrent Time:            Mon Mar 16 13:29:07 2026
+[36mfracture0: [39mExecutable Timestamp:    Wed Mar 11 18:51:24 2026
+[36mfracture0: [39m
+[36mfracture0: [39mInput File(s):
+[36mfracture0: [39m  /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/results/tmp_k8lcqix/fracture.i
+[36mfracture0: [39m
+[36mfracture0: [39mCommand Line Input Argument(s):
+[36mfracture0: [39m  psic_A=2.64
+[36mfracture0: [39m  Gc_A=1.0
+[36mfracture0: [39m  psic_B=2.64
+[36mfracture0: [39m  Gc_B=1.0
+[36mfracture0: [39m  l=0.03
+[36mfracture0: [39m
+[36mfracture0: [39mParallelism:
+[36mfracture0: [39m  Num Processors:          4
+[36mfracture0: [39m  Num Threads:             1
+[36mfracture0: [39m
+[36mfracture0: [39mMesh: 
+[36mfracture0: [39m  Parallel Type:           replicated
+[36mfracture0: [39m  Mesh Dimension:          2
+[36mfracture0: [39m  Spatial Dimension:       2
+[36mfracture0: [39m  Nodes:                   
+[36mfracture0: [39m    Total:                 263169
+[36mfracture0: [39m    Local:                 66081
+[36mfracture0: [39m    Min/Max/Avg:           65527/66081/65792
+[36mfracture0: [39m  Elems:                   
+[36mfracture0: [39m    Total:                 262144
+[36mfracture0: [39m    Local:                 65536
+[36mfracture0: [39m    Min/Max/Avg:           65536/65536/65536
+[36mfracture0: [39m  Num Subdomains:          2
+[36mfracture0: [39m  Num Partitions:          4
+[36mfracture0: [39m  Partitioner:             metis
+[36mfracture0: [39m
+[36mfracture0: [39mNonlinear System:
+[36mfracture0: [39m  Num DOFs:                263169
+[36mfracture0: [39m  Num Local DOFs:          66081
+[36mfracture0: [39m  Num Constrained DOFs:    1025
+[36mfracture0: [39m  Local Constrained DOFs:  199
+[36mfracture0: [39m  Variables:               "d" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" 
+[36mfracture0: [39m
+[36mfracture0: [39mAuxiliary System:
+[36mfracture0: [39m  Num DOFs:                525313
+[36mfracture0: [39m  Num Local DOFs:          131617
+[36mfracture0: [39m  Num Constrained DOFs:    1025
+[36mfracture0: [39m  Local Constrained DOFs:  199
+[36mfracture0: [39m  Variables:               "bounds_dummy" "psie_active" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" "MONOMIAL" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" "CONSTANT" 
+[36mfracture0: [39m
+[36mfracture0: [39mExecution Information:
+[36mfracture0: [39m  Executioner:             Transient
+[36mfracture0: [39m  TimeStepper:             ConstantDT
+[36mfracture0: [39m  TimeIntegrator(s):       ImplicitEuler
+[36mfracture0: [39m  Solver Mode:             NEWTON 
+[36mfracture0: [39m  PETSc Preconditioner:    lu 
+[36mfracture0: [39m  MOOSE Preconditioner:    SMP (auto) 
+[36mfracture0: [39m
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 0, time = 0
+
+Time Step 0, time = 0
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
++----------------+----------------+
+
+Currently Executing
+  Outputting
+    Finished Outputting Step                                                             [[33m  0.52 s[39m] [[33m 1167 MB[39m]
+  Finished Outputting                                                                    [[33m  0.52 s[39m] [[33m 1167 MB[39m]
+
+Time Step 1, time = 0.0001, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 1, time = 0.0001, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mPerforming automatic scaling calculation
+[36mfracture0: [39m
+[36mfracture0: [39m 0 Nonlinear |R| = [32m2.987175e-02[39m
+[36mfracture0: [39m      0 Linear |R| = [32m2.987175e-02[39m
+[36mfracture0: [39m      1 Linear |R| = [32m2.653640e-17[39m
+[36mfracture0: [39m 1 Nonlinear |R| = [32m4.458004e-03[39m
+[36mfracture0: [39m      0 Linear |R| = [32m4.458004e-03[39m
+[36mfracture0: [39m      1 Linear |R| = [32m4.858739e-18[39m
+[36mfracture0: [39m 2 Nonlinear |R| = [32m3.152302e-03[39m
+[36mfracture0: [39m      0 Linear |R| = [32m3.152302e-03[39m
+[36mfracture0: [39m      1 Linear |R| = [32m4.810092e-18[39m
+[36mfracture0: [39m 3 Nonlinear |R| = [32m2.421010e-03[39m
+[36mfracture0: [39m      0 Linear |R| = [32m2.421010e-03[39m
+[36mfracture0: [39m      1 Linear |R| = [32m4.061864e-18[39m
+[36mfracture0: [39m 4 Nonlinear |R| = [32m1.948842e-03[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.948842e-03[39m
+[36mfracture0: [39m      1 Linear |R| = [32m3.547611e-18[39m
+[36mfracture0: [39m 5 Nonlinear |R| = [32m1.484572e-03[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.484572e-03[39m
+[36mfracture0: [39m      1 Linear |R| = [32m2.312328e-18[39m
+[36mfracture0: [39m 6 Nonlinear |R| = [32m1.138800e-03[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.138800e-03[39m
+[36mfracture0: [39m      1 Linear |R| = [32m1.647956e-18[39m
+[36mfracture0: [39m 7 Nonlinear |R| = [32m8.424736e-04[39m
+[36mfracture0: [39m      0 Linear |R| = [32m8.424736e-04[39m
+[36mfracture0: [39m      1 Linear |R| = [32m1.019395e-18[39m
+[36mfracture0: [39m 8 Nonlinear |R| = [32m5.895332e-04[39m
+[36mfracture0: [39m      0 Linear |R| = [32m5.895332e-04[39m
+[36mfracture0: [39m      1 Linear |R| = [32m6.296484e-19[39m
+[36mfracture0: [39m 9 Nonlinear |R| = [32m3.823918e-04[39m
+[36mfracture0: [39m      0 Linear |R| = [32m3.823918e-04[39m
+[36mfracture0: [39m      1 Linear |R| = [32m3.748403e-19[39m
+[36mfracture0: [39m10 Nonlinear |R| = [32m2.396419e-04[39m
+[36mfracture0: [39m      0 Linear |R| = [32m2.396419e-04[39m
+[36mfracture0: [39m      1 Linear |R| = [32m2.110479e-19[39m
+[36mfracture0: [39m11 Nonlinear |R| = [32m1.462736e-04[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.462736e-04[39m
+[36mfracture0: [39m      1 Linear |R| = [32m1.442925e-19[39m
+[36mfracture0: [39m12 Nonlinear |R| = [32m7.361094e-05[39m
+[36mfracture0: [39m      0 Linear |R| = [32m7.361094e-05[39m
+[36mfracture0: [39m      1 Linear |R| = [32m6.644953e-20[39m
+[36mfracture0: [39m13 Nonlinear |R| = [32m1.936509e-05[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.936509e-05[39m
+[36mfracture0: [39m      1 Linear |R| = [32m1.342173e-20[39m
+[36mfracture0: [39m14 Nonlinear |R| = [32m1.920345e-06[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.920345e-06[39m
+[36mfracture0: [39m      1 Linear |R| = [32m4.721837e-22[39m
+[36mfracture0: [39m15 Nonlinear |R| = [32m3.609460e-17[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39mFinished Solving                                                              [[33m 23.84 s[39m] [[33m 1180 MB[39m]
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m4.443042e-02[39m
+    Finished Executing MultiApps                                                         [[33m 23.89 s[39m] [[33m 1183 MB[39m]
+  Finished Executing MultiApps                                                           [[33m 23.89 s[39m] [[33m 1183 MB[39m]
+
+Performing automatic scaling calculation
+
+ 0 Nonlinear |R| = [32m2.264950e-03[39m
+      0 Linear |R| = [32m2.264950e-03[39m
+      1 Linear |R| = [32m1.280910e-17[39m
+ 1 Nonlinear |R| = [32m1.311528e-17[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m 13.96 s[39m] [[33m 2321 MB[39m]
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   1.000000e-04 |   8.236953e+00 |
++----------------+----------------+
+
+
+Time Step 2, time = 0.0002, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 2, time = 0.0002, dt = 0.0001
+[36mfracture0: [39m 0 Nonlinear |R| = [32m3.489683e-07[39m
+[36mfracture0: [39m      0 Linear |R| = [32m3.489683e-07[39m
+[36mfracture0: [39m      1 Linear |R| = [32m7.667780e-21[39m
+[36mfracture0: [39m 1 Nonlinear |R| = [32m1.967429e-07[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.967429e-07[39m
+[36mfracture0: [39m      1 Linear |R| = [32m9.317174e-23[39m
+[36mfracture0: [39m 2 Nonlinear |R| = [32m2.109270e-09[39m
+[36mfracture0: [39m      0 Linear |R| = [32m2.109270e-09[39m
+[36mfracture0: [39m      1 Linear |R| = [32m7.631626e-25[39m
+[36mfracture0: [39m 3 Nonlinear |R| = [32m5.161234e-17[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m4.441783e-02[39m
+ 0 Nonlinear |R| = [32m2.264950e-03[39m
+      0 Linear |R| = [32m2.264950e-03[39m
+      1 Linear |R| = [32m7.910013e-11[39m
+ 1 Nonlinear |R| = [32m7.910013e-11[39m
+      0 Linear |R| = [32m7.910013e-11[39m
+      1 Linear |R| = [32m1.460615e-14[39m
+      2 Linear |R| = [32m2.427109e-18[39m
+ 2 Nonlinear |R| = [32m4.509288e-18[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m 11.06 s[39m] [[33m 2424 MB[39m]
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   1.000000e-04 |   8.236953e+00 |
+|   2.000000e-04 |   1.647301e+01 |
++----------------+----------------+
+
+
+Time Step 3, time = 0.0003, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 3, time = 0.0003, dt = 0.0001
+[36mfracture0: [39m 0 Nonlinear |R| = [32m1.053176e-06[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.053176e-06[39m
+[36mfracture0: [39m      1 Linear |R| = [32m2.366740e-20[39m
+[36mfracture0: [39m 1 Nonlinear |R| = [32m8.038086e-07[39m
+[36mfracture0: [39m      0 Linear |R| = [32m8.038086e-07[39m
+[36mfracture0: [39m      1 Linear |R| = [32m3.122314e-22[39m
+[36mfracture0: [39m 2 Nonlinear |R| = [32m4.650434e-09[39m
+[36mfracture0: [39m      0 Linear |R| = [32m4.650434e-09[39m
+[36mfracture0: [39m      1 Linear |R| = [32m1.079444e-24[39m
+[36mfracture0: [39m 3 Nonlinear |R| = [32m5.158883e-17[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m4.438008e-02[39m
+ 0 Nonlinear |R| = [32m2.264950e-03[39m
+      0 Linear |R| = [32m2.264950e-03[39m
+      1 Linear |R| = [32m3.196527e-10[39m
+ 1 Nonlinear |R| = [32m3.196527e-10[39m
+      0 Linear |R| = [32m3.196527e-10[39m
+      1 Linear |R| = [32m2.353986e-13[39m
+      2 Linear |R| = [32m1.570864e-16[39m
+ 2 Nonlinear |R| = [32m1.571821e-16[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m 11.08 s[39m] [[33m 2445 MB[39m]
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   1.000000e-04 |   8.236953e+00 |
+|   2.000000e-04 |   1.647301e+01 |
+|   3.000000e-04 |   2.470782e+01 |
++----------------+----------------+
+
+
+Time Step 4, time = 0.0004, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 4, time = 0.0004, dt = 0.0001
+[36mfracture0: [39m 0 Nonlinear |R| = [32m1.769620e-06[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.769620e-06[39m
+[36mfracture0: [39m      1 Linear |R| = [32m3.925965e-20[39m
+[36mfracture0: [39m 1 Nonlinear |R| = [32m1.019543e-06[39m
+[36mfracture0: [39m      0 Linear |R| = [32m1.019543e-06[39m
+[36mfracture0: [39m      1 Linear |R| = [32m4.059554e-22[39m
+[36mfracture0: [39m 2 Nonlinear |R| = [32m9.369741e-09[39m
+[36mfracture0: [39m      0 Linear |R| = [32m9.369741e-09[39m
+[36mfracture0: [39m      1 Linear |R| = [32m2.026979e-24[39m
+[36mfracture0: [39m 3 Nonlinear |R| = [32m5.323765e-17[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m4.431718e-02[39m
+ 0 Nonlinear |R| = [32m2.264950e-03[39m
+      0 Linear |R| = [32m2.264950e-03[39m
+      1 Linear |R| = [32m7.269798e-10[39m
+ 1 Nonlinear |R| = [32m7.269798e-10[39m
+      0 Linear |R| = [32m7.269798e-10[39m
+      1 Linear |R| = [32m1.202293e-12[39m
+      2 Linear |R| = [32m1.811314e-15[39m
+ 2 Nonlinear |R| = [32m1.811334e-15[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m 11.05 s[39m] [[33m 2459 MB[39m]
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   1.000000e-04 |   8.236953e+00 |
+|   2.000000e-04 |   1.647301e+01 |
+|   3.000000e-04 |   2.470782e+01 |
+|   4.000000e-04 |   3.294102e+01 |
++----------------+----------------+
+
+Finished Executing                                                                       [[33m106.78 s[39m] [[33m 2459 MB[39m]
+[-1]

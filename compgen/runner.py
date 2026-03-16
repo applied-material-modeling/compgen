@@ -287,10 +287,9 @@ def run_single(img, material_A, material_B, material_AB, config):
             continue
 
         try:
-            with open(
-                os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5"), "wb"
-            ) as f:
-                hdfwriter.write_hdf5(f, result)
+            hdfwriter.write_hdf5(
+                os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5"), result
+            )
         except Exception as e:
             if log:
                 logger.error(

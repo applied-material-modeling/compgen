@@ -1,0 +1,15 @@
+
+[31m
+*** ERROR ***
+Unable to open file "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/mesh.exo". Check to make sure that it exists and that you have read permission.[39m
+
+Abort(1) on node 2 (rank 2 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 2
+
+[31m
+*** ERROR ***
+Unable to open file "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/mesh.exo". Check to make sure that it exists and that you have read permission.[39m
+
+Abort(1) on node 3 (rank 3 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, 1) - process 3
+libc++abi: terminating
+libc++abi: terminating
+ERROR conda.cli.main_run:execute(142): `conda run mpirun -np 4 /Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt -i mechanics_sculpt.i` failed. (See above for error)
