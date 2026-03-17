@@ -45,6 +45,12 @@ def unique_id(directory=".", prefix="", suffix=""):
             continue
         return uid
 
+# Logging filter for MCRpy library (no info/debug log)
+class MCRpyInfoFilter(logging.Filter):
+    def filter(self, record):
+        if "mcrpy" in record.pathname.lower():
+            return record.levelno >= logging.WARNING
+        return True
 
 def run(*config_files):
     """Run a set of computations defined by input files
@@ -67,10 +73,18 @@ def run(*config_files):
             ),
             format="%(asctime)s %(levelname)s:%(message)s",
         )
+        
+        # Appply filter for MCRpy
+        root = logging.getLogger()
+        if not any(isinstance(f, MCRpyInfoFilter) for h in root.handlers for f in h.filters):
+            filt = MCRpyInfoFilter()
+            for h in root.handlers:
+                h.addFilter(filt)
 
+    # Added \n\n for log readability
     if log:
         logger.info(
-            "Running compgen with configuration files: %s", ", ".join(config_files)
+            "\n\nRunning compgen with configuration files: %s", ", ".join(config_files)
         )
 
     # Create the output directory if it doesn't exist
@@ -108,26 +122,31 @@ def run(*config_files):
     if log:
         logger.info("Starting computations")
 
-    # The full iterator
+    # The full iterator (changed order)
     composite = zip(
-        generator, material_a, material_b, material_ab, range(config["number"])
+        range(config["number"]),
+        generator,
+        material_a,
+        material_b,
+        material_ab,
     )
 
     nthreads = config.get("nthreads", 1)
     if log:
         logger.info("Using %d threads for computation", nthreads)
 
+    # Modified after iterator order change
     if nthreads == 1:
         results = list(
             map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], config),
+                lambda x: run_single(x[1], x[2], x[3], x[4], config),
                 composite,
             )
         )
     else:
         with multiprocess.Pool(config.get("nthreads", 1)) as pool:
             results = pool.map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], config),
+                lambda x: run_single(x[1], x[2], x[3], x[4], config),
                 composite,
             )
 

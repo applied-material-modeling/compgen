@@ -4,6 +4,8 @@ import numpy as np
 from skimage.transform import resize
 import gstools as gs
 from scipy.optimize import curve_fit
+from pathlib import Path
+import importlib
 
 
 def make_orthogonal(img):
@@ -127,6 +129,8 @@ class StructureGenerator:
         return self
 
     def __next__(self):
+        # Generator printout for clarity
+        print(f"{self.__class__.__name__} called")
         return self.next()
 
     def next(self):
@@ -440,4 +444,138 @@ class FromNumpyGenerator(StructureGenerator):
             self.index = 0  # Reset to the beginning if we reach the end
         generated = self.data[self.index]
         self.index += 1
+        return generated
+
+
+class Reconstruction2D(GenerativeStructureGenerator):
+    """Reconstruction-based generator using the MCRpy library.
+
+    Args:
+        N (list): Desired output size [nx, ny].
+        target_path (str or Path): Path to the target structure file (.npy).
+
+    Keyword Args:
+        random_seed (int): Seed for the random number generator.
+        descriptors (dict[str, float]): Mapping from descriptor name to weight.
+            Example: {"VolumeFractions": 5.0, "Correlations": 1.0}
+            Default is {"Correlations": 1.0} (recommended)
+        limit_to (int): Limit for descriptor convolutions.
+    """
+    def __init__(
+        self,
+        N,
+        target_path,
+        random_seed=None,
+        descriptors=None,
+        limit_to=16,
+    ):
+        super().__init__(N, random_seed=random_seed)
+
+        if self.dim != 2:
+            raise ValueError(
+                "Reconstruction2D only supports 2D structures for the moment."
+            )
+        
+        try:
+            self.mcrpy = importlib.import_module("mcrpy")
+        except ImportError as e:
+            raise RuntimeError(
+                "Reconstruction2D requires the MCRpy library. " \
+                "To install in the active python environment:" \
+                "    pip install mcrpy"
+            ) from e
+
+        # mcrpy expects np.product
+        if not hasattr(np, "product"):
+            np.product = np.prod
+
+        self.target_path = Path(target_path)
+        if not self.target_path.exists():
+            raise FileNotFoundError(f"Target image file not found: {self.target_path}")
+        
+        if descriptors is None:
+            self.descriptor_types = ["Correlations"]
+            self.descriptor_weights = [1.0]
+        else:
+            self.descriptor_types = list(descriptors.keys())
+            self.descriptor_weights = list(descriptors.values())
+
+
+        self.limit_to = limit_to
+        
+        target_array = np.asarray(np.load(self.target_path))
+        target_array = np.squeeze(target_array)
+        if target_array.ndim != 2:
+            raise ValueError(
+                f"Target must be 2D after squeeze, got shape {target_array.shape}"
+            )
+        
+        self.target = self._binarize_image(target_array, int)
+        self.target_vf = float(np.mean(self.target))
+        self.target_shape = self.target.shape
+        self.target_ms = self._array_to_microstructure(self.target)
+
+        self.char_settings = self.mcrpy.CharacterizationSettings(
+            descriptor_types=self.descriptor_types,
+            limit_to=self.limit_to,
+        )
+        self.recon_settings = self.mcrpy.ReconstructionSettings(
+            descriptor_types=self.descriptor_types,
+            limit_to=self.limit_to,
+            use_multigrid_reconstruction=True,
+        )
+
+        # Function defining the consumable descriptor dict
+        self._make_descriptor = lambda: self.mcrpy.characterize(
+            self.target_ms,
+            self.char_settings
+        )
+
+    @staticmethod
+    def _binarize_image(image, dtype=bool):
+        bin_img = np.asarray(image, dtype=float) > 0.5
+        return bin_img.astype(dtype)
+
+    def _array_to_microstructure(self, arr):
+        ms = self.mcrpy.Microstructure(
+            arr,
+            use_multiphase=False,
+        )
+        return ms
+
+    def reconstruct(self, initial_array):
+        descriptor_dict = self._make_descriptor()
+        initial_ms = self._array_to_microstructure(initial_array)
+
+        _, reconstructed_ms = self.mcrpy.reconstruct(
+            descriptor_dict=descriptor_dict,
+            desired_shape=self.target_ms.spatial_shape,
+            settings=self.recon_settings,
+            initial_microstructure=initial_ms,
+        )
+
+        generated = reconstructed_ms.decode_phases(raw=True)
+        generated = np.asarray(generated)
+        generated = np.squeeze(generated)
+        return generated
+
+    def sample(self):
+
+        # Control first guess for reproducibility
+        first_guess = self.rng.random(self.target_shape) < self.target_vf
+
+        generated = self.reconstruct(first_guess)
+
+        # Resize generated image to desired shape
+        if generated.shape != (self.nx, self.ny):
+            generated = resize(
+                np.asarray(generated, dtype=float),
+                (self.nx, self.ny),
+                order=1,
+                mode="reflect",
+                anti_aliasing=True,
+                preserve_range=True,
+            )
+
+        generated = self._binarize_image(generated, bool)
         return generated
