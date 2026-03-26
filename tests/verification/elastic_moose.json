@@ -1,6 +1,6 @@
 {
     "moose": {
-        "executable": "${MOOSE_DIR}/modules/solid_mechanics/solid_mechanics-opt",
+        "executable": "/home/fsozio/projects/moose/modules/solid_mechanics/solid_mechanics-opt",
         "options": []
     }
 }

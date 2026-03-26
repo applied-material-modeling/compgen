@@ -4,6 +4,24 @@
             "random_seed": 42
         }
     },
+    "sculpt": {
+        "executable": "/home/mom-shared/Cubit-16.08/bin/psculpt",
+        "mpi": "/home/mom-shared/Cubit-16.08/bin/mpiexec",
+        "rank_command": "-np",
+        "epu": "/home/mom-shared/Cubit-16.08/bin/epu",
+        "environment": {
+            "OPAL_LIBDIR": "/home/mom-shared/Cubit-16.08/bin/mpi/lib",
+            "OPAL_PREFIX": "/home/mom-shared/Cubit-16.08/bin/mpi"
+        },
+        "options": [
+            "-df",
+            "1",
+            "-S",
+            "2",
+            "-CS",
+            "4"
+        ]
+    },
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",

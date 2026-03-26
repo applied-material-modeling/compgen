@@ -3,7 +3,7 @@
     "sculpt": {
         "options": [
             "-df",
-            "1",
+            "0",
             "-S",
             "2",
             "-CS",
@@ -17,29 +17,27 @@
     "generator": {
         "type": "gen.SpinodalGenerator",
         "params": {
+            "random_seed": 0,
             "vf": [
-                0.01,
-                0.99
+                0.2,
+                0.8
             ],
             "l": [
-                50,
-                150
+                20,
+                100
             ],
             "bandwidth": [
                 1,
-                5
+                2
             ]
         }
     },
     "filtering": [
         {
-            "type": "filters.mean_filter",
+            "type": "gen.make_periodic",
             "params": {
-                "radius": 3
+                "margin": 2
             }
-        },
-        {
-            "type": "gen.make_orthogonal"
         }
     ],
     "mesh": {

@@ -3,7 +3,7 @@
     "sculpt": {
         "options": [
             "-df",
-            "1",
+            "0",
             "-S",
             "2",
             "-CS",
@@ -17,16 +17,22 @@
     "generator": {
         "type": "gen.Reconstruction2D",
         "params": {
-            "target_path": "../../../test_particles_35.npy",
+            "target_path": "../../../test_microstructures",
             "descriptors": {
-                "VolumeFractions": 2.0,
-                "Correlations": 1.0
-            }
+                "TwoPointCorrelations": 1.0
+            },
+            "limit_to": 16
         }
     },
     "filtering": [
         {
-            "type": "gen.make_orthogonal"
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "gen.make_periodic"
         }
     ],
     "mesh": {

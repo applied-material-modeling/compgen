@@ -7,7 +7,9 @@ from compgen.gen import (
     RandomGenerator,
     SpinodalGenerator,
     TwoPointGenerator,
+    Reconstruction2D,
     make_orthogonal,
+    make_periodic,
 )
 
 
@@ -77,3 +79,37 @@ def test_make_orthogonal_tiles_and_flips():
 
     assert out.shape == expected.shape
     assert np.array_equal(out, expected)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "demos/complete/reconstruction/demo_microstructures/ms_0.npy",
+        "demos/complete/reconstruction/demo_microstructures",
+    ],
+)
+def test_reconstruction_generator_shape_and_vf(path):
+    final_shape = (48, 48)
+    descriptors = {"TwoPointCorrelations": 1.0}
+    limit_to = 4
+    gen = Reconstruction2D(
+        N=final_shape,
+        target_path=path,
+        descriptors=descriptors,
+        limit_to=limit_to,
+        random_seed=42,
+    )
+    img = gen.sample()
+
+    assert img.shape == final_shape
+    assert np.isclose(img.mean(), gen.target_vf, atol=0.25)
+
+
+@pytest.mark.parametrize("margin", [1, 2, 10])
+def test_make_periodic_margins(margin):
+    img = np.random.rand(48, 48, 48) > 0.65
+    out = make_periodic(img, margin)
+
+    assert np.array_equal(out[:margin, :, :], out[-margin:, :, :])
+    assert np.array_equal(out[:, :margin, :], out[:, -margin:, :])
+    assert np.array_equal(out[:, :, :margin], out[:, :, -margin:])

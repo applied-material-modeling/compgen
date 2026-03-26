@@ -1,0 +1,41 @@
+{
+    "number": 1,
+    "L": [
+        1.0,
+        1.0
+    ],
+    "moose": {
+        "executable": "/home/fsozio/projects/moose/modules/heat_transfer/heat_transfer-opt",
+        "options": []
+    },
+    "executor": {
+        "physics": "2d/thermal_conductivity",
+        "type": "moose.execute_moose_simulations"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "conductivity": 235.0,
+            "density": 2.7
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "conductivity": 120.0,
+            "density": 3.21
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "output": {
+        "add_density": true,
+        "output_dir": "demo_output",
+        "output_prefix": "fixed_material_thermal_reconstruction",
+        "grid_extractor": {
+            "type": "mesh.extract_grid_from_mesh"
+        }
+    }
+}

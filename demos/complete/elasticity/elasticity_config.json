@@ -11,23 +11,15 @@
         ]
     },
     "moose": {
-        "executable": "${MOOSE_DIR}/modules/solid_mechanics/solid_mechanics-opt",
+        "executable": "/home/fsozio/projects/moose/modules/solid_mechanics/solid_mechanics-opt",
         "options": []
     },
     "generator": {
-        "type": "gen.SpinodalGenerator",
+        "type": "gen.RandomGenerator",
         "params": {
             "vf": [
                 0.01,
                 0.99
-            ],
-            "l": [
-                50,
-                150
-            ],
-            "bandwidth": [
-                1,
-                5
             ]
         }
     },

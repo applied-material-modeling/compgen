@@ -1,6 +1,6 @@
 {
     "moose": {
-        "executable": "${MOOSE_DIR}/modules/heat_transfer/heat_transfer-opt",
+        "executable": "/home/fsozio/projects/moose/modules/heat_transfer/heat_transfer-opt",
         "options": []
     }
 }

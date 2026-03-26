@@ -1,11 +1,12 @@
 """Methods for generating random composite structures."""
 
+from pathlib import Path
+import importlib
+
 import numpy as np
 from skimage.transform import resize
 import gstools as gs
 from scipy.optimize import curve_fit
-from pathlib import Path
-import importlib
 
 
 def make_orthogonal(img):
@@ -18,6 +19,46 @@ def make_orthogonal(img):
     arr = np.asarray(img)
     for axis in reversed(range(arr.ndim)):
         arr = np.concatenate([arr, np.flip(arr, axis=axis)], axis=axis)
+    return arr
+
+
+def make_periodic(img: np.ndarray, margin: int = 2) -> np.ndarray:
+    """
+    Make periodic for Sculpt/MOOSE workflow.
+
+    Overwrite the first and last `margin` layers of each axis with the layer at
+    index `margin`, for 2D or 3D arrays.
+
+    A value `margin` = 2 seems to work consistently with Sculpt/MOOSE.
+    """
+    arr = np.asarray(img)
+    arr = arr.squeeze()
+
+    if arr.ndim not in (2, 3):
+        raise RuntimeError(f"Expected 2D or 3D array, got {arr.ndim}D")
+
+    if not isinstance(margin, int) or margin < 1:
+        raise ValueError(f"margin must be a positive integer, got {margin}")
+
+    if any(2 * margin >= s for s in arr.shape):
+        raise ValueError(f"margin={margin} is too large for shape {arr.shape}")
+
+    # Loop over each axis
+    for ax in range(arr.ndim):
+        # Slice selecting the master layer at index = margin
+        master = [slice(None)] * arr.ndim
+        master[ax] = slice(margin, margin + 1)
+
+        # Slice for lower and upper boundary block
+        lo = [slice(None)] * arr.ndim
+        lo[ax] = slice(0, margin)
+        hi = [slice(None)] * arr.ndim
+        hi[ax] = slice(-margin, None)
+
+        # Overwrite both boundary blocks using the master layer
+        arr[tuple(lo)] = arr[tuple(master)]
+        arr[tuple(hi)] = arr[tuple(master)]
+
     return arr
 
 
@@ -452,7 +493,8 @@ class Reconstruction2D(GenerativeStructureGenerator):
 
     Args:
         N (list): Desired output size [nx, ny].
-        target_path (str or Path): Path to the target structure file (.npy).
+        target_path (str or Path): Path to a target `.npy` file, or a folder
+            containing multiple `.npy` files.
 
     Keyword Args:
         random_seed (int): Seed for the random number generator.
@@ -461,6 +503,7 @@ class Reconstruction2D(GenerativeStructureGenerator):
             Default is {"Correlations": 1.0} (recommended)
         limit_to (int): Limit for descriptor convolutions.
     """
+
     def __init__(
         self,
         N,
@@ -475,13 +518,14 @@ class Reconstruction2D(GenerativeStructureGenerator):
             raise ValueError(
                 "Reconstruction2D only supports 2D structures for the moment."
             )
-        
+
+        # mcrpy required only if this generator is used
         try:
             self.mcrpy = importlib.import_module("mcrpy")
         except ImportError as e:
             raise RuntimeError(
-                "Reconstruction2D requires the MCRpy library. " \
-                "To install in the active python environment:" \
+                "Reconstruction2D requires the MCRpy library. "
+                "To install in the active python environment:"
                 "    pip install mcrpy"
             ) from e
 
@@ -491,45 +535,66 @@ class Reconstruction2D(GenerativeStructureGenerator):
 
         self.target_path = Path(target_path)
         if not self.target_path.exists():
-            raise FileNotFoundError(f"Target image file not found: {self.target_path}")
-        
+            raise FileNotFoundError(f"Target file/folder not found: {self.target_path}")
+
+        if self.target_path.is_file():
+            self.target_files = [self.target_path]
+        elif self.target_path.is_dir():
+            self.target_files = sorted(self.target_path.glob("*.npy"))
+            if len(self.target_files) == 0:
+                raise FileNotFoundError(
+                    f"No .npy files found in target folder: {self.target_path}"
+                )
+        else:
+            raise ValueError(
+                f"target_path must be a file or directory, got: {self.target_path}"
+            )
+
+        self.targets = []
+        common_shape = None
+        for f in self.target_files:
+            arr = np.asarray(np.load(f))
+            arr = np.squeeze(arr)
+            if arr.ndim != 2:
+                raise ValueError(
+                    f"Target '{f}' must be 2D after squeeze, got shape {arr.shape}"
+                )
+            arr_bin = self._binarize_image(arr, int)
+            if common_shape is None:
+                common_shape = arr_bin.shape
+            else:
+                if arr_bin.shape != common_shape:
+                    raise ValueError("All target arrays must have the same shape. ")
+            self.targets.append(arr_bin)
+
+        if len(self.targets) == 0:
+            raise RuntimeError("No valid targets were loaded.")
+
+        self.n_targets = len(self.targets)
+        self.target_shape = common_shape
+        self.target_vf = float(np.mean([np.mean(t) for t in self.targets]))
+        self.targets_ms = [self._array_to_microstructure(t) for t in self.targets]
+
+        # mcrpy settings
         if descriptors is None:
             self.descriptor_types = ["Correlations"]
             self.descriptor_weights = [1.0]
         else:
             self.descriptor_types = list(descriptors.keys())
             self.descriptor_weights = list(descriptors.values())
-
-
         self.limit_to = limit_to
-        
-        target_array = np.asarray(np.load(self.target_path))
-        target_array = np.squeeze(target_array)
-        if target_array.ndim != 2:
-            raise ValueError(
-                f"Target must be 2D after squeeze, got shape {target_array.shape}"
-            )
-        
-        self.target = self._binarize_image(target_array, int)
-        self.target_vf = float(np.mean(self.target))
-        self.target_shape = self.target.shape
-        self.target_ms = self._array_to_microstructure(self.target)
-
         self.char_settings = self.mcrpy.CharacterizationSettings(
             descriptor_types=self.descriptor_types,
             limit_to=self.limit_to,
         )
         self.recon_settings = self.mcrpy.ReconstructionSettings(
             descriptor_types=self.descriptor_types,
+            descriptor_weights=self.descriptor_weights,
             limit_to=self.limit_to,
             use_multigrid_reconstruction=True,
+            max_iter=200,
         )
-
-        # Function defining the consumable descriptor dict
-        self._make_descriptor = lambda: self.mcrpy.characterize(
-            self.target_ms,
-            self.char_settings
-        )
+        self._make_descriptor = lambda: self._build_descriptor_dict()
 
     @staticmethod
     def _binarize_image(image, dtype=bool):
@@ -543,13 +608,34 @@ class Reconstruction2D(GenerativeStructureGenerator):
         )
         return ms
 
+    def _build_descriptor_dict(self):
+        """Build a single descriptor dictionary consumable by MCRpy."""
+        descs = [
+            self.mcrpy.characterize(ms, self.char_settings) for ms in self.targets_ms
+        ]
+
+        # If there is only one target, no averaging is needed.
+        if len(descs) == 1:
+            return descs[0]
+
+        descriptor_dict = {}
+        for k in descs[0]:
+            if k == "settings":
+                descriptor_dict[k] = descs[0][k]
+            else:
+                descriptor_dict[k] = sum(d[k] for d in descs) / len(descs)
+
+        return descriptor_dict
+
     def reconstruct(self, initial_array):
+        """Run MCRpy reconstruction starting from `initial_array`."""
+
         descriptor_dict = self._make_descriptor()
         initial_ms = self._array_to_microstructure(initial_array)
 
         _, reconstructed_ms = self.mcrpy.reconstruct(
             descriptor_dict=descriptor_dict,
-            desired_shape=self.target_ms.spatial_shape,
+            desired_shape=self.target_shape,
             settings=self.recon_settings,
             initial_microstructure=initial_ms,
         )

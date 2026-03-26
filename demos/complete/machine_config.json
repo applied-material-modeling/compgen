@@ -1,12 +1,12 @@
 {
     "sculpt": {
-        "executable": "${CUBIT_DIR}/bin/psculpt",
-        "mpi": "${CUBIT_DIR}/bin/mpiexec",
+        "executable": "/home/mom-shared/Cubit-16.08/bin/psculpt",
+        "mpi": "/home/mom-shared/Cubit-16.08/bin/mpiexec",
         "rank_command": "-np",
-        "epu": "${CUBIT_DIR}/bin/epu",
+        "epu": "/home/mom-shared/Cubit-16.08/bin/epu",
         "environment": {
-            "OPAL_LIBDIR": "${CUBIT_DIR}/bin/mpi/lib",
-            "OPAL_PREFIX": "${CUBIT_DIR}/bin/mpi"
+            "OPAL_LIBDIR": "/home/mom-shared/Cubit-16.08/bin/mpi/lib",
+            "OPAL_PREFIX": "/home/mom-shared/Cubit-16.08/bin/mpi"
         }
     },
     "mpi": {
@@ -14,9 +14,10 @@
         "rank_command": "-np"
     },
     "storage": {
-        "delete_temp_dir": true
+        "delete_temp_dir": false,
+        "temp_dir": "/home/fsozio/projects/compgen-tests/demo_temp"
     },
-    "verbose": false,
+    "verbose": true,
     "log_file": "demo.log",
     "log_level": "INFO"
 }

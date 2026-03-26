@@ -45,12 +45,14 @@ def unique_id(directory=".", prefix="", suffix=""):
             continue
         return uid
 
+
 # Logging filter for MCRpy library (no info/debug log)
 class MCRpyInfoFilter(logging.Filter):
     def filter(self, record):
         if "mcrpy" in record.pathname.lower():
             return record.levelno >= logging.WARNING
         return True
+
 
 def run(*config_files):
     """Run a set of computations defined by input files
@@ -73,10 +75,12 @@ def run(*config_files):
             ),
             format="%(asctime)s %(levelname)s:%(message)s",
         )
-        
+
         # Appply filter for MCRpy
         root = logging.getLogger()
-        if not any(isinstance(f, MCRpyInfoFilter) for h in root.handlers for f in h.filters):
+        if not any(
+            isinstance(f, MCRpyInfoFilter) for h in root.handlers for f in h.filters
+        ):
             filt = MCRpyInfoFilter()
             for h in root.handlers:
                 h.addFilter(filt)
@@ -221,6 +225,7 @@ def run_single(img, material_A, material_B, material_AB, config):
             return -1
         if log:
             logger.info("Problem %s: Mesh generation complete", uid)
+
         # Run
         if log:
             logger.info("Problem %s: Running executor", uid)
