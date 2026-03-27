@@ -46,8 +46,9 @@ def unique_id(directory=".", prefix="", suffix=""):
         return uid
 
 
-# Logging filter for MCRpy library (no info/debug log)
 class MCRpyInfoFilter(logging.Filter):
+    """Logging filter for MCRpy library (no info/debug log)"""
+
     def filter(self, record):
         if "mcrpy" in record.pathname.lower():
             return record.levelno >= logging.WARNING

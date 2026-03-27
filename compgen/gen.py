@@ -488,6 +488,7 @@ class FromNumpyGenerator(StructureGenerator):
         return generated
 
 
+# pylint: disable=too-many-instance-attributes
 class Reconstruction2D(GenerativeStructureGenerator):
     """Reconstruction-based generator using the MCRpy library.
 
@@ -594,7 +595,6 @@ class Reconstruction2D(GenerativeStructureGenerator):
             use_multigrid_reconstruction=True,
             max_iter=200,
         )
-        self._make_descriptor = lambda: self._build_descriptor_dict()
 
     @staticmethod
     def _binarize_image(image, dtype=bool):
@@ -608,7 +608,7 @@ class Reconstruction2D(GenerativeStructureGenerator):
         )
         return ms
 
-    def _build_descriptor_dict(self):
+    def _make_descriptor(self):
         """Build a single descriptor dictionary consumable by MCRpy."""
         descs = [
             self.mcrpy.characterize(ms, self.char_settings) for ms in self.targets_ms

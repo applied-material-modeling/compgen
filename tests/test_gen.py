@@ -82,13 +82,21 @@ def test_make_orthogonal_tiles_and_flips():
 
 
 @pytest.mark.parametrize(
-    "path",
+    "path,descriptors",
     [
-        "demos/complete/reconstruction/demo_microstructures/ms_0.npy",
-        "demos/complete/reconstruction/demo_microstructures",
+        (
+            "demos/complete/reconstruction/demo_microstructures/ms_0.npy",
+            {"Variation": 10.0, "Correlations": 1.0},
+        ),
+        (
+            "demos/complete/reconstruction/demo_microstructures",
+            {"VolumeFractions": 1.0, "TwoPointCorrelations": 1.0},
+        ),
     ],
 )
-def test_reconstruction_generator_shape_and_vf(path):
+def test_reconstruction_generator_shape_and_vf(path, descriptors):
+    """Test that the Reconstruction2D generator produces images of the
+    correct shape and approximate volume fraction."""
     final_shape = (48, 48)
     descriptors = {"TwoPointCorrelations": 1.0}
     limit_to = 4
@@ -107,6 +115,7 @@ def test_reconstruction_generator_shape_and_vf(path):
 
 @pytest.mark.parametrize("margin", [1, 2, 10])
 def test_make_periodic_margins(margin):
+    """Test that make_periodic correctly creates equal margins."""
     img = np.random.rand(48, 48, 48) > 0.65
     out = make_periodic(img, margin)
 
