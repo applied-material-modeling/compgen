@@ -5,7 +5,7 @@
         1.0
     ],
     "moose": {
-        "executable": "/home/fsozio/projects/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "executable": "${MOOSE_DIR}/modules/solid_mechanics/solid_mechanics-opt",
         "options": []
     },
     "executor": {
