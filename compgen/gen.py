@@ -31,8 +31,7 @@ def make_periodic(img: np.ndarray, margin: int = 2) -> np.ndarray:
 
     A value `margin` = 2 seems to work consistently with Sculpt/MOOSE.
     """
-    arr = np.asarray(img)
-    arr = arr.squeeze()
+    arr = np.array(img, copy=True).squeeze()
 
     if arr.ndim not in (2, 3):
         raise RuntimeError(f"Expected 2D or 3D array, got {arr.ndim}D")
@@ -170,8 +169,6 @@ class StructureGenerator:
         return self
 
     def __next__(self):
-        # Generator printout for clarity
-        print(f"{self.__class__.__name__} called")
         return self.next()
 
     def next(self):
