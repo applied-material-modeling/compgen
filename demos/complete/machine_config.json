@@ -15,9 +15,8 @@
     },
     "storage": {
         "delete_temp_dir": false,
-        "temp_dir": "/home/fsozio/projects/compgen-tests/demo_temp"
     },
-    "verbose": true,
+    "verbose": false,
     "log_file": "demo.log",
     "log_level": "INFO"
 }

@@ -98,7 +98,6 @@ def test_reconstruction_generator_shape_and_vf(path, descriptors):
     """Test that the Reconstruction2D generator produces images of the
     correct shape and approximate volume fraction."""
     final_shape = (48, 48)
-    descriptors = {"TwoPointCorrelations": 1.0}
     limit_to = 4
     gen = Reconstruction2D(
         N=final_shape,
