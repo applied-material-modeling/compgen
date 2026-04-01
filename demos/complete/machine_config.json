@@ -14,7 +14,7 @@
         "rank_command": "-np"
     },
     "storage": {
-        "delete_temp_dir": false,
+        "delete_temp_dir": false
     },
     "verbose": false,
     "log_file": "demo.log",
