@@ -86,10 +86,10 @@ def run(*config_files):
             for h in root.handlers:
                 h.addFilter(filt)
 
-    # Added \n\n for log readability
     if log:
+        logger.info("")
         logger.info(
-            "\n\nRunning compgen with configuration files: %s", ", ".join(config_files)
+            "Running compgen with configuration files: %s", ", ".join(config_files)
         )
 
     # Create the output directory if it doesn't exist
@@ -127,7 +127,7 @@ def run(*config_files):
     if log:
         logger.info("Starting computations")
 
-    # The full iterator (changed order)
+    # The full iterator
     composite = zip(
         range(config["number"]),
         generator,
@@ -140,7 +140,6 @@ def run(*config_files):
     if log:
         logger.info("Using %d threads for computation", nthreads)
 
-    # Modified after iterator order change
     if nthreads == 1:
         results = list(
             map(

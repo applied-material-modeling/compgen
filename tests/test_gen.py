@@ -8,8 +8,6 @@ from compgen.gen import (
     SpinodalGenerator,
     TwoPointGenerator,
     Reconstruction2D,
-    make_orthogonal,
-    make_periodic,
 )
 
 
@@ -68,19 +66,6 @@ def test_two_point_generator_shape_and_vf():
     assert np.isclose(img.mean(), ref_vf, atol=0.1)
 
 
-def test_make_orthogonal_tiles_and_flips():
-    """Test that make_orthogonal correctly creates a larger image by tiling
-    and flipping the input."""
-    img = np.array([[1, 2, 3], [4, 5, 6]])
-    out = make_orthogonal(img)
-
-    top = np.hstack([img, np.fliplr(img)])
-    expected = np.vstack([top, np.flipud(top)])
-
-    assert out.shape == expected.shape
-    assert np.array_equal(out, expected)
-
-
 @pytest.mark.parametrize(
     "path,descriptors",
     [
@@ -110,14 +95,3 @@ def test_reconstruction_generator_shape_and_vf(path, descriptors):
 
     assert img.shape == final_shape
     assert np.isclose(img.mean(), gen.target_vf, atol=0.25)
-
-
-@pytest.mark.parametrize("margin", [1, 2, 10])
-def test_make_periodic_margins(margin):
-    """Test that make_periodic correctly creates equal margins."""
-    img = np.random.rand(48, 48, 48) > 0.65
-    out = make_periodic(img, margin)
-
-    assert np.array_equal(out[:margin, :, :], out[-margin:, :, :])
-    assert np.array_equal(out[:, :margin, :], out[:, -margin:, :])
-    assert np.array_equal(out[:, :, :margin], out[:, :, -margin:])

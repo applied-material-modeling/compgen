@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("..")
 
-from compgen import gen, utils
+from compgen import gen, filters, utils
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +25,7 @@ if __name__ == "__main__":
                 )
             ),
         )
-        smoothed = gen.make_orthogonal(smoothed)
+        smoothed = filters.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()

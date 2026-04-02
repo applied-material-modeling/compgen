@@ -7,6 +7,7 @@ import numpy as np
 from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.segmentation import chan_vese
+from skimage.transform import resize
 
 
 def binary_smoother(binary_image, smoothing_function):
@@ -26,6 +27,47 @@ def binary_smoother(binary_image, smoothing_function):
     smoothed = smoothed >= thresh
 
     return smoothed
+
+
+def standardize_image(image, shape=None, dtype=None):
+    """
+    Resize/binarize an image (2D or 3D).
+
+    Args:
+        image (np.ndarray): Input image with shape (nx, ny) or (nx, ny, nz).
+        shape (tuple[int, ...], optional): Target shape, must be either
+            (nx, ny) for 2D input or (nx, ny, nz) for 3D input.
+        dtype (type, optional): Output dtype for binarization.
+    """
+    img = np.asarray(image, dtype=float)
+
+    if img.ndim not in (2, 3):
+        raise ValueError(
+            f"image must be 2D or 3D, got {img.ndim}D with shape {img.shape}"
+        )
+
+    if shape is not None:
+        shape = tuple(shape)
+
+        if len(shape) != img.ndim:
+            raise ValueError(
+                f"shape dimensionality must match image dimensionality: "
+                f"got image shape {img.shape} ({img.ndim}D)"
+                f"and target shape {shape} ({len(shape)}D)"
+            )
+
+        img = resize(
+            img,
+            shape,
+            order=1,
+            mode="reflect",
+            anti_aliasing=True,
+        )
+
+    if dtype is not None:
+        img = (img > 0.5).astype(dtype)
+
+    return img
 
 
 def load_and_segment(fname, miter=100):

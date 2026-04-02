@@ -17,24 +17,29 @@
     "generator": {
         "type": "gen.SpinodalGenerator",
         "params": {
-            "random_seed": 0,
             "vf": [
-                0.2,
-                0.8
+                0.01,
+                0.99
             ],
             "l": [
-                20,
-                100
+                50,
+                150
             ],
             "bandwidth": [
                 1,
-                2
+                5
             ]
         }
     },
     "filtering": [
         {
-            "type": "gen.make_periodic",
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "filters.make_periodic",
             "params": {
                 "margin": 2
             }

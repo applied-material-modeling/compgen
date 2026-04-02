@@ -4,61 +4,9 @@ from pathlib import Path
 import importlib
 
 import numpy as np
-from skimage.transform import resize
 import gstools as gs
 from scipy.optimize import curve_fit
-
-
-def make_orthogonal(img):
-    """Mirror and tile the input array to give it orthogonal periodicity.
-
-    This works for arrays of arbitrary dimensionality by concatenating the
-    array with its flipped version along each axis (processing axes from
-    last to first).
-    """
-    arr = np.asarray(img)
-    for axis in reversed(range(arr.ndim)):
-        arr = np.concatenate([arr, np.flip(arr, axis=axis)], axis=axis)
-    return arr
-
-
-def make_periodic(img: np.ndarray, margin: int = 2) -> np.ndarray:
-    """
-    Make periodic for Sculpt/MOOSE workflow.
-
-    Overwrite the first and last `margin` layers of each axis with the layer at
-    index `margin`, for 2D or 3D arrays.
-
-    A value `margin` = 2 seems to work consistently with Sculpt/MOOSE.
-    """
-    arr = np.array(img, copy=True).squeeze()
-
-    if arr.ndim not in (2, 3):
-        raise RuntimeError(f"Expected 2D or 3D array, got {arr.ndim}D")
-
-    if not isinstance(margin, int) or margin < 1:
-        raise ValueError(f"margin must be a positive integer, got {margin}")
-
-    if any(2 * margin >= s for s in arr.shape):
-        raise ValueError(f"margin={margin} is too large for shape {arr.shape}")
-
-    # Loop over each axis
-    for ax in range(arr.ndim):
-        # Slice selecting the master layer at index = margin
-        master = [slice(None)] * arr.ndim
-        master[ax] = slice(margin, margin + 1)
-
-        # Slice for lower and upper boundary block
-        lo = [slice(None)] * arr.ndim
-        lo[ax] = slice(0, margin)
-        hi = [slice(None)] * arr.ndim
-        hi[ax] = slice(-margin, None)
-
-        # Overwrite both boundary blocks using the master layer
-        arr[tuple(lo)] = arr[tuple(master)]
-        arr[tuple(hi)] = arr[tuple(master)]
-
-    return arr
+from compgen.utils import standardize_image
 
 
 class DampedOscillationCovariance(gs.CovModel):
@@ -256,31 +204,12 @@ class TwoPointGenerator(GenerativeStructureGenerator):
             )
 
         self.l_guess = l_guess
-        self.reference_image = self.standardize_image(reference_image)
+        self.reference_image = standardize_image(reference_image, shape=N, dtype=bool)
         self.acov, self.mean, self.var = self.image_statistics(self.reference_image)
         self.r, self.c = self.radial_average_variogram(self.acov)
 
         self.model = self.fit_model(self.r, self.c, radial_mask=radial_mask)
         self.generator = gs.SRF(self.model)
-
-    def standardize_image(self, image):
-        """Standardize the reference image to the desired size.
-
-        Args:
-            image (np.ndarray): 2D binary array.
-
-        Returns:
-            np.ndarray: Standardized 2D binary array.
-        """
-        img_resized = resize(
-            image.astype(float),
-            (self.nx, self.ny),
-            order=1,
-            mode="reflect",
-            anti_aliasing=True,
-        )
-        img_binary = img_resized > 0.5
-        return img_binary.astype(bool)
 
     def image_statistics(self, image):
         """Calculate the empirical coveriance, mean, and variance of the image.
@@ -554,10 +483,8 @@ class Reconstruction2D(GenerativeStructureGenerator):
             arr = np.asarray(np.load(f))
             arr = np.squeeze(arr)
             if arr.ndim != 2:
-                raise ValueError(
-                    f"Target '{f}' must be 2D after squeeze, got shape {arr.shape}"
-                )
-            arr_bin = self._binarize_image(arr, int)
+                raise ValueError(f"Target '{f}' must be 2D, got shape {arr.shape}")
+            arr_bin = standardize_image(arr, dtype=int)
             if common_shape is None:
                 common_shape = arr_bin.shape
             else:
@@ -575,11 +502,23 @@ class Reconstruction2D(GenerativeStructureGenerator):
 
         # mcrpy settings
         if descriptors is None:
-            self.descriptor_types = ["Correlations"]
-            self.descriptor_weights = [1.0]
-        else:
-            self.descriptor_types = list(descriptors.keys())
-            self.descriptor_weights = list(descriptors.values())
+            descriptors = {"Correlations": 1.0}
+        allowed_descriptors = {
+            "VolumeFractions",
+            "Variation",
+            "TwoPointCorrelations",
+            "Correlations",
+            "FFTCorrelations",
+            "LinealPathApproximation",
+        }
+        invalid_keys = set(descriptors.keys()) - allowed_descriptors
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid descriptor keys: {invalid_keys}. "
+                f"Allowed keys are: {allowed_descriptors}"
+            )
+        self.descriptor_types = list(descriptors.keys())
+        self.descriptor_weights = list(descriptors.values())
         self.limit_to = limit_to
         self.char_settings = self.mcrpy.CharacterizationSettings(
             descriptor_types=self.descriptor_types,
@@ -592,11 +531,6 @@ class Reconstruction2D(GenerativeStructureGenerator):
             use_multigrid_reconstruction=True,
             max_iter=200,
         )
-
-    @staticmethod
-    def _binarize_image(image, dtype=bool):
-        bin_img = np.asarray(image, dtype=float) > 0.5
-        return bin_img.astype(dtype)
 
     def _array_to_microstructure(self, arr):
         ms = self.mcrpy.Microstructure(
@@ -615,6 +549,8 @@ class Reconstruction2D(GenerativeStructureGenerator):
         if len(descs) == 1:
             return descs[0]
 
+        # Build new descriptor by averaging the descriptors across all targets while
+        # keeping the settings from the first one (they are the same across all targets).
         descriptor_dict = {}
         for k in descs[0]:
             if k == "settings":
@@ -648,17 +584,5 @@ class Reconstruction2D(GenerativeStructureGenerator):
         first_guess = self.rng.random(self.target_shape) < self.target_vf
 
         generated = self.reconstruct(first_guess)
-
-        # Resize generated image to desired shape
-        if generated.shape != (self.nx, self.ny):
-            generated = resize(
-                np.asarray(generated, dtype=float),
-                (self.nx, self.ny),
-                order=1,
-                mode="reflect",
-                anti_aliasing=True,
-                preserve_range=True,
-            )
-
-        generated = self._binarize_image(generated, bool)
+        generated = standardize_image(generated, shape=(self.nx, self.ny), dtype=bool)
         return generated

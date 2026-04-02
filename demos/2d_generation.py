@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("..")
 
-from compgen import gen, utils
+from compgen import gen, filters, utils
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     print("Generating random images")
     generator = gen.RandomGenerator(N=[n, n], vf=vf, random_seed=seed)
     for i, structure in zip(range(5), generator):
-        structure = gen.make_orthogonal(structure)
+        structure = filters.make_orthogonal(structure)
         plt.imshow(structure.T, cmap="gray")
         plt.axis("off")
         plt.show()
@@ -36,7 +36,7 @@ if __name__ == "__main__":
                 )
             ),
         )
-        smoothed = gen.make_orthogonal(smoothed)
+        smoothed = filters.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     seg = utils.load_and_segment("composite.jpg")
     min_px = np.min(seg.shape)
     seg = seg[:min_px, :min_px]
-    seg = gen.make_orthogonal(seg)
+    seg = filters.make_orthogonal(seg)
 
     plt.imshow(seg.T, cmap="gray")
     plt.axis("off")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         smoothed = skimage.morphology.binary_opening(
             skimage.morphology.binary_closing(smoothed)
         )
-        smoothed = gen.make_orthogonal(smoothed)
+        smoothed = filters.make_orthogonal(smoothed)
         plt.imshow(smoothed.T, cmap="gray")
         plt.axis("off")
         plt.show()

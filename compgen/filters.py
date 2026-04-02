@@ -2,7 +2,6 @@
 
 import numpy as np
 import skimage
-
 from compgen import utils
 
 
@@ -43,3 +42,55 @@ def mean_filter(img, radius=3, periodic=True):
         return out
 
     return utils.binary_smoother(img, smooth)
+
+
+def make_orthogonal(img):
+    """Mirror and tile the input array to give it orthogonal periodicity.
+
+    This works for arrays of arbitrary dimensionality by concatenating the
+    array with its flipped version along each axis (processing axes from
+    last to first).
+    """
+    arr = np.asarray(img)
+    for axis in reversed(range(arr.ndim)):
+        arr = np.concatenate([arr, np.flip(arr, axis=axis)], axis=axis)
+    return arr
+
+
+def make_periodic(img: np.ndarray, margin: int = 2) -> np.ndarray:
+    """
+    Make periodic for Sculpt/MOOSE workflow.
+
+    Overwrite the first and last `margin` layers of each axis with the layer at
+    index `margin`, for 2D or 3D arrays.
+
+    A value `margin` = 2 seems to work consistently with Sculpt/MOOSE.
+    """
+    arr = np.array(img, copy=True)
+
+    if arr.ndim not in (2, 3):
+        raise RuntimeError(f"Expected 2D or 3D array, got {arr.ndim}D")
+
+    if not isinstance(margin, int) or margin < 1:
+        raise ValueError(f"margin must be a positive integer, got {margin}")
+
+    if any(2 * margin >= s for s in arr.shape):
+        raise ValueError(f"margin={margin} is too large for shape {arr.shape}")
+
+    # Loop over each axis
+    for ax in range(arr.ndim):
+        # Slice selecting the master layer at index = margin
+        master = [slice(None)] * arr.ndim
+        master[ax] = slice(margin, margin + 1)
+
+        # Slice for lower and upper boundary block
+        lo = [slice(None)] * arr.ndim
+        lo[ax] = slice(0, margin)
+        hi = [slice(None)] * arr.ndim
+        hi[ax] = slice(-margin, None)
+
+        # Overwrite both boundary blocks using the master layer
+        arr[tuple(lo)] = arr[tuple(master)]
+        arr[tuple(hi)] = arr[tuple(master)]
+
+    return arr

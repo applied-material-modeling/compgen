@@ -32,7 +32,7 @@
             }
         },
         {
-            "type": "gen.make_periodic"
+            "type": "filters.make_periodic"
         }
     ],
     "mesh": {

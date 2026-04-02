@@ -2,8 +2,9 @@
     "mesh_file": "mesh.exo",
     "sculpt": {
         "options": [
+            "-per",
             "-df",
-            "1",
+            "0",
             "-S",
             "2",
             "-CS",
@@ -15,11 +16,19 @@
         "options": []
     },
     "generator": {
-        "type": "gen.RandomGenerator",
+        "type": "gen.SpinodalGenerator",
         "params": {
             "vf": [
                 0.01,
                 0.99
+            ],
+            "l": [
+                50,
+                150
+            ],
+            "bandwidth": [
+                1,
+                5
             ]
         }
     },
@@ -31,7 +40,7 @@
             }
         },
         {
-            "type": "gen.make_orthogonal"
+            "type": "filters.make_orthogonal"
         }
     ],
     "mesh": {
