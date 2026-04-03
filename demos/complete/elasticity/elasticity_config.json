@@ -2,9 +2,8 @@
     "mesh_file": "mesh.exo",
     "sculpt": {
         "options": [
-            "-per",
             "-df",
-            "0",
+            "1",
             "-S",
             "2",
             "-CS",
