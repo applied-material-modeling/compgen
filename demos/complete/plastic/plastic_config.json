@@ -39,7 +39,7 @@
             }
         },
         {
-            "type": "gen.make_orthogonal"
+            "type": "filters.make_orthogonal"
         }
     ],
     "mesh": {

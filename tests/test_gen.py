@@ -7,7 +7,7 @@ from compgen.gen import (
     RandomGenerator,
     SpinodalGenerator,
     TwoPointGenerator,
-    make_orthogonal,
+    Reconstruction2D,
 )
 
 
@@ -66,14 +66,32 @@ def test_two_point_generator_shape_and_vf():
     assert np.isclose(img.mean(), ref_vf, atol=0.1)
 
 
-def test_make_orthogonal_tiles_and_flips():
-    """Test that make_orthogonal correctly creates a larger image by tiling
-    and flipping the input."""
-    img = np.array([[1, 2, 3], [4, 5, 6]])
-    out = make_orthogonal(img)
+@pytest.mark.parametrize(
+    "path,descriptors",
+    [
+        (
+            "demos/complete/reconstruction/demo_microstructures/ms_0.npy",
+            {"Variation": 10.0, "Correlations": 1.0},
+        ),
+        (
+            "demos/complete/reconstruction/demo_microstructures",
+            {"VolumeFractions": 1.0, "TwoPointCorrelations": 1.0},
+        ),
+    ],
+)
+def test_reconstruction_generator_shape_and_vf(path, descriptors):
+    """Test that the Reconstruction2D generator produces images of the
+    correct shape and approximate volume fraction."""
+    final_shape = (48, 48)
+    limit_to = 4
+    gen = Reconstruction2D(
+        N=final_shape,
+        target_path=path,
+        descriptors=descriptors,
+        limit_to=limit_to,
+        random_seed=42,
+    )
+    img = gen.sample()
 
-    top = np.hstack([img, np.fliplr(img)])
-    expected = np.vstack([top, np.flipud(top)])
-
-    assert out.shape == expected.shape
-    assert np.array_equal(out, expected)
+    assert img.shape == final_shape
+    assert np.isclose(img.mean(), gen.target_vf, atol=0.25)

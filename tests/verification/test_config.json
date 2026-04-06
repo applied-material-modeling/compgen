@@ -4,6 +4,24 @@
             "random_seed": 42
         }
     },
+    "sculpt": {
+        "executable": "${CUBIT_DIR}/bin/psculpt",
+        "mpi": "${CUBIT_DIR}/bin/mpiexec",
+        "rank_command": "-np",
+        "epu": "${CUBIT_DIR}/bin/epu",
+        "environment": {
+            "OPAL_LIBDIR": "${CUBIT_DIR}/bin/mpi/lib",
+            "OPAL_PREFIX": "${CUBIT_DIR}/bin/mpi"
+        },
+        "options": [
+            "-df",
+            "1",
+            "-S",
+            "2",
+            "-CS",
+            "4"
+        ]
+    },
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",

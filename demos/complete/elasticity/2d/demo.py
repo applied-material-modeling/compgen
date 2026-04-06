@@ -1,13 +1,16 @@
 import sys
+from pathlib import Path
 
-sys.path.append("../../../..")
+BASE = Path(__file__).resolve().parent
+
+sys.path.append(str(BASE.parents[3]))
 
 from compgen import runner
 
 if __name__ == "__main__":
     runner.run(
-        "demo.json",
-        "../elasticity_config.json",
-        "../parallel_config.json",
-        "../../machine_config.json",
+        str(BASE / "demo.json"),
+        str(BASE.parent / "elasticity_config.json"),
+        str(BASE.parent / "parallel_config.json"),
+        str(BASE.parent.parent / "machine_config.json"),
     )

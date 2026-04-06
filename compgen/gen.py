@@ -1,22 +1,12 @@
 """Methods for generating random composite structures."""
 
+from pathlib import Path
+import importlib
+
 import numpy as np
-from skimage.transform import resize
 import gstools as gs
 from scipy.optimize import curve_fit
-
-
-def make_orthogonal(img):
-    """Mirror and tile the input array to give it orthogonal periodicity.
-
-    This works for arrays of arbitrary dimensionality by concatenating the
-    array with its flipped version along each axis (processing axes from
-    last to first).
-    """
-    arr = np.asarray(img)
-    for axis in reversed(range(arr.ndim)):
-        arr = np.concatenate([arr, np.flip(arr, axis=axis)], axis=axis)
-    return arr
+from compgen.utils import standardize_image
 
 
 class DampedOscillationCovariance(gs.CovModel):
@@ -214,31 +204,12 @@ class TwoPointGenerator(GenerativeStructureGenerator):
             )
 
         self.l_guess = l_guess
-        self.reference_image = self.standardize_image(reference_image)
+        self.reference_image = standardize_image(reference_image, shape=N, dtype=bool)
         self.acov, self.mean, self.var = self.image_statistics(self.reference_image)
         self.r, self.c = self.radial_average_variogram(self.acov)
 
         self.model = self.fit_model(self.r, self.c, radial_mask=radial_mask)
         self.generator = gs.SRF(self.model)
-
-    def standardize_image(self, image):
-        """Standardize the reference image to the desired size.
-
-        Args:
-            image (np.ndarray): 2D binary array.
-
-        Returns:
-            np.ndarray: Standardized 2D binary array.
-        """
-        img_resized = resize(
-            image.astype(float),
-            (self.nx, self.ny),
-            order=1,
-            mode="reflect",
-            anti_aliasing=True,
-        )
-        img_binary = img_resized > 0.5
-        return img_binary.astype(bool)
 
     def image_statistics(self, image):
         """Calculate the empirical coveriance, mean, and variance of the image.
@@ -440,4 +411,178 @@ class FromNumpyGenerator(StructureGenerator):
             self.index = 0  # Reset to the beginning if we reach the end
         generated = self.data[self.index]
         self.index += 1
+        return generated
+
+
+# pylint: disable=too-many-instance-attributes
+class Reconstruction2D(GenerativeStructureGenerator):
+    """Reconstruction-based generator using the MCRpy library.
+
+    Args:
+        N (list): Desired output size [nx, ny].
+        target_path (str or Path): Path to a target `.npy` file, or a folder
+            containing multiple `.npy` files.
+
+    Keyword Args:
+        random_seed (int): Seed for the random number generator.
+        descriptors (dict[str, float]): Mapping from descriptor name to weight.
+            Example: {"VolumeFractions": 5.0, "Correlations": 1.0}
+            Default is {"Correlations": 1.0} (recommended)
+        limit_to (int): Limit for descriptor convolutions.
+    """
+
+    def __init__(
+        self,
+        N,
+        target_path,
+        random_seed=None,
+        descriptors=None,
+        limit_to=16,
+    ):
+        super().__init__(N, random_seed=random_seed)
+
+        if self.dim != 2:
+            raise ValueError(
+                "Reconstruction2D only supports 2D structures for the moment."
+            )
+
+        # mcrpy required only if this generator is used
+        try:
+            self.mcrpy = importlib.import_module("mcrpy")
+        except ImportError as e:
+            raise RuntimeError(
+                "Reconstruction2D requires the MCRpy library. "
+                "To install in the active python environment:"
+                "    pip install mcrpy"
+            ) from e
+
+        # mcrpy expects np.product
+        if not hasattr(np, "product"):
+            np.product = np.prod
+
+        self.target_path = Path(target_path)
+        if not self.target_path.exists():
+            raise FileNotFoundError(f"Target file/folder not found: {self.target_path}")
+
+        if self.target_path.is_file():
+            self.target_files = [self.target_path]
+        elif self.target_path.is_dir():
+            self.target_files = sorted(self.target_path.glob("*.npy"))
+            if len(self.target_files) == 0:
+                raise FileNotFoundError(
+                    f"No .npy files found in target folder: {self.target_path}"
+                )
+        else:
+            raise ValueError(
+                f"target_path must be a file or directory, got: {self.target_path}"
+            )
+
+        self.targets = []
+        common_shape = None
+        for f in self.target_files:
+            arr = np.asarray(np.load(f))
+            arr = np.squeeze(arr)
+            if arr.ndim != 2:
+                raise ValueError(f"Target '{f}' must be 2D, got shape {arr.shape}")
+            arr_bin = standardize_image(arr, dtype=int)
+            if common_shape is None:
+                common_shape = arr_bin.shape
+            else:
+                if arr_bin.shape != common_shape:
+                    raise ValueError("All target arrays must have the same shape. ")
+            self.targets.append(arr_bin)
+
+        if len(self.targets) == 0:
+            raise RuntimeError("No valid targets were loaded.")
+
+        self.n_targets = len(self.targets)
+        self.target_shape = common_shape
+        self.target_vf = float(np.mean([np.mean(t) for t in self.targets]))
+        self.targets_ms = [self._array_to_microstructure(t) for t in self.targets]
+
+        # mcrpy settings
+        if descriptors is None:
+            descriptors = {"Correlations": 1.0}
+        allowed_descriptors = {
+            "VolumeFractions",
+            "Variation",
+            "TwoPointCorrelations",
+            "Correlations",
+            "FFTCorrelations",
+            "LinealPathApproximation",
+        }
+        invalid_keys = set(descriptors.keys()) - allowed_descriptors
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid descriptor keys: {invalid_keys}. "
+                f"Allowed keys are: {allowed_descriptors}"
+            )
+        self.descriptor_types = list(descriptors.keys())
+        self.descriptor_weights = list(descriptors.values())
+        self.limit_to = limit_to
+        self.char_settings = self.mcrpy.CharacterizationSettings(
+            descriptor_types=self.descriptor_types,
+            limit_to=self.limit_to,
+        )
+        self.recon_settings = self.mcrpy.ReconstructionSettings(
+            descriptor_types=self.descriptor_types,
+            descriptor_weights=self.descriptor_weights,
+            limit_to=self.limit_to,
+            use_multigrid_reconstruction=True,
+            max_iter=200,
+        )
+
+    def _array_to_microstructure(self, arr):
+        ms = self.mcrpy.Microstructure(
+            arr,
+            use_multiphase=False,
+        )
+        return ms
+
+    def _make_descriptor(self):
+        """Build a single descriptor dictionary consumable by MCRpy."""
+        descs = [
+            self.mcrpy.characterize(ms, self.char_settings) for ms in self.targets_ms
+        ]
+
+        # If there is only one target, no averaging is needed.
+        if len(descs) == 1:
+            return descs[0]
+
+        # Build new descriptor by averaging the descriptors across all targets while
+        # keeping the settings from the first one (they are the same across all targets).
+        descriptor_dict = {}
+        for k in descs[0]:
+            if k == "settings":
+                descriptor_dict[k] = descs[0][k]
+            else:
+                descriptor_dict[k] = sum(d[k] for d in descs) / len(descs)
+
+        return descriptor_dict
+
+    def reconstruct(self, initial_array):
+        """Run MCRpy reconstruction starting from `initial_array`."""
+
+        descriptor_dict = self._make_descriptor()
+        initial_ms = self._array_to_microstructure(initial_array)
+
+        _, reconstructed_ms = self.mcrpy.reconstruct(
+            descriptor_dict=descriptor_dict,
+            desired_shape=self.target_shape,
+            settings=self.recon_settings,
+            initial_microstructure=initial_ms,
+        )
+
+        generated = reconstructed_ms.decode_phases(raw=True)
+        generated = np.asarray(generated)
+        generated = np.squeeze(generated)
+        return generated
+
+    def sample(self):
+
+        # Control first guess for reproducibility
+        first_guess = self.rng.random(self.target_shape) < self.target_vf
+
+        generated = self.reconstruct(first_guess)
+        generated = standardize_image(generated, shape=(self.nx, self.ny), dtype=bool)
         return generated

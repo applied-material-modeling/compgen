@@ -46,6 +46,15 @@ def unique_id(directory=".", prefix="", suffix=""):
         return uid
 
 
+class MCRpyInfoFilter(logging.Filter):
+    """Logging filter for MCRpy library (no info/debug log)"""
+
+    def filter(self, record):
+        if "mcrpy" in record.pathname.lower():
+            return record.levelno >= logging.WARNING
+        return True
+
+
 def run(*config_files):
     """Run a set of computations defined by input files
 
@@ -68,7 +77,17 @@ def run(*config_files):
             format="%(asctime)s %(levelname)s:%(message)s",
         )
 
+        # Apply filter for MCRpy
+        root = logging.getLogger()
+        if not any(
+            isinstance(f, MCRpyInfoFilter) for h in root.handlers for f in h.filters
+        ):
+            filt = MCRpyInfoFilter()
+            for h in root.handlers:
+                h.addFilter(filt)
+
     if log:
+        logger.info("")
         logger.info(
             "Running compgen with configuration files: %s", ", ".join(config_files)
         )
@@ -110,7 +129,11 @@ def run(*config_files):
 
     # The full iterator
     composite = zip(
-        generator, material_a, material_b, material_ab, range(config["number"])
+        range(config["number"]),
+        generator,
+        material_a,
+        material_b,
+        material_ab,
     )
 
     nthreads = config.get("nthreads", 1)
@@ -120,14 +143,14 @@ def run(*config_files):
     if nthreads == 1:
         results = list(
             map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], config),
+                lambda x: run_single(x[1], x[2], x[3], x[4], config),
                 composite,
             )
         )
     else:
         with multiprocess.Pool(config.get("nthreads", 1)) as pool:
             results = pool.map(
-                lambda x: run_single(x[0], x[1], x[2], x[3], config),
+                lambda x: run_single(x[1], x[2], x[3], x[4], config),
                 composite,
             )
 
@@ -202,6 +225,7 @@ def run_single(img, material_A, material_B, material_AB, config):
             return -1
         if log:
             logger.info("Problem %s: Mesh generation complete", uid)
+
         # Run
         if log:
             logger.info("Problem %s: Running executor", uid)

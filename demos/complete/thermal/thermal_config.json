@@ -3,7 +3,7 @@
     "sculpt": {
         "options": [
             "-df",
-            "1",
+            "0",
             "-S",
             "2",
             "-CS",
@@ -39,7 +39,10 @@
             }
         },
         {
-            "type": "gen.make_orthogonal"
+            "type": "filters.make_periodic",
+            "params": {
+                "margin": 2
+            }
         }
     ],
     "mesh": {

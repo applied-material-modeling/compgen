@@ -1,0 +1,44 @@
+{
+    "mesh_file": "mesh.exo",
+    "sculpt": {
+        "options": [
+            "-df",
+            "0",
+            "-S",
+            "2",
+            "-CS",
+            "4"
+        ]
+    },
+    "generator": {
+        "type": "gen.Reconstruction2D",
+        "params": {
+            "N": [
+                128,
+                128
+            ],
+            "target_path": "../demo_microstructures",
+            "descriptors": {
+                "TwoPointCorrelations": 1.0
+            },
+            "limit_to": 16
+        }
+    },
+    "filtering": [
+        {
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "filters.make_periodic"
+        }
+    ],
+    "mesh": {
+        "type": "mesh.generate_mesh",
+        "params": {
+            "run_sculpt": true
+        }
+    }
+}
