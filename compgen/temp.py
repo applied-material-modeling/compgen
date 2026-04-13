@@ -14,6 +14,8 @@ class TempDirectory:
         self.delete_after = options.get("storage", {}).get("delete_temp_dir", False)
 
     def __enter__(self):
+        if self.base_dir:
+            os.makedirs(self.base_dir, exist_ok=True)
         self.temp_dir = tempfile.mkdtemp(dir=self.base_dir)
         logger.info("Created temporary directory at %s", self.temp_dir)
         self.orig_cwd = os.getcwd()
