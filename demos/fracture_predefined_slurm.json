@@ -70,6 +70,6 @@
         "output_prefix": "slurm_result"
     },
     "storage": {
-        "temp_dir": "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/results"
+        "temp_dir": "results"
     }
 }

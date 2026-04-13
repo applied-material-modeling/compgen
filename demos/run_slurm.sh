@@ -11,10 +11,6 @@
 #SBATCH --reservation=debug
 
 
-# Load environment modules suitable for parallel cray 
-module purge
-module load PrgEnv-intel
-module swap cray-mpich/8.1.28.1 cray-mpich/8.1.25
 
 # Initialize the conda environment for python scripts
 source ~/miniconda3/etc/profile.d/conda.sh

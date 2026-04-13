@@ -59,7 +59,7 @@ eta = 2.2
 [Mesh]
   [fmg]
     type = FileMeshGenerator
-    file = '/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/mesh.exo'
+    file = 'mesh.exo'
   []
   [sidesets]
     type = SideSetsFromNormalsGenerator
@@ -321,7 +321,7 @@ eta = 2.2
 fracture_text = """[Mesh]
   [fmg]
     type = FileMeshGenerator
-    file = '/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/mesh.exo'
+    file = 'mesh.exo'
   []
   [sidesets]
     type = SideSetsFromNormalsGenerator
