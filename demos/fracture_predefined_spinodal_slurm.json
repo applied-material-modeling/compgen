@@ -1,0 +1,81 @@
+{
+    "number": 4,
+    "nthreads": 4,
+    "mesh_file": "mesh.exo",
+    "L": [
+        1.0,
+        1.0
+    ],
+    "generator": {
+        "type": "gen.SpinodalGenerator",
+        "params": {
+            "N": [
+                256,
+                256
+            ],
+            "vf": 0.5,
+            "l": 0.1,
+            "bandwidth": 0.2
+        }
+    },
+    "filtering": [
+        {
+            "type": "filters.mean_filter",
+            "params": {
+                "radius": 3
+            }
+        },
+        {
+            "type": "gen.make_orthogonal"
+        }
+    ],
+    "mesh": {
+        "type": "mesh.generate_mesh_2d",
+        "params": {
+            "run_sculpt": false
+        }
+    },
+    "executor": {
+        "type": "racoon.execute_racoon_simulations",
+        "physics": "2d/fracture"
+    },
+    "material_A": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 100000.0,
+            "poissons_ratio": 0.3,
+            "density": 5.0,
+            "l": 0.03,
+            "Gc": 1.0,
+            "psic": 2.64
+        }
+    },
+    "material_B": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {
+            "youngs_modulus": 100000.0,
+            "poissons_ratio": 0.3,
+            "density": 5.0,
+            "l": 0.03,
+            "Gc": 1.0,
+            "psic": 2.64
+        }
+    },
+    "material_AB": {
+        "type": "materials.FixedMaterialGenerator",
+        "params": {}
+    },
+    "fracture": {
+        "ncrack": 8,
+        "L_avg": 0.1,
+        "L_cov": 0.3
+    },
+    "output": {
+        "write_files": true,
+        "add_density": true,
+        "output_prefix": "slurm_result"
+    },
+    "storage": {
+        "temp_dir": "results"
+    }
+}
