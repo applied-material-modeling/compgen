@@ -312,8 +312,15 @@ def write_mesh_2d(img, fname, lx=1.0, ly=1.0):
             else:
                 mat_b.append(cell)
 
+    node_nums = np.arange(1, len(points) + 1)
+    tol = 1e-6
+    left = points[:, 0] < tol
+    right = points[:, 0] > lx - tol
+    bottom = points[:, 1] < tol
+    top = points[:, 1] > ly - tol
+
     with exodusii.File(fname, mode="w") as exo:
-        exo.put_init("2D Mesh", 2, len(points), len(mat_a) + len(mat_b), 2, 0, 0)
+        exo.put_init("2D Mesh", 2, len(points), len(mat_a) + len(mat_b), 2, 4, 0)
         exo.put_coord(points[:, 0], points[:, 1])
         exo.put_element_block(1, "QUAD", len(mat_a), 4)
         exo.put_element_block_name(1, "mat_a")
@@ -321,6 +328,15 @@ def write_mesh_2d(img, fname, lx=1.0, ly=1.0):
         exo.put_element_block(2, "QUAD", len(mat_b), 4)
         exo.put_element_block_name(2, "mat_b")
         exo.put_element_conn(2, np.array(mat_b))
+        
+        exo.put_node_set_param(1, len(node_nums[left]))
+        exo.put_node_set(1, node_nums[left])
+        exo.put_node_set_param(2, len(node_nums[right]))
+        exo.put_node_set(2, node_nums[right])
+        exo.put_node_set_param(3, len(node_nums[bottom]))
+        exo.put_node_set(3, node_nums[bottom])
+        exo.put_node_set_param(4, len(node_nums[top]))
+        exo.put_node_set(4, node_nums[top])
 
 
 def write_mesh_3d(img, fname, lx=1.0, ly=1.0, lz=1.0):

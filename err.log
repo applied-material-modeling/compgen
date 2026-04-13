@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/compgen/mesh.py", line 58, in generate_mesh_2d
+    write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
+  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/compgen/mesh.py", line 328, in write_mesh_2d
+    exo.put_element_block(2, "QUAD", len(mat_b), 4)
+  File "/Users/rghill/miniconda3/envs/racoon/lib/python3.10/site-packages/exodusii/file.py", line 21, in inner
+    return fun(self, *args, **kwargs)
+  File "/Users/rghill/miniconda3/envs/racoon/lib/python3.10/site-packages/exodusii/file.py", line 3320, in put_element_block
+    self.create_dimension(dim, nums[i])
+  File "/Users/rghill/miniconda3/envs/racoon/lib/python3.10/site-packages/exodusii/file.py", line 21, in inner
+    return fun(self, *args, **kwargs)
+  File "/Users/rghill/miniconda3/envs/racoon/lib/python3.10/site-packages/exodusii/file.py", line 533, in create_dimension
+    return nc.create_dimension(self.fh, name, value)
+  File "/Users/rghill/miniconda3/envs/racoon/lib/python3.10/site-packages/exodusii/nc.py", line 109, in create_dimension
+    fh.createDimension(name, value)
+  File "src/netCDF4/_netCDF4.pyx", line 2766, in netCDF4._netCDF4.Dataset.createDimension
+  File "src/netCDF4/_netCDF4.pyx", line 3768, in netCDF4._netCDF4.Dimension.__init__
+  File "src/netCDF4/_netCDF4.pyx", line 2164, in netCDF4._netCDF4._ensure_nc_success
+RuntimeError: NetCDF: NC_UNLIMITED size already in use

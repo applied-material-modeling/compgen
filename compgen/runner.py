@@ -174,6 +174,8 @@ def run_single(img, material_A, material_B, material_AB, config):
                     filter.get("type"),
                     str(e),
                 )
+            import traceback
+            traceback.print_exc()
             return -1
     if log:
         logger.info("Problem %s: Filtering complete", uid)
@@ -197,6 +199,8 @@ def run_single(img, material_A, material_B, material_AB, config):
         except Exception as e:
             if log:
                 logger.error("Problem %s: Error generating mesh: %s", uid, str(e))
+            import traceback
+            traceback.print_exc()
             return -1
         if log:
             logger.info("Problem %s: Mesh generation complete", uid)
@@ -220,6 +224,8 @@ def run_single(img, material_A, material_B, material_AB, config):
         except Exception as e:
             if log:
                 logger.error("Problem %s: Error running executor: %s", uid, str(e))
+            import traceback
+            traceback.print_exc()
             return -1
         if log:
             logger.info("Problem %s: Executor run complete", uid)
@@ -242,6 +248,8 @@ def run_single(img, material_A, material_B, material_AB, config):
                     config["output"]["grid_extractor"]["type"],
                     str(e),
                 )
+            import traceback
+            traceback.print_exc()
             return -1
 
     if log:
@@ -262,6 +270,8 @@ def run_single(img, material_A, material_B, material_AB, config):
                         i,
                         str(e),
                     )
+                import traceback
+                traceback.print_exc()
                 return -1
 
         if config.get("output", {}).get("add_density", False):
@@ -298,6 +308,8 @@ def run_single(img, material_A, material_B, material_AB, config):
                     i,
                     str(e),
                 )
+            import traceback
+            traceback.print_exc()
             return -1
 
         if log:

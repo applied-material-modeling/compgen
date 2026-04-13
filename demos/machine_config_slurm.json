@@ -20,7 +20,7 @@
         }
     },
     "racoon": {
-        "executable": "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/raccoon/raccoon-opt",
+        "executable": "/users/rghill/racoon/raccoon/raccoon-opt",
         "options": [],
         "environment": {
             "FI_PROVIDER": "tcp"
