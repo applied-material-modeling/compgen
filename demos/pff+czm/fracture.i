@@ -1,32 +1,12 @@
 [Mesh]
-  [base]
+  [fmg]
     type = FileMeshGenerator
-    file = '/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/mesh.exo'
-  []
-  [sidesets]
-    type = SideSetsFromNormalsGenerator
-    input = base
-    normals = '-1 0 0
-                1 0 0
-                0 -1 0
-                0 1 0'
-    new_boundary = 'left right bottom top'
+    file = 'gold/composite.msh'
   []
 []
 
 [Variables]
   [d]
-     [InitialCondition]
-       type = CohesiveDamageIC
-       d0 = 1
-       l = ${l}
-      x1 = '0.44078692 0.39129596 0.21462229 0.11871791 0.18965978 0.07105262 1.00000000 0.04380781 1.00000000 0.15540042'
-      y1 = '0.48033990 0.64808932 0.75567782 0.88646737 0.38807691 0.31602254 0.27676368 0.87025265 0.86773327 0.56711007'
-      x2 = '0.50687880 0.32529110 0.27266660 0.20455904 0.12671590 0.00000000 0.98023468 0.00000000 0.96182833 0.01031626'
-      y2 = '0.55356824 0.68151310 0.72239211 0.88046180 0.32628120 0.27676368 0.26584271 0.86773327 0.86553802 0.60828581'
-      z1 = '0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000'
-      z2 = '0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000 0.00000000'
-     []
   []
 []
 
@@ -81,13 +61,13 @@
     type = ADGenericConstantMaterial
     prop_names = 'l Gc psic'
     prop_values = '${l} ${Gc_A} ${psic_A}'
-    block = 'mat_a'
+    block = 'A'
   []
   [bulk_properties_B]
     type = ADGenericConstantMaterial
     prop_names = 'l Gc psic'
     prop_values = '${l} ${Gc_B} ${psic_B}'
-    block = 'mat_b'
+    block = 'B'
   []
   [crack_geometric]
     type = CrackGeometricFunction
@@ -115,14 +95,23 @@
 
 [Executioner]
   type = Transient
+
   solve_type = NEWTON
   petsc_options_iname = '-pc_type -snes_type'
   petsc_options_value = 'lu vinewtonrsls'
   automatic_scaling = true
+
   nl_rel_tol = 1e-08
   nl_abs_tol = 1e-10
+  nl_max_its = 50
+
   dt = 1e12
+
+  [Quadrature]
+    order = CONSTANT
+  []
 []
 
 [Outputs]
+  print_linear_residuals = false
 []

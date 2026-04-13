@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Submit this script with: sbatch run_slurm.sh
+
+#SBATCH --time=00:30:00
+#SBATCH -N 4
+#SBATCH --job-name=compgen_parallel
+#SBATCH --output=JOB_%j.out
+#SBATCH --error=JOB_%j.err
+#SBATCH --mail-user=rghill@lanl.gov
+#SBATCH --reservation=debug
+
+
+# Load environment modules suitable for parallel cray 
+module purge
+module load PrgEnv-intel
+module swap cray-mpich/8.1.28.1 cray-mpich/8.1.25
+
+# Initialize the conda environment for python scripts
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate racoon
+
+# The python script will use multiprocess internally to map jobs over srun --exclusive --exact
+python run_fracture_predefined_slurm.py
