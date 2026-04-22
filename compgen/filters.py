@@ -57,40 +57,54 @@ def make_orthogonal(img):
     return arr
 
 
-def make_periodic(img: np.ndarray, margin: int = 2) -> np.ndarray:
+def make_periodic(img: np.ndarray, margin: int = 2, shift: bool = True) -> np.ndarray:
     """
     Make periodic for Sculpt/MOOSE workflow.
 
     Overwrite the first and last `margin` layers of each axis with the layer at
     index `margin`, for 2D or 3D arrays.
+    If shift is True, check the circular shift that minimizes the overwrite cost.
 
-    A value `margin` = 2 seems to work consistently with Sculpt/MOOSE.
+    A value `margin = 2` seems to work consistently with Sculpt/MOOSE.
     """
-    arr = np.array(img, copy=True)
+    arr = np.array(img, copy=True, dtype=int)
 
     if arr.ndim not in (2, 3):
         raise RuntimeError(f"Expected 2D or 3D array, got {arr.ndim}D")
-
     if not isinstance(margin, int) or margin < 1:
         raise ValueError(f"margin must be a positive integer, got {margin}")
-
     if any(2 * margin >= s for s in arr.shape):
         raise ValueError(f"margin={margin} is too large for shape {arr.shape}")
 
-    # Loop over each axis
-    for ax in range(arr.ndim):
-        # Slice selecting the master layer at index = margin
+    def slices(ax):
         master = [slice(None)] * arr.ndim
-        master[ax] = slice(margin, margin + 1)
-
-        # Slice for lower and upper boundary block
         lo = [slice(None)] * arr.ndim
-        lo[ax] = slice(0, margin)
         hi = [slice(None)] * arr.ndim
+        master[ax] = slice(margin, margin + 1)
+        lo[ax] = slice(0, margin)
         hi[ax] = slice(-margin, None)
+        return tuple(master), tuple(lo), tuple(hi)
 
-        # Overwrite both boundary blocks using the master layer
-        arr[tuple(lo)] = arr[tuple(master)]
-        arr[tuple(hi)] = arr[tuple(master)]
+    def cost(a, ax):
+        master, lo, hi = slices(ax)
+        return np.sum(np.abs(a[hi] - a[master]) + np.abs(a[lo] - a[master]))
+
+    def apply(a, ax):
+        master, lo, hi = slices(ax)
+        a[lo] = a[master]
+        a[hi] = a[master]
+        return a
+
+    for ax in range(arr.ndim):
+        if shift:
+            best_shift = 0
+            best_cost = cost(arr, ax)
+            for i in range(1, arr.shape[ax]):
+                c = cost(np.roll(arr, shift=i, axis=ax), ax)
+                if c < best_cost:
+                    best_shift = i
+                    best_cost = c
+            arr = np.roll(arr, shift=best_shift, axis=ax)
+        arr = apply(arr, ax)
 
     return arr
