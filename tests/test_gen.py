@@ -8,6 +8,7 @@ from compgen.gen import (
     SpinodalGenerator,
     TwoPointGenerator,
     Reconstruction2D,
+    ParticleGenerator,
 )
 
 
@@ -95,3 +96,39 @@ def test_reconstruction_generator_shape_and_vf(path, descriptors):
 
     assert img.shape == final_shape
     assert np.isclose(img.mean(), gen.target_vf, atol=0.25)
+
+
+@pytest.mark.parametrize(
+    "N,vf,kind,shape_params,buffer",
+    [
+        ([64, 64], 0.3, "disks", {"size_m": 0.1}, 1.0),
+        (
+            [64, 64],
+            0.3,
+            "ellipses",
+            {"size_m": 0.1, "ratio_m": 2.0, "theta_m": 45.0},
+            0.5,
+        ),
+        ([64, 64], 0.3, "ellipses", {"size_m": 0.05, "ratio_m": 10.0}, None),
+        ([64, 64], 0.6, "laminae2", {"size_m": 0.1, "size_s": 0.05}, 0.4),
+        ([32, 32, 32], 0.2, "spheres", {"size_m": 0.4}, 0.7),
+        ([32, 32, 32], 0.1, "spheroids", {"size_m": 0.3, "ratio_m": 2.0}, 0.7),
+        ([32, 32, 32], 0.4, "fibers", {"size_m": 0.2}, 0.6),
+        ([32, 32, 32], 0.5, "laminae3", {"size_m": 0.1, "size_s": 0.05}, 1.0),
+    ],
+)
+def test_particle_generator_shape_and_vf(N, vf, kind, shape_params, buffer):
+    """Test that the ParticleGenerator produces images of the correct shape and
+    approximate volume fraction."""
+    gen = ParticleGenerator(
+        N=N,
+        vf=vf,
+        kind=kind,
+        shape_params=shape_params,
+        buffer=buffer,
+        random_seed=42,
+    )
+    img = gen.sample()
+    assert img.shape == tuple(N)
+    frac = img.mean()
+    assert np.isclose(frac, vf, atol=0.1) or np.isclose(frac, 1.0 - vf, atol=0.1)

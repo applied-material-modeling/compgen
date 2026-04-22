@@ -46,6 +46,16 @@ def unique_id(directory=".", prefix="", suffix=""):
         return uid
 
 
+def _logged_generator(gen, n):
+    for _ in range(n):
+        try:
+            yield next(gen)
+        except StopIteration:
+            return
+        except Exception as e:
+            logger.error("Error sampling from generator: %s", str(e))
+
+
 class MCRpyInfoFilter(logging.Filter):
     """Logging filter for MCRpy library (no info/debug log)"""
 
@@ -146,7 +156,7 @@ def run(*config_files):
     # The full iterator
     composite = zip(
         range(config["number"]),
-        generator,
+        _logged_generator(generator, config["number"]),
         material_a,
         material_b,
         material_ab,
