@@ -616,9 +616,10 @@ class ParticleGenerator(GenerativeStructureGenerator):
             set to 0.0. The `_s` (spread) key is optional; if absent, the parameter is fixed
             at `_m`.
 
-        `size_*`: mean / half-width of the particle's characteristic axis
-            length in normalised units [0, 1]. For spheroids this is the equatorial diameter;
-            the value is halved internally to get the semi-axis.
+        `size_*`: mean / half-width of the particle's characteristic axis length in normalised
+            units [0, 1] (`size_m` wrt unit cell, `size_s` wrt `size_m` for compatibility
+            with sample method logic). For spheroids this is the equatorial diameter; the value
+            is halved internally to get the semi-axis.
         `ratio_*`: mean / half-width of the aspect ratio (major/minor).
             Values > 1 give prolate shapes; < 1 oblate.
         `theta_*`: mean / half-width of the 2-D in-plane orientation angle
@@ -746,55 +747,46 @@ class ParticleGenerator(GenerativeStructureGenerator):
         """
         import torch  # pylint: disable=import-error
 
-        max_tries = 5
         rearrange = self.buffer is not None
 
         # Per-dimension caps: rearranging more particles becomes prohibitively slow.
         n_allowed = (100, 50, 20)
 
-        for _ in range(max_tries if rearrange else 1):
+        vf = self._sample_value(self.vf_input)
 
-            vf = self._sample_value(self.vf_input)
+        shape_params = {}
+        for key, value in self.shape_params.items():
+            if value is not None:
+                shape_params[key] = self._sample_value(value)
+            else:
+                shape_params[key] = None
 
-            shape_params = {}
-            for key, value in self.shape_params.items():
-                if value is not None:
-                    sampled_value = self._sample_value(value)
-                    shape_params[key] = sampled_value
-                else:
-                    shape_params[key] = None
+        particles = ParticleGenerator._initialize_particles(
+            pdim=self.pdim,
+            phi=vf,
+            shape_params=shape_params,
+            torch_rng=self.torch_rng,
+        )
 
-            particles = ParticleGenerator._initialize_particles(
-                pdim=self.pdim,
-                phi=vf,
-                shape_params=shape_params,
-                torch_rng=self.torch_rng,
-            )
-
-            # Single particle or no rearrangement needed: skip rearrangement.
-            if not rearrange or particles.shape[0] == 1:
-                break
-
-            # Too many particles: resample with a smaller vf or size draw.
+        if rearrange and particles.shape[0] > 1:
             if particles.shape[0] > n_allowed[self.pdim - 1]:
-                continue
+                raise RuntimeError("Too many particles needed for this sample.")
+
+            buffer = self._sample_value(self.buffer)
 
             particles, converged = ParticleGenerator._rearrange_particles(
                 particles=particles,
                 opt_i=self.opt_i,
-                buffer=self.buffer,
+                buffer=buffer,
                 dt=self.dt,
                 max_iter=self.max_iter,
                 tol=self.tol,
             )
 
-            if converged:
-                break
-
-        else:
-            raise RuntimeError(
-                f"Exceeded maximum sampling attempts ({max_tries}) for particle generation."
-            )
+            if not converged:
+                raise RuntimeError(
+                    f"Rearrangement failed to reach tolerance within {self.max_iter} iterations."
+                )
 
         img = ParticleGenerator._rasterize_particles(
             dim=self.idim, pdim=self.pdim, particles=particles, res=self.res
@@ -841,7 +833,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         else:
             raise ValueError("args must include size_m")
 
-        size_s = (shape_params.get("size_s") or 0.0) / 2.0
+        size_s = (shape_params.get("size_s") or 0.0) * size_m
         ratio_m = shape_params.get("ratio_m") or 1.0
         ratio_s = shape_params.get("ratio_s") or 0.0
         theta_m, theta_s = get_angle("theta_m", "theta_s")
