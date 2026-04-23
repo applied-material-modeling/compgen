@@ -661,7 +661,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         self.random_seed = random_seed
 
         try:
-            import torch
+            import torch  # pylint: disable=import-error
         except ImportError as e:
             raise RuntimeError(
                 "ParticleGenerator requires PyTorch. "
@@ -744,7 +744,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         Returns:
             np.ndarray: 2D/3D bool array of shape `self.N`.
         """
-        import torch
+        import torch  # pylint: disable=import-error
 
         max_tries = 5
         rearrange = self.buffer is not None
@@ -817,7 +817,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         device: str | torch.device = "cpu",
         torch_rng: torch.Generator | None = None,
     ):
-        import torch
+        import torch  # pylint: disable=import-error
 
         if dtype is None:
             dtype = torch.float64
@@ -929,7 +929,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
     # pylint: disable=too-many-statements
     @staticmethod
     def _overlap_energy(particles, buffer, eps=1e-12):
-        import torch
+        import torch  # pylint: disable=import-error
 
         p = particles
         n = p.shape[0]
@@ -1049,7 +1049,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
 
     @staticmethod
     def _rearrange_particles(particles, opt_i, buffer, dt, max_iter, tol=1e-9):
-        import torch
+        import torch  # pylint: disable=import-error
 
         opt_i = list(range(opt_i))
         p = particles.detach().clone().requires_grad_(True)
