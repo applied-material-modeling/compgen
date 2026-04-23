@@ -46,14 +46,26 @@ def unique_id(directory=".", prefix="", suffix=""):
         return uid
 
 
-def _logged_generator(gen, n):
-    for _ in range(n):
+def _retry_generator(gen, n, max_attempts_factor=3):
+    max_attempts = max_attempts_factor * n
+    count = 0
+    for _ in range(max_attempts):
+        if count == n:
+            return
         try:
             yield next(gen)
+            count += 1
         except StopIteration:
             return
         except Exception as e:
             logger.error("Error sampling from generator: %s", str(e))
+    if count < n:
+        logger.error(
+            "Gave up after %d attempts: only %d/%d samples generated.",
+            max_attempts,
+            count,
+            n,
+        )
 
 
 class MCRpyInfoFilter(logging.Filter):
@@ -156,7 +168,7 @@ def run(*config_files):
     # The full iterator
     composite = zip(
         range(config["number"]),
-        _logged_generator(generator, config["number"]),
+        _retry_generator(generator, config["number"]),
         material_a,
         material_b,
         material_ab,
