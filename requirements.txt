@@ -9,4 +9,3 @@ gstools
 multiprocess
 pytest
 pyvista
-torch
