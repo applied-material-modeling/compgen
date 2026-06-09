@@ -1,0 +1,61 @@
+A = 1; // side length
+a = 0.1; // band offset
+b = (A-2*a)/2;
+e = 0.01; // element size
+
+Point(1) = {0, 0, 0, e};
+Point(2) = {0, a, 0, e};
+Point(3) = {0, A-a, 0, e};
+Point(4) = {0, A, 0, e};
+Point(5) = {a, A, 0, e};
+Point(6) = {A-a, A, 0, e};
+Point(7) = {A, A, 0, e};
+Point(8) = {A, A-a, 0, e};
+Point(9) = {A, a, 0, e};
+Point(10) = {A, 0, 0, e};
+Point(11) = {A-a, 0, 0, e};
+Point(12) = {a, 0, 0, e};
+Point(13) = {b, a+b, 0, e};
+Point(14) = {a+b, A-b, 0, e};
+Point(15) = {A-b, a+b, 0, e};
+Point(16) = {a+b, b, 0, e};
+
+Line(1) = {1, 2};
+Line(2) = {2, 3};
+Line(3) = {3, 4};
+Line(4) = {4, 5};
+Line(5) = {5, 6};
+Line(6) = {6, 7};
+Line(7) = {7, 8};
+Line(8) = {8, 9};
+Line(9) = {9, 10};
+Line(10) = {10, 11};
+Line(11) = {11, 12};
+Line(12) = {12, 1};
+Line(13) = {2, 13};
+Line(14) = {13, 3};
+Line(15) = {5, 14};
+Line(16) = {14, 6};
+Line(17) = {8, 15};
+Line(18) = {15, 9};
+Line(19) = {11, 16};
+Line(20) = {16, 12};
+
+Line Loop(1) = {1, 13, 14, 3, 4, 15, 16, 6, 7, 17, 18, 9, 10, 19, 20, 12};
+Line Loop(2) = {2, -14, -13};
+Line Loop(3) = {5, -16, -15};
+Line Loop(4) = {8, -18, -17};
+Line Loop(5) = {11, -20, -19};
+
+Plane Surface(1) = {1};
+Plane Surface(2) = {2};
+Plane Surface(3) = {3};
+Plane Surface(4) = {4};
+Plane Surface(5) = {5};
+
+Physical Surface("A") = {1};
+Physical Surface("B") = {2, 3, 4, 5};
+Physical Line("top") = {4, 5, 6};
+Physical Line("bottom") = {10, 11, 12};
+Physical Line("left") = {1, 2, 3};
+Physical Line("right") = {7, 8, 9};

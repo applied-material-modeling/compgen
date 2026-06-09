@@ -29,7 +29,7 @@
     "mpi": {
         "executable": "srun",
         "rank_command": "-n",
-        "ranks": "16",
+        "ranks": "32",
         "extra_args": [
             "--exclusive",
             "--exact"

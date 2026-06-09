@@ -1,7 +1,14 @@
 *.h5
+*.log
+*.gif
+*.vtu
+*.pvtu
+*.png
+*.pdf
 .DS_Store
 .vscode
 *.swp
 __pycache__
-demo.log
 demo_output
+results/
+results_verified/

@@ -9,6 +9,6 @@ if __name__ == "__main__":
     # distributed over a SLURM allocation.
     # units are mm-MPa-s
 
-    results = runner.run("fracture_predefined_spinodal_slurm.json", "machine_config_slurm.json")
+    results = runner.run("fracture_predefined_slurm.json", "machine_config_slurm.json")
 
     print("Completed parallel simulations successfully. Results available in result folder.")

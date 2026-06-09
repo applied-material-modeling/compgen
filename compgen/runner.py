@@ -180,6 +180,18 @@ def run_single(img, material_A, material_B, material_AB, config):
     if log:
         logger.info("Problem %s: Filtering complete", uid)
 
+    # # DEBUG: Output image of the spinodal structure
+    # import matplotlib.pyplot as plt
+    # plt.imshow(img, cmap='gray')
+    # plt.title("Spinodal Structure")
+    # plt.savefig(f"{uid}_spinodal_debug.png")
+    # plt.close()
+    # if log:
+    #     logger.info("Saved spinodal debug image to %s_spinodal_debug.png", uid)
+    
+    # # DEBUG: Stop prematurely so it doesn't run the expensive meshing/simulation
+    # return 0
+
     # Move to our temp directory
     with temp.TempDirectory(config) as _:
         # Generate mesh

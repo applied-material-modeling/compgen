@@ -15,7 +15,20 @@
             "Gc",
             "psic"
         ],
-        "interface_material_properties": [],
+        "interface_material_properties": [
+            "GI_c",
+            "GII_c",
+            "normal_strength",
+            "shear_strength",
+            "eta"
+        ],
+        "interface_substitutions": [
+            "GI_c",
+            "GII_c",
+            "N",
+            "T",
+            "eta"
+        ],
         "material_A_substitutions": [
             "E_A",
             "nu_A",

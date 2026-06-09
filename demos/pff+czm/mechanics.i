@@ -61,9 +61,18 @@ eta = 2.2
     type = FileMeshGenerator
     file = 'gold/composite.msh'
   []
+  [sidesets]
+    type = SideSetsFromNormalsGenerator
+    input = fmg
+    normals = '-1 0 0
+                1 0 0
+                0 -1 0
+                0 1 0'
+    new_boundary = 'left right bottom top'
+  []
   [bmb]
     type = BreakMeshByBlockGenerator
-    input = 'fmg'
+    input = sidesets
     add_interface_on_two_sides = true
     block_pairs = 'A B'
     interface_name = 'interface'
@@ -114,6 +123,7 @@ eta = 2.2
       property = damage
       boundary = 'interface'
       execute_on = 'TIMESTEP_END'
+      check_boundary_restricted = false
     []
   []
   [psie_active]
@@ -269,4 +279,12 @@ eta = 2.2
   exodus = true
   csv = true
   print_linear_residuals = false
+
+  [checkpoint]
+    type = Checkpoint
+    execute_on = 'FINAL'
+    wall_time_interval = 10000000
+    num_files = 999999
+  []
+
 []

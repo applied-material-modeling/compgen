@@ -1,6 +1,6 @@
 {
-    "number": 4,
-    "nthreads": 4,
+    "number": 1,
+    "nthreads": 1,
     "mesh_file": "mesh.exo",
     "L": [
         1.0,
@@ -36,28 +36,34 @@
     "material_A": {
         "type": "materials.FixedMaterialGenerator",
         "params": {
-            "youngs_modulus": 100000.0,
-            "poissons_ratio": 0.3,
+            "youngs_modulus": 68000.0,
+            "poissons_ratio": 0.35,
             "density": 5.0,
-            "l": 0.03,
-            "Gc": 1.0,
-            "psic": 2.64
+            "l": 0.015,
+            "Gc": 20.0,
+            "psic": 90.0
         }
     },
     "material_B": {
         "type": "materials.FixedMaterialGenerator",
         "params": {
-            "youngs_modulus": 100000.0,
-            "poissons_ratio": 0.3,
+            "youngs_modulus": 401000.0,
+            "poissons_ratio": 0.19,
             "density": 5.0,
-            "l": 0.03,
-            "Gc": 1.0,
-            "psic": 2.64
+            "l": 0.015,
+            "Gc": 0.036,
+            "psic": 0.3
         }
     },
     "material_AB": {
         "type": "materials.FixedMaterialGenerator",
-        "params": {}
+        "params": {
+            "GI_c": 0.00228,
+            "GII_c": 0.00097,
+            "normal_strength": 378.0,
+            "shear_strength": 97.0,
+            "eta": 1.5
+        }
     },
     "fracture": {
         "ncrack": 8,

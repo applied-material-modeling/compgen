@@ -69,6 +69,40 @@ def generate_mesh_2d(
             raise ValueError("Generated mesh did not pass quality check.")
 
 
+def generate_mesh_2d_tri(
+    img, fname, L=(1.0, 1.0), settings={}, run_sculpt=False, quality_check=True
+):
+    """Run the entire process of generating a 2D triangular mesh for an image and write it to an exodus file.
+
+    This function will access a temp directory to store intermediate files, but copy the final
+    mesh to the cwd.
+
+    Args:
+        img (2D array): Binary image where 1 indicates material A
+        fname (str): Output filename for the mesh.
+
+    Keyword Args:
+        L (tuple): Lengths of the domain in each direction.
+        settings (dict): Global settings dict
+        run_sculpt (bool): Whether to sculpt the mesh (Not supported for triangles)
+    """
+    assert len(img.shape) == 2, "Input image must be 2D."
+
+    lx, ly = L
+
+    with temp.TempDirectory(settings) as (cwd, _):
+        write_mesh_2d_tri(img, "temp_mesh.e", lx=lx, ly=ly)
+        if run_sculpt:
+            raise NotImplementedError("run_sculpt is not supported for triangular meshes.")
+        else:
+            os.rename("temp_mesh.e", os.path.join(cwd, fname))
+
+    if quality_check:
+        if not mesh_quality(fname):
+            raise ValueError("Generated triangular mesh did not pass quality check.")
+
+
+
 def generate_mesh_3d(
     img, fname, L=(1.0, 1.0, 1.0), settings={}, run_sculpt=True, quality_check=True
 ):
@@ -303,9 +337,9 @@ def write_mesh_2d(img, fname, lx=1.0, ly=1.0):
         for ie in range(nx):
             cell = [
                 ie * (nx + 1) + je + 1,
-                ie * (nx + 1) + je + 1 + 1,
-                (ie + 1) * (nx + 1) + je + 1 + 1,
                 (ie + 1) * (nx + 1) + je + 1,
+                (ie + 1) * (nx + 1) + je + 1 + 1,
+                ie * (nx + 1) + je + 1 + 1,
             ]
             if img[ie, je]:
                 mat_a.append(cell)
@@ -328,6 +362,78 @@ def write_mesh_2d(img, fname, lx=1.0, ly=1.0):
         exo.put_element_block(2, "QUAD", len(mat_b), 4)
         exo.put_element_block_name(2, "mat_b")
         exo.put_element_conn(2, np.array(mat_b))
+        
+        exo.put_node_set_param(1, len(node_nums[left]))
+        exo.put_node_set(1, node_nums[left])
+        exo.put_node_set_param(2, len(node_nums[right]))
+        exo.put_node_set(2, node_nums[right])
+        exo.put_node_set_param(3, len(node_nums[bottom]))
+        exo.put_node_set(3, node_nums[bottom])
+        exo.put_node_set_param(4, len(node_nums[top]))
+        exo.put_node_set(4, node_nums[top])
+
+
+def write_mesh_2d_tri(img, fname, lx=1.0, ly=1.0):
+    """Write a 2D triangular mesh file from a binary image.
+
+    Args:
+        img (2D array): Binary image where 1 indicates material A
+        fname (str): Output filename for the mesh.
+
+    Keyword Args:
+        lx (float): Length of the domain in x-direction.
+        ly (float): Length of the domain in y-direction.
+    """
+    nx, ny = img.shape
+
+    x_vals = np.linspace(0, lx, nx + 1)
+    y_vals = np.linspace(0, ly, ny + 1)
+
+    X, Y = np.meshgrid(x_vals, y_vals, indexing="ij")
+    points = np.vstack([X.flatten(), Y.flatten()]).T
+
+    mat_a = []
+    mat_b = []
+    for je in range(ny):
+        for ie in range(nx):
+            n0 = ie * (ny + 1) + je + 1
+            n1 = (ie + 1) * (ny + 1) + je + 1
+            n2 = (ie + 1) * (ny + 1) + je + 1 + 1
+            n3 = ie * (ny + 1) + je + 1 + 1
+            
+            # Alternate the diagonal cut to prevent checkerboarding stress patterns (Union Jack mesh)
+            if (ie + je) % 2 == 0:
+                tri1 = [n0, n1, n2]
+                tri2 = [n0, n2, n3]
+            else:
+                tri1 = [n0, n1, n3]
+                tri2 = [n1, n2, n3]
+
+            if img[ie, je]:
+                mat_a.append(tri1)
+                mat_a.append(tri2)
+            else:
+                mat_b.append(tri1)
+                mat_b.append(tri2)
+
+    node_nums = np.arange(1, len(points) + 1)
+    tol = 1e-6
+    left = points[:, 0] < tol
+    right = points[:, 0] > lx - tol
+    bottom = points[:, 1] < tol
+    top = points[:, 1] > ly - tol
+
+    with exodusii.File(fname, mode="w") as exo:
+        exo.put_init("2D Triangular Mesh", 2, len(points), len(mat_a) + len(mat_b), 2, 4, 0)
+        exo.put_coord(points[:, 0], points[:, 1])
+        if len(mat_a) > 0:
+            exo.put_element_block(1, "TRI", len(mat_a), 3)
+            exo.put_element_block_name(1, "mat_a")
+            exo.put_element_conn(1, np.array(mat_a))
+        if len(mat_b) > 0:
+            exo.put_element_block(2, "TRI", len(mat_b), 3)
+            exo.put_element_block_name(2, "mat_b")
+            exo.put_element_conn(2, np.array(mat_b))
         
         exo.put_node_set_param(1, len(node_nums[left]))
         exo.put_node_set(1, node_nums[left])

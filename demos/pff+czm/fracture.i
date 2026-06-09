@@ -47,14 +47,14 @@
   []
 []
 
-[BCs]
-  [Periodic]
-    [x]
-      auto_direction = 'x y'
-      variable = 'd'
-    []
-  []
-[]
+#[BCs]
+#  [Periodic]
+#    [x]
+#      auto_direction = 'x y'
+#      variable = 'd'
+#    []
+#  []
+#[]
 
 [Materials]
   [bulk_properties_A]

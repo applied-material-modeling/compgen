@@ -1,27 +1,29 @@
-E_A = 10000
-nu_A = 0.2
+E_A = 68000.0
+nu_A = 0.35
 K_A = '${fparse E_A/3/(1-2*nu_A)}'
 G_A = '${fparse E_A/2/(1+nu_A)}'
 
-E_B = 20000
-nu_B = 0.3
+E_B = 401000.0
+nu_B = 0.19
 K_B = '${fparse E_B/3/(1-2*nu_B)}'
 G_B = '${fparse E_B/2/(1+nu_B)}'
 
-Gc_A = 0.8
-psic_A = 1.87
+Gc_A = 20.0
+psic_A = 90.0
 
-Gc_B = 1
-psic_B = 1.96
+Gc_B = 0.036
+psic_B = 0.3
 
-l = 0.03
+l = 0.015
 
 # interface
-GI_c = 2
-GII_c = 1
-N = 35
-T = 15
-eta = 2.2
+GI_c = 0.00228
+GII_c = 0.00097
+N = 378.0
+T = 97.0
+# original N = 7560.0
+# original T = 1940.0
+eta = 1.5
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -72,7 +74,7 @@ eta = 2.2
   []
   [bmb]
     type = BreakMeshByBlockGenerator
-    input = 'sidesets'
+    input = sidesets
     add_interface_on_two_sides = true
     block_pairs = 'mat_a mat_b'
     interface_name = 'interface'
@@ -157,27 +159,32 @@ eta = 2.2
 []
 
 [AuxKernels]
-   [stress_xx_aux]
-     type = ADRankTwoAux
-     variable = stress_xx
-     rank_two_tensor = stress
-     index_i = 0
-     index_j = 0
-   []
-   [stress_yy_aux]
-     type = ADRankTwoAux
-     variable = stress_yy
-     rank_two_tensor = stress
-     index_i = 1
-     index_j = 1
-   []
-   [stress_xy_aux]
-     type = ADRankTwoAux
-     variable = stress_xy
-     rank_two_tensor = stress
-     index_i = 0
-     index_j = 1
-   []
+  [stress_xx_aux]
+    type = ADRankTwoAux
+    variable = stress_xx
+    rank_two_tensor = stress
+    index_i = 0
+    index_j = 0
+    execute_on = 'TIMESTEP_END'
+  []
+
+  [stress_yy_aux]
+    type = ADRankTwoAux
+    variable = stress_yy
+    rank_two_tensor = stress
+    index_i = 1
+    index_j = 1
+    execute_on = 'TIMESTEP_END'
+  []
+
+  [stress_xy_aux]
+    type = ADRankTwoAux
+    variable = stress_xy
+    rank_two_tensor = stress
+    index_i = 0
+    index_j = 1
+    execute_on = 'TIMESTEP_END'
+  []
 []
 
 [Kernels]
@@ -300,14 +307,14 @@ eta = 2.2
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
   petsc_options_value = 'lu       superlu_dist'
   dt = 2e-4
-  end_time = 0.001
+  end_time = 5e-2
   nl_abs_tol = 1e-08
   nl_rel_tol = 1e-06
   automatic_scaling = true
   reuse_preconditioner = true
 
   [Quadrature]
-    order = CONSTANT
+    order = SECOND
   []
 []
 
@@ -315,4 +322,11 @@ eta = 2.2
   exodus = true
   csv = true
   print_linear_residuals = false
+
+  [checkpoint]
+    type = Checkpoint
+    execute_on = 'FINAL'
+    wall_time_interval = 10000000
+    num_files = 999999
+  []
 []

@@ -15,8 +15,9 @@ class TempDirectory:
 
     def __enter__(self):
         if self.base_dir:
+            self.base_dir = os.path.abspath(self.base_dir)
             os.makedirs(self.base_dir, exist_ok=True)
-        self.temp_dir = tempfile.mkdtemp(dir=self.base_dir)
+        self.temp_dir = os.path.abspath(tempfile.mkdtemp(dir=self.base_dir))
         logger.info("Created temporary directory at %s", self.temp_dir)
         self.orig_cwd = os.getcwd()
         os.chdir(self.temp_dir)
