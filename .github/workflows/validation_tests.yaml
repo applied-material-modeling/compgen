@@ -21,7 +21,7 @@ jobs:
               - conda-forge
             channel_priority: flexible
           init-shell: bash
-          create-args: moose-dev=2026.02.20=mpich
+          create-args: moose-dev=2026.02.20=mpich pip
         continue-on-error: false
 
       - name: Install dependencies
