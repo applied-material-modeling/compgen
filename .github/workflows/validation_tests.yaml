@@ -26,9 +26,7 @@ jobs:
 
       - name: Install dependencies
         shell: bash -el {0}
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: pip install -e .[dev]
       
       - name: Checkout MOOSE
         shell: bash -el {0}

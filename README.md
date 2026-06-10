@@ -5,8 +5,8 @@ compgen is a Python toolkit for generating simulation data for two phase composi
 
 ## Install
 1. (Optional) Create and activate a virtual environment.
-2. Install dependencies:
-   - `pip install -r requirements.txt`
+2. Install the package:
+   - `pip install -e .`
 3. Install the mesher and physics codes you want to use:
     1. [MOOSE](https://mooseframework.inl.gov/)
     2. [SCULPT](https://www.sandia.gov/files/cubit/documents/SculptSANDReport.pdf)
