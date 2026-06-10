@@ -21,14 +21,12 @@ jobs:
               - conda-forge
             channel_priority: flexible
           init-shell: bash
-          create-args: moose-dev=2026.02.20=mpich
+          create-args: moose-dev=2026.02.20=mpich pip
         continue-on-error: false
 
       - name: Install dependencies
         shell: bash -el {0}
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: pip install -e .[dev]
       
       - name: Checkout MOOSE
         shell: bash -el {0}

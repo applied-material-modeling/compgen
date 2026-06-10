@@ -8,9 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: pip install -e .[dev]
       - name: Run black
         run: black --check .
   tests:
@@ -18,10 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          pip install mcrpy
+        run: pip install -e .[dev,mcrpy]
       - name: Run tests
         run: pytest --ignore=tests/verification
   lint:
@@ -29,8 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: pip install -e .[dev]
       - name: Run pylint on module and tests
         run: pylint compgen tests
