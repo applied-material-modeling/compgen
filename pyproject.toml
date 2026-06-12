@@ -31,3 +31,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["compgen*"]
+
+[tool.setuptools.package-data]
+compgen = ["physics/**/*.i", "physics/**/*.json"]
