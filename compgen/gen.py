@@ -1091,6 +1091,8 @@ class ParticleGenerator(GenerativeStructureGenerator):
         return p.detach(), converged
 
     @staticmethod
+
+    @staticmethod
     def _rasterize_particles(dim, pdim, particles, res, dtype=bool):
         particles = np.asarray(particles, dtype=float)
 
@@ -1099,16 +1101,23 @@ class ParticleGenerator(GenerativeStructureGenerator):
         grids = np.meshgrid(*axes, indexing="ij")
         eps = 1e-12
 
-        # All branches add a trailing particle axis so the ellipsoid test runs
-        # over all particles simultaneously; np.any then collapses that axis.
+        if pdim == 1:
+            a_max = float(particles[:, 1].max())
+        elif pdim == 2:
+            a_max = float(particles[:, 3:5].max())
+        else:
+            a_max = float(particles[:, 5:7].max())
+        stencil = int(np.ceil(a_max))
+        off = range(-stencil, stencil + 1)
+
+        inside = np.zeros(shape, dtype=bool)
+
         if pdim == 1:
             x = particles[:, 0]
             a = particles[:, 1]
-
-            dx = grids[0][..., None] - x  # (*shape, P)
-            dx -= np.round(dx)
-
-            ell = (dx / (a + eps)) ** 2
+            for ox in off:
+                dx = grids[0][..., None] - (x + ox)
+                inside |= np.any((dx / (a + eps)) ** 2 <= 1.0, axis=-1)
 
         elif pdim == 2:
             x = particles[:, 0]
@@ -1116,19 +1125,16 @@ class ParticleGenerator(GenerativeStructureGenerator):
             theta = particles[:, 2]
             a = particles[:, 3]
             b = particles[:, 4]
-
-            dx = grids[0][..., None] - x  # (*shape, P)
-            dy = grids[1][..., None] - y
-            dx -= np.round(dx)
-            dy -= np.round(dy)
-
             c = np.cos(theta)
             s = np.sin(theta)
-
-            q1 = c * dx + s * dy
-            q2 = -s * dx + c * dy
-
-            ell = (q1 / (a + eps)) ** 2 + (q2 / (b + eps)) ** 2
+            for ox in off:
+                for oy in off:
+                    dx = grids[0][..., None] - (x + ox)
+                    dy = grids[1][..., None] - (y + oy)
+                    q1 = c * dx + s * dy
+                    q2 = -s * dx + c * dy
+                    ell = (q1 / (a + eps)) ** 2 + (q2 / (b + eps)) ** 2
+                    inside |= np.any(ell <= 1.0, axis=-1)
 
         else:  # pdim == 3
             x = particles[:, 0]
@@ -1138,42 +1144,31 @@ class ParticleGenerator(GenerativeStructureGenerator):
             el = particles[:, 4]
             a = particles[:, 5]
             b = particles[:, 6]
-
-            dx = grids[0][..., None] - x  # (*shape, P)
-            dy = grids[1][..., None] - y
-            dz = grids[2][..., None] - z
-            dx -= np.round(dx)
-            dy -= np.round(dy)
-            dz -= np.round(dz)
-
-            ca = np.cos(az)
-            sa = np.sin(az)
-            ce = np.cos(el)
-            se = np.sin(el)
-
-            # Principal axis u for each particle: (P, 3)
+            ca, sa = np.cos(az), np.sin(az)
+            ce, se = np.cos(el), np.sin(el)
             u = np.stack([ce * ca, ce * sa, se], axis=-1)
-
-            # Gram-Schmidt: pick a reference axis not parallel to u, then
-            # build orthonormal frame (u, v, w) vectorised over particles.
             ref = np.where(
                 (np.abs(u[:, 0]) < 0.9)[:, None],
                 np.array([[1.0, 0.0, 0.0]]),
                 np.array([[0.0, 1.0, 0.0]]),
-            )  # (P, 3)
+            )
             v = np.cross(u, ref)
             v /= np.linalg.norm(v, axis=-1, keepdims=True) + eps
             w = np.cross(u, v)
             w /= np.linalg.norm(w, axis=-1, keepdims=True) + eps
+            for ox in off:
+                for oy in off:
+                    for oz in off:
+                        dx = grids[0][..., None] - (x + ox)
+                        dy = grids[1][..., None] - (y + oy)
+                        dz = grids[2][..., None] - (z + oz)
+                        q1 = dx * u[:, 0] + dy * u[:, 1] + dz * u[:, 2]
+                        q2 = dx * v[:, 0] + dy * v[:, 1] + dz * v[:, 2]
+                        q3 = dx * w[:, 0] + dy * w[:, 1] + dz * w[:, 2]
+                        ell = (q1 / (a + eps)) ** 2 + (q2 / (b + eps)) ** 2 + (q3 / (b + eps)) ** 2
+                        inside |= np.any(ell <= 1.0, axis=-1)
 
-            # Project displacements onto frame; u[:, i] broadcasts over *shape.
-            q1 = dx * u[:, 0] + dy * u[:, 1] + dz * u[:, 2]
-            q2 = dx * v[:, 0] + dy * v[:, 1] + dz * v[:, 2]
-            q3 = dx * w[:, 0] + dy * w[:, 1] + dz * w[:, 2]
-
-            ell = (q1 / (a + eps)) ** 2 + (q2 / (b + eps)) ** 2 + (q3 / (b + eps)) ** 2
-
-        inside = np.any(ell <= 1.0, axis=-1)
         mask = np.zeros(shape, dtype=dtype)
         mask[inside] = True
         return mask
+
