@@ -1091,7 +1091,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
         return p.detach(), converged
 
     @staticmethod
-
     @staticmethod
     def _rasterize_particles(dim, pdim, particles, res, dtype=bool):
         particles = np.asarray(particles, dtype=float)
@@ -1165,10 +1164,176 @@ class ParticleGenerator(GenerativeStructureGenerator):
                         q1 = dx * u[:, 0] + dy * u[:, 1] + dz * u[:, 2]
                         q2 = dx * v[:, 0] + dy * v[:, 1] + dz * v[:, 2]
                         q3 = dx * w[:, 0] + dy * w[:, 1] + dz * w[:, 2]
-                        ell = (q1 / (a + eps)) ** 2 + (q2 / (b + eps)) ** 2 + (q3 / (b + eps)) ** 2
+                        ell = (
+                            (q1 / (a + eps)) ** 2
+                            + (q2 / (b + eps)) ** 2
+                            + (q3 / (b + eps)) ** 2
+                        )
                         inside |= np.any(ell <= 1.0, axis=-1)
 
         mask = np.zeros(shape, dtype=dtype)
         mask[inside] = True
         return mask
 
+
+class VoronoiGenerator(GenerativeStructureGenerator):
+    """Generate periodic Voronoi tessellations with thick grain boundaries.
+
+    Random seed points partition the unit cell into Voronoi grains.
+    The tessellation is exactly periodic: distances use the minimum-image
+    convention on the unit torus, so grains and boundaries wrap seamlessly across
+    every face.
+
+    Args:
+        N (list[int]): Grid resolution in each dimension (length 2 or 3).
+        grain_size (float or list): Characteristic grain diameter in normalised
+            units ``[0, 1]`` (relative to the unit cell), or a ``[min, max]``
+            range sampled per call. Smaller values give more, finer grains; the
+            seed count is derived as ``round((1 / grain_size) ** dim)``.
+        thickness (float or list): Grain-boundary thickness as a fraction of the
+            grain size, or a ``[min, max]`` range. Near a flat Voronoi facet the
+            full boundary width is approximately ``thickness * grain_size`` in
+            normalised units.
+
+    Keyword Args:
+        lloyd_iter (int): Number of Lloyd relaxation iterations applied to the
+            seeds before tessellation. ``0`` (default) leaves seeds fully random
+            (irregular Poisson-Voronoi grains with a broad size distribution); a
+            few iterations (e.g. 3-10) yield progressively more equiaxed,
+            uniformly sized grains.
+        invert (bool): If ``True`` (default) randomly swap the two phases so the
+            boundary network is not always the same phase. Set ``False`` for a
+            deterministic convention (grains ``True``, boundaries ``False``).
+        random_seed (int): Seed for the random number generator. Defaults to None.
+    """
+
+    def __init__(
+        self,
+        N,
+        grain_size,
+        thickness,
+        lloyd_iter: int = 0,
+        invert: bool = True,
+        random_seed=None,
+    ):
+        super().__init__(N, random_seed=random_seed)
+        if self.dim not in (2, 3):
+            raise ValueError(
+                f"VoronoiGenerator supports 2D or 3D only, got dim={self.dim}."
+            )
+        self.grain_size_input = grain_size
+        self.thickness_input = thickness
+        self.lloyd_iter = lloyd_iter
+        self.invert = invert
+
+    def sample(self):
+        """Sample grain size and boundary thickness, build the periodic
+        tessellation, and classify grains vs. boundaries.
+
+        Returns:
+            np.ndarray: 2D/3D bool array of shape `self.N`.
+        """
+        grain_size = self._sample_value(self.grain_size_input)
+        thickness = self._sample_value(self.thickness_input)
+
+        n_grains = max(2, int(round((1.0 / grain_size) ** self.dim)))
+
+        # Seeds and cell-center coordinates, both in normalised units [0, 1).
+        seeds = self.rng.random((n_grains, self.dim))
+        axes = [(np.arange(n) + 0.5) / n for n in self.N]
+        grids = np.meshgrid(*axes, indexing="ij")
+
+        if self.lloyd_iter > 0:
+            seeds = self._relax_seeds(seeds, grids, self.lloyd_iter)
+
+        d1, d2 = self._two_nearest(seeds, grids)
+
+        # Boundary where a point is near the bisector of its two nearest seeds.
+        boundary = (d2 - d1) <= thickness * grain_size
+
+        # Grain interiors True, boundaries False (before optional inversion).
+        img = ~boundary
+
+        # Random phase inverter, matching the ParticleGenerator convention.
+        if self.invert and self.rng.random() < 0.5:
+            return ~img
+
+        return img
+
+    @staticmethod
+    def _two_nearest(seeds, grids):
+        """Distances to the nearest and second-nearest seed for every grid point.
+
+        Uses the minimum-image convention per axis so distances are periodic on
+        the unit torus. Tracks only the two smallest distances, keeping memory at
+        O(grid points) regardless of the number of seeds.
+
+        Args:
+            seeds (np.ndarray): ``(n_grains, dim)`` seed coordinates in [0, 1).
+            grids (list[np.ndarray]): Per-axis coordinate grids from meshgrid.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: ``(d1, d2)`` nearest / second-nearest
+            distance arrays, each of shape ``grids[0].shape``.
+        """
+        shape = grids[0].shape
+        d1 = np.full(shape, np.inf)
+        d2 = np.full(shape, np.inf)
+        for s in seeds:
+            dist2 = np.zeros(shape)
+            for k, g in enumerate(grids):
+                delta = g - s[k]
+                delta -= np.round(delta)  # minimum image -> periodic
+                dist2 += delta * delta
+            dist = np.sqrt(dist2)
+            closer = dist < d1
+            d2 = np.where(closer, d1, d2)
+            d1 = np.where(closer, dist, d1)
+            between = (~closer) & (dist < d2)
+            d2 = np.where(between, dist, d2)
+        return d1, d2
+
+    @staticmethod
+    def _relax_seeds(seeds, grids, iters):
+        """Lloyd relaxation on the periodic domain for more equiaxed grains.
+
+        Each iteration assigns every grid point to its nearest seed, then moves
+        each seed to the circular-mean (periodic) centroid of its cell. Empty
+        cells are left in place.
+
+        Args:
+            seeds (np.ndarray): ``(n_grains, dim)`` seed coordinates in [0, 1).
+            grids (list[np.ndarray]): Per-axis coordinate grids from meshgrid.
+            iters (int): Number of relaxation iterations.
+
+        Returns:
+            np.ndarray: Relaxed seed coordinates, same shape as `seeds`.
+        """
+        n_grains = seeds.shape[0]
+        flat_coords = [g.ravel() for g in grids]
+        npts = flat_coords[0].size
+        two_pi = 2.0 * np.pi
+        for _ in range(iters):
+            owner = np.zeros(npts, dtype=np.intp)
+            best = np.full(npts, np.inf)
+            for i, s in enumerate(seeds):
+                dist2 = np.zeros(npts)
+                for k, c in enumerate(flat_coords):
+                    delta = c - s[k]
+                    delta -= np.round(delta)
+                    dist2 += delta * delta
+                closer = dist2 < best
+                owner[closer] = i
+                best[closer] = dist2[closer]
+
+            new = seeds.copy()
+            for k, c in enumerate(flat_coords):
+                ang = two_pi * c
+                cos = np.bincount(owner, weights=np.cos(ang), minlength=n_grains)
+                sin = np.bincount(owner, weights=np.sin(ang), minlength=n_grains)
+                cnt = np.bincount(owner, minlength=n_grains)
+                coord = (np.arctan2(sin, cos) / two_pi) % 1.0
+                has = cnt > 0
+                new[has, k] = coord[has]
+            seeds = new
+        return seeds

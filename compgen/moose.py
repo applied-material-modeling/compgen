@@ -5,6 +5,7 @@ import os.path
 import json
 import shutil
 import subprocess
+import logging
 
 import numpy as np
 import exodusii
@@ -12,6 +13,8 @@ import exodusii
 from compgen import temp
 from compgen.exoutil import get_element_field
 from compgen.tensors import assemble_tensor
+
+logger = logging.getLogger(__name__)
 
 
 def get_physics(name, settings_name="settings.json", template_name="template.i"):
@@ -321,21 +324,44 @@ def execute_moose_simulations(
                     + cmd
                 )
 
-            subprocess.run(
-                cmd,
-                check=True,
-                env=settings["moose"].get("environment", {}) | os.environ,
-                capture_output=(not settings.get("verbose", False)),
-            )
-
-            outputs.append(
-                process_output(
-                    physics,
-                    mesh,
-                    material_properties,
-                    f"{output_name}_{target}.e",
-                    f"{output_name}_{target}.csv",
+            try:
+                subprocess.run(
+                    cmd,
+                    check=True,
+                    env=settings["moose"].get("environment", {}) | os.environ,
+                    capture_output=(not settings.get("verbose", False)),
                 )
+            except subprocess.CalledProcessError as e:
+                # A non-converged (or otherwise failed) MOOSE solve aborts with a
+                # non-zero exit code.  Skip just this load case and continue with
+                # the next one, keeping the loads that already succeeded.
+                logger.warning(
+                    "Load case %d of physics '%s' did not converge "
+                    "(exit code %s); skipping this load and continuing.",
+                    target,
+                    physics,
+                    e.returncode,
+                )
+                continue
+
+            result = process_output(
+                physics,
+                mesh,
+                material_properties,
+                f"{output_name}_{target}.e",
+                f"{output_name}_{target}.csv",
             )
+            # Tag the result with its load index (and load values when available)
+            # so downstream output keeps a 1-to-1 index <-> load correspondence
+            # even when some load cases are skipped.
+            result["index"] = target
+            if sub_type == "dictlist":
+                result["loads"] = {key: sub_dict[key][target] for key in sub_dict}
+            outputs.append(result)
+
+    if not outputs:
+        raise RuntimeError(
+            f"All {N} load cases failed to converge for physics '{physics}'."
+        )
 
     return outputs
