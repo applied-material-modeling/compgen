@@ -9,6 +9,7 @@ from compgen.gen import (
     TwoPointGenerator,
     Reconstruction2D,
     ParticleGenerator,
+    VoronoiGenerator,
 )
 
 
@@ -132,3 +133,30 @@ def test_particle_generator_shape_and_vf(N, vf, kind, shape_params, buffer):
     assert img.shape == tuple(N)
     frac = img.mean()
     assert np.isclose(frac, vf, atol=0.1) or np.isclose(frac, 1.0 - vf, atol=0.1)
+
+
+@pytest.mark.parametrize(
+    "N,grain_size,thickness,lloyd_iter",
+    [
+        ([64, 64], 0.25, 0.03, 0),
+        ([64, 64], [0.15, 0.25], 0.05, 0),
+        ([64, 64], 0.2, 0.04, 5),
+        ([32, 32, 32], 0.35, 0.05, 0),
+        ([32, 32, 32], 0.4, 0.06, 3),
+    ],
+)
+def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter):
+    """Test that the VoronoiGenerator produces bool images of the correct shape,
+    containing both phases."""
+    gen = VoronoiGenerator(
+        N=N,
+        grain_size=grain_size,
+        thickness=thickness,
+        lloyd_iter=lloyd_iter,
+        random_seed=42,
+    )
+    img = gen.sample()
+    assert img.shape == tuple(N)
+    assert img.dtype == bool
+    # Both grains and boundaries should be present for these parameters.
+    assert img.any() and not img.all()

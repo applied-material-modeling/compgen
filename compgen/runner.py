@@ -313,6 +313,10 @@ def run_single(img, material_A, material_B, material_AB, config):
 
     # Actually write the output
     for i, result in enumerate(res):
+        # Index the output file by the load/load-case index reported by the
+        # executor (falling back to enumeration order) so the file suffix keeps
+        # a 1-to-1 correspondence with the load case even when some are skipped.
+        idx = result.get("index", i) if isinstance(result, dict) else i
         if extractor is not None:
             try:
                 result["grid"] = extractor(
@@ -352,7 +356,7 @@ def run_single(img, material_A, material_B, material_AB, config):
 
         try:
             with open(
-                os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5"), "wb"
+                os.path.join(output_dir, f"{output_prefix}_{uid}_{idx}.h5"), "wb"
             ) as f:
                 hdfwriter.write_hdf5(f, result)
         except Exception as e:
@@ -369,8 +373,8 @@ def run_single(img, material_A, material_B, material_AB, config):
             logger.info(
                 "Problem %s: Wrote output file %s for subresult %i",
                 uid,
-                os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5"),
-                i,
+                os.path.join(output_dir, f"{output_prefix}_{uid}_{idx}.h5"),
+                idx,
             )
     if log:
         logger.info("Problem %s: All output files written successfully", uid)
