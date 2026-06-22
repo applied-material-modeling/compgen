@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Submit this script with: sbatch run_slurm.sh
+
+#SBATCH --time=01:00:00
+#SBATCH -N 1
+#SBATCH --job-name=compgen_parallel
+#SBATCH --output=JOB_%j.out
+#SBATCH --error=JOB_%j.err
+#SBATCH --mail-user=rghill@lanl.gov
+##SBATCH --reservation=debug
+
+
+
+# Initialize the conda environment for python scripts
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate racoon
+
+# The python script will use multiprocess internally to map jobs over srun --exclusive --exact
+python run_fracture_predefined_slurm.py

@@ -12,3 +12,4 @@ __pycache__
 demo_output
 results/
 results_verified/
+*.e
