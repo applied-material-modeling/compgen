@@ -346,7 +346,9 @@ class SpinodalGenerator(GenerativeStructureGenerator):
         h_hat = g_hat * amp_filter
 
         h = np.fft.ifftn(h_hat).real
-        h = (h - np.mean(h)) / np.std(h)
+        # h = (h - np.mean(h)) / np.std(h)
+        std = np.std(h)
+        h = (h - np.mean(h)) / max(std, 1e-12)
 
         T = np.quantile(h, 1 - vf)
         img = h > T
@@ -734,7 +736,12 @@ class ParticleGenerator(GenerativeStructureGenerator):
             )
 
         dim, pdim, opt_i, keys = specs[self.kind]
-        shape_params = {k: self.shape_params.get(k, None) for k in keys}
+        # `keys` is a set, whose iteration order is randomised per process by
+        # PYTHONHASHSEED. `sample` consumes one RNG draw per key in this dict's
+        # order, so an unsorted order makes the draw-to-parameter assignment
+        # differ between process launches and breaks seed reproducibility.
+        # Sort the keys to keep the sampling order deterministic.
+        shape_params = {k: self.shape_params.get(k, None) for k in sorted(keys)}
 
         return shape_params, dim, pdim, opt_i
 
