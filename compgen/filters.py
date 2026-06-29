@@ -1,7 +1,10 @@
 """Image filtering utilities for preprocessing generated microstructures."""
 
+import itertools
+
 import numpy as np
 import skimage
+from scipy import ndimage
 from compgen import utils
 
 
@@ -108,3 +111,93 @@ def make_periodic(img: np.ndarray, margin: int = 2, shift: bool = True) -> np.nd
         arr = apply(arr, ax)
 
     return arr
+
+
+def _label_periodic(mask, structure, connectivity):
+    """Connected-component labels on a periodic (toroidal) domain.
+
+    Labels normally, then unions component labels that touch across each periodic
+    seam (with the transverse offsets the connectivity allows), so an island that
+    wraps around an edge is counted as a single component.
+    """
+    lbl, n = ndimage.label(mask, structure=structure)
+    if n <= 1:
+        return lbl
+    parent = list(range(n + 1))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+
+    ndim = mask.ndim
+    # A seam join already costs one orthogonal step (the wrap along `ax`), so a
+    # transverse offset is allowed only if 1 + (#nonzero offset axes) <= connectivity.
+    # For connectivity=1 this leaves just the aligned offset (same transverse index).
+    offs = [
+        o
+        for o in itertools.product((-1, 0, 1), repeat=ndim - 1)
+        if sum(1 for v in o if v) <= connectivity - 1
+    ]
+    for ax in range(ndim):
+        a = np.take(lbl, 0, axis=ax)
+        ma = np.take(mask, 0, axis=ax)
+        b0 = np.take(lbl, -1, axis=ax)
+        mb0 = np.take(mask, -1, axis=ax)
+        for off in offs:
+            b, mb = b0, mb0
+            for d, sv in enumerate(off):
+                if sv:
+                    b = np.roll(b, sv, axis=d)
+                    mb = np.roll(mb, sv, axis=d)
+            both = ma & mb
+            for x, y in zip(a[both].ravel(), b[both].ravel()):
+                union(int(x), int(y))
+    roots = np.array([find(i) for i in range(n + 1)])
+    return roots[lbl]
+
+
+def defeature(img, min_size, connectivity=1, periodic=True):
+    """Remove connected islands smaller than ``min_size`` cells (both phases).
+
+    Each island below the threshold is reassigned to its surrounding phase. This
+    cleans up speckle in a generated microstructure before meshing (use it in a
+    config ``filtering`` list, before ``make_periodic``). Works for 2D and 3D.
+
+    Args:
+        img (np.ndarray): 2D or 3D binary image.
+        min_size (int): Islands with fewer than this many cells are removed.
+            ``0`` is a no-op.
+
+    Keyword Args:
+        connectivity (int): Neighbour connectivity for labelling (1 = faces).
+        periodic (bool): If True, islands that wrap across the domain edges are
+            measured as one component (the labelling is roll-invariant).
+
+    Returns:
+        np.ndarray: Boolean image with small islands removed.
+    """
+    arr = np.asarray(img).astype(bool)
+    if not min_size:
+        return arr
+    out = arr.copy()
+    st = ndimage.generate_binary_structure(arr.ndim, connectivity)
+    for phase in (True, False):
+        mask = out == phase
+        if not mask.any():
+            continue
+        if periodic:
+            lbl = _label_periodic(mask, st, connectivity)
+        else:
+            lbl, _ = ndimage.label(mask, structure=st)
+        sizes = np.bincount(lbl.ravel())
+        small = np.flatnonzero(sizes < min_size)
+        small = small[small != 0]
+        out[np.isin(lbl, small) & mask] = not phase
+    return out
