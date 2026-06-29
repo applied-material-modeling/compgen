@@ -1,0 +1,40 @@
+{
+    "sculpt": {
+        "executable": "/users/rghill/Cubit-16.14/bin/psculpt",
+        "options": [
+            "-j",
+            "1",
+            "-p",
+            "1",
+            "--smooth",
+            "8",
+            "--csmooth",
+            "5"
+        ]
+    },
+    "moose": {
+        "executable": "/users/rghill/projects/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "options": [],
+        "environment": {
+            "FI_PROVIDER": "tcp"
+        }
+    },
+    "racoon": {
+        "executable": "/users/rghill/racoon/raccoon/raccoon-opt",
+        "options": [],
+        "environment": {
+            "FI_PROVIDER": "tcp"
+        }
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "1"
+    },
+    "storage": {
+        "delete_temp_dir": false
+    },
+    "verbose": false,
+    "log_file": "benchmark.log",
+    "log_level": "INFO"
+}

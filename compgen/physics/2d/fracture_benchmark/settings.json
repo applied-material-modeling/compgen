@@ -1,0 +1,76 @@
+{
+    "type": "transient",
+    "target_name": "value",
+    "zero_name": "zero",
+    "number_of_targets": 1,
+    "output_substitution": "Outputs/file_base",
+    "auxiliary_files": [
+        "fracture.i"
+    ],
+    "material_properties": {
+        "bulk_material_properties": [
+            "youngs_modulus",
+            "poissons_ratio",
+            "l",
+            "Gc",
+            "psic"
+        ],
+        "interface_material_properties": [
+            "GI_c",
+            "GII_c",
+            "normal_strength",
+            "shear_strength",
+            "eta"
+        ],
+        "interface_substitutions": [
+            "GI_c",
+            "GII_c",
+            "N",
+            "T",
+            "eta"
+        ],
+        "material_A_substitutions": [
+            "E_A",
+            "nu_A",
+            "l",
+            "Gc_A",
+            "psic_A"
+        ],
+        "material_B_substitutions": [
+            "E_B",
+            "nu_B",
+            "l",
+            "Gc_B",
+            "psic_B"
+        ],
+        "substitution_mode": "iterative"
+    },
+    "stimuli_fields": {
+        "psie_active": {
+            "type": "scalar",
+            "dim": 2,
+            "field_components": [
+                "psie_active"
+            ]
+        },
+        "d": {
+            "type": "scalar",
+            "dim": 2,
+            "location": "node",
+            "field_components": [
+                "d"
+            ]
+        }
+    },
+    "response_fields": {
+        "cauchy_stress": {
+            "type": "symmetric_rank_two_tensor",
+            "dim": 2,
+            "field_components": [
+                "stress_xx",
+                "stress_yy",
+                "stress_xy"
+            ]
+        }
+    }
+}

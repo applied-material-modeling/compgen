@@ -1,0 +1,6 @@
+*.err
+*.out
+*.log
+*.txt
+temp_machine_config_*.json
+results
