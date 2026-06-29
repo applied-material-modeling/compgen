@@ -3,15 +3,47 @@
 
 import os
 import uuid
+import queue
 import importlib
 import logging
 
 import numpy as np
 import multiprocess
 
-from compgen import temp, hdfwriter, utils
+from compgen import temp, hdfwriter, utils, mesh
 
 logger = logging.getLogger(__name__)
+
+# Sentinels for the two failure modes run_single can report. MESH_FAILED
+# (sculpt / quality / mesh-prep) is backfilled by drawing a new structure;
+# EXEC_FAILED (executor, e.g. MOOSE) consumes a slot and is dropped.
+#
+# These must survive being pickled back from a multiprocess.Pool worker, so they
+# are class instances identified by a `.kind` attribute (NOT bare `object()`
+# compared with `is` -- identity does not survive pickling, which silently turned
+# parallel failures into phantom "successes").
+class _Failure:
+    """Sentinel marking a failed run_single attempt (pickling-safe)."""
+
+    def __init__(self, kind):
+        self.kind = kind
+
+
+MESH_FAILED = _Failure("mesh")
+EXEC_FAILED = _Failure("exec")
+
+
+def _is_mesh_failure(r):
+    return isinstance(r, _Failure) and r.kind == "mesh"
+
+
+def _is_exec_failure(r):
+    return isinstance(r, _Failure) and r.kind == "exec"
+
+
+def _run_single_star(args):
+    """Unpack a (img, matA, matB, matAB, config) tuple for use with Pool.imap."""
+    return run_single(*args)
 
 
 def get_object_from_module(name, prefix="compgen"):
@@ -44,28 +76,6 @@ def unique_id(directory=".", prefix="", suffix=""):
         if os.path.isfile(test_file):
             continue
         return uid
-
-
-def _retry_generator(gen, n, max_attempts_factor=3):
-    max_attempts = max_attempts_factor * n
-    count = 0
-    for _ in range(max_attempts):
-        if count == n:
-            return
-        try:
-            yield next(gen)
-            count += 1
-        except StopIteration:
-            return
-        except Exception as e:
-            logger.error("Error sampling from generator: %s", str(e))
-    if count < n:
-        logger.error(
-            "Gave up after %d attempts: only %d/%d samples generated.",
-            max_attempts,
-            count,
-            n,
-        )
 
 
 class MCRpyInfoFilter(logging.Filter):
@@ -149,34 +159,148 @@ def run(*config_files):
     if log:
         logger.info("Starting computations")
 
-    # The full iterator
-    composite = zip(
-        range(config["number"]),
-        _retry_generator(generator, config["number"]),
-        material_a,
-        material_b,
-        material_ab,
-    )
-
+    number = config["number"]
     nthreads = config.get("nthreads", 1)
+    cap = config.get("max_attempts_factor", 3) * number
     if log:
         logger.info("Using %d threads for computation", nthreads)
 
-    if nthreads == 1:
-        results = list(
-            map(
-                lambda x: run_single(x[1], x[2], x[3], x[4], config),
-                composite,
-            )
-        )
-    else:
-        with multiprocess.Pool(config.get("nthreads", 1)) as pool:
-            results = pool.map(
-                lambda x: run_single(x[1], x[2], x[3], x[4], config),
-                composite,
-            )
+    # Lazy, capped task source: draws (img, matA, matB, matAB) tuples on demand.
+    # Materials are pulled in lockstep, only when a task is emitted. Generation
+    # failures are swallowed and still count against the shared cap, so a flaky
+    # generator can't loop forever.
+    mats = zip(material_a, material_b, material_ab)
 
-    return results
+    def tasks():
+        drawn = 0
+        while drawn < cap:
+            drawn += 1
+            try:
+                img = next(generator)
+            except StopIteration:
+                return
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                if log:
+                    logger.error(
+                        "Generation failed (attempt %d/%d), redrawing: %s",
+                        drawn,
+                        cap,
+                        str(e),
+                    )
+                continue
+            try:
+                mat = next(mats)
+            except StopIteration:
+                return
+            yield (img, mat[0], mat[1], mat[2], config)
+
+    # Consume results until `number` meshes have succeeded (i.e. result is not
+    # MESH_FAILED). MESH_FAILED keeps the source draining (implicit retry);
+    # EXEC_FAILED still consumes a slot but is dropped from the output.
+    def consume(out_iter):
+        collected = []
+        succeeded = 0
+        for r in out_iter:
+            if _is_mesh_failure(r):
+                continue
+            collected.append(r)
+            succeeded += 1
+            if succeeded >= number:
+                break
+        if succeeded < number and log:
+            logger.error(
+                "Only %d/%d meshes succeeded within %d attempts.",
+                succeeded,
+                number,
+                cap,
+            )
+        return collected
+
+    # Pool path: bounded-window backfill. We keep at most `nthreads` tasks in
+    # flight and, crucially, never let (successes + in_flight) exceed `number`.
+    # That invariant guarantees that by the time we have `number` successes there
+    # are zero tasks still running, so the pool drains via close()/join() with
+    # nothing to kill.
+    #
+    # We deliberately avoid the old `imap_unordered` + early-break + terminate()
+    # pattern: imap_unordered prefetches several extra structures, and
+    # terminate()-ing those overshoot workers while they are mid-`psculpt` /
+    # `mpiexec` orphans those subprocesses (they can spin forever, holding the
+    # terminal) and skips TempDirectory cleanup (leaked temp dirs). The cost here
+    # is reduced parallelism over the final few structures, when fewer than
+    # `nthreads` results are still needed.
+    def run_pool():
+        task_iter = tasks()
+        done_q = queue.Queue()
+        collected = []
+        succeeded = 0
+        in_flight = 0
+        exhausted = False
+        pool = multiprocess.Pool(nthreads)
+
+        def submit_one():
+            nonlocal in_flight, exhausted
+            try:
+                t = next(task_iter)
+            except StopIteration:
+                exhausted = True
+                return False
+            pool.apply_async(
+                _run_single_star,
+                (t,),
+                callback=lambda r: done_q.put((True, r)),
+                error_callback=lambda e: done_q.put((False, e)),
+            )
+            in_flight += 1
+            return True
+
+        def refill():
+            # Keep the window full while a free worker exists AND the result is
+            # still needed (preserves succeeded + in_flight <= number).
+            while in_flight < nthreads and succeeded + in_flight < number and not exhausted:
+                if not submit_one():
+                    break
+
+        try:
+            refill()
+            while in_flight > 0 and succeeded < number:
+                ok, payload = done_q.get()
+                in_flight -= 1
+                if ok and not _is_mesh_failure(payload):
+                    # success or EXEC_FAILED (EXEC_FAILED consumes a slot, dropped later)
+                    collected.append(payload)
+                    succeeded += 1
+                elif not ok and log:
+                    logger.error(
+                        "Unexpected worker error (treated as a mesh failure): %s",
+                        str(payload),
+                    )
+                refill()
+        except BaseException:
+            # On any error, kill outstanding work rather than leaking it.
+            pool.terminate()
+            pool.join()
+            raise
+        # Normal completion: in_flight is 0 here, so this neither blocks nor kills.
+        pool.close()
+        pool.join()
+
+        if succeeded < number and log:
+            logger.error(
+                "Only %d/%d meshes succeeded within %d attempts.",
+                succeeded,
+                number,
+                cap,
+            )
+        return collected
+
+    if nthreads == 1:
+        collected = consume(_run_single_star(t) for t in tasks())
+    else:
+        collected = run_pool()
+
+    # Drop executor failures (mesh succeeded but solve failed -> not backfilled).
+    return [r for r in collected if not _is_exec_failure(r)]
 
 
 def run_single(img, material_A, material_B, material_AB, config):
@@ -221,7 +345,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     filter_spec.get("type"),
                     str(e),
                 )
-            return -1
+            return MESH_FAILED
     if log:
         logger.info("Problem %s: Filtering complete", uid)
 
@@ -231,6 +355,7 @@ def run_single(img, material_A, material_B, material_AB, config):
         if log:
             logger.info("Problem %s: Generating mesh", uid)
 
+        refinement = config.get("generator", {}).get("params", {}).get("refinement", 0)
         try:
             mesh_function = get_object_from_module(config["mesh"]["type"])
             mesh_file = config["mesh_file"]
@@ -239,12 +364,21 @@ def run_single(img, material_A, material_B, material_AB, config):
                 mesh_file,
                 L=config["L"],
                 settings=config,
+                refinement=refinement,
                 **config["mesh"].get("params", {}),
             )
+        except mesh.SculptError as e:
+            if log:
+                logger.error("Problem %s: SCULPT failed: %s", uid, str(e))
+            return MESH_FAILED
+        except mesh.MeshQualityError as e:
+            if log:
+                logger.error("Problem %s: QUALITY CHECK failed: %s", uid, str(e))
+            return MESH_FAILED
         except Exception as e:
             if log:
-                logger.error("Problem %s: Error generating mesh: %s", uid, str(e))
-            return -1
+                logger.error("Problem %s: mesh generation error: %s", uid, str(e))
+            return MESH_FAILED
         if log:
             logger.info("Problem %s: Mesh generation complete", uid)
 
@@ -266,9 +400,14 @@ def run_single(img, material_A, material_B, material_AB, config):
                 **config["executor"].get("params", {}),
             )
         except Exception as e:
+            # NOTE: executor (e.g. MOOSE) failures are intentionally NOT part of
+            # the mesh/quality retry-backfill in run(): a structure that meshed
+            # fine but whose solve failed is dropped (consumes a slot), not
+            # re-generated. Folding executor failures into the backfill could be a
+            # future improvement.
             if log:
                 logger.error("Problem %s: Error running executor: %s", uid, str(e))
-            return -1
+            return EXEC_FAILED
         if log:
             logger.info("Problem %s: Executor run complete", uid)
 
@@ -290,10 +429,14 @@ def run_single(img, material_A, material_B, material_AB, config):
                     config["output"]["grid_extractor"]["type"],
                     str(e),
                 )
-            return -1
+            return EXEC_FAILED
 
     if log:
         logger.info("Problem %s: Starting to write output files", uid)
+
+    # Material image at the mesh/output resolution N (the generated image is at
+    # N * 2**refinement when refining), so the grid projection lands on the N grid.
+    grid_img = mesh.downsample_vfrac(img, 2 ** refinement) > 0.5 if refinement else img
 
     # Actually write the output
     for i, result in enumerate(res):
@@ -304,7 +447,7 @@ def run_single(img, material_A, material_B, material_AB, config):
         if extractor is not None:
             try:
                 result["grid"] = extractor(
-                    result["unstructured_mesh"], img, config["L"]
+                    result["unstructured_mesh"], grid_img, config["L"]
                 )
             except Exception as e:
                 if log:
@@ -314,10 +457,10 @@ def run_single(img, material_A, material_B, material_AB, config):
                         i,
                         str(e),
                     )
-                return -1
+                return EXEC_FAILED
 
         if config.get("output", {}).get("add_density", False):
-            vf = np.sum(img) / float(img.size)
+            vf = np.sum(grid_img) / float(grid_img.size)
             rho = vf * material_A.get("density", 0) + (1 - vf) * material_B.get(
                 "density", 0
             )
@@ -351,7 +494,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     i,
                     str(e),
                 )
-            return -1
+            return EXEC_FAILED
 
         if log:
             logger.info(
@@ -376,8 +519,19 @@ def setup_generator(config_input):
     Returns:
         object: An instance of the generator.
     """
-    gen = get_object_from_module(config_input.get("type"))
-    return gen(**config_input.get("params", {}))
+    gen_cls = get_object_from_module(config_input.get("type"))
+    params = dict(config_input.get("params", {}))
+    # `refinement` (default 0) is a generator-config knob, not a constructor arg.
+    # When > 0 the generator must output the FINE image at N * 2**refinement so the
+    # mesher can coarsen it back to N as fractional volume fractions (-ims).
+    refinement = params.pop("refinement", 0)
+    base_N = params.get("N")
+    if base_N is not None and refinement:
+        params["N"] = [int(n * 2 ** refinement) for n in base_N]
+    gen = gen_cls(**params)
+    gen.refinement = refinement
+    gen.base_N = base_N
+    return gen
 
 
 def setup_material(config_input):
