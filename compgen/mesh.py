@@ -160,34 +160,54 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         prefix (str): Prefix for the output sculpted mesh filename.
         settings (dict): Global settings dict
     """
+    sculpt_settings = settings.get("sculpt", {})
+    mpi_settings = settings.get("mpi", {})
+
+    mpi_exe = sculpt_settings.get("mpi") or mpi_settings.get("executable", "mpiexec")
+    rank_command = sculpt_settings.get("rank_command") or mpi_settings.get("rank_command", "-np")
+    ranks = str(mpi_settings.get("ranks", "1"))
+    sculpt_exe = sculpt_settings.get("executable", "psculpt")
+    options = sculpt_settings.get("options", [])
+
+    epu_exe = sculpt_settings.get("epu")
+    if not epu_exe:
+        # Try to find epu next to the sculpt executable
+        sculpt_dir = os.path.dirname(sculpt_exe)
+        if sculpt_dir:
+            potential_epu = os.path.join(sculpt_dir, "epu")
+            if os.path.isfile(potential_epu) or os.path.isfile(potential_epu + ".exe"):
+                epu_exe = potential_epu
+        if not epu_exe:
+            epu_exe = "epu"
+
     outfile = os.path.splitext(f"{prefix}{mesh}")[0]
     cmd = (
         [
-            settings["sculpt"]["mpi"],
-            settings["sculpt"]["rank_command"],
-            str(settings["mpi"]["ranks"]),
+            mpi_exe,
+            rank_command,
+            ranks,
         ]
-        + [settings["sculpt"]["executable"]]
-        + settings["sculpt"]["options"]
+        + [sculpt_exe]
+        + options
         + ["-ice", mesh, "--exodus_file", outfile]
     )
     subprocess.run(
         cmd,
         check=True,
-        env=settings["sculpt"].get("environment", {}) | os.environ,
+        env=sculpt_settings.get("environment", {}) | os.environ,
         capture_output=(not settings.get("verbose", False)),
     )
     
-    ranks = int(settings["mpi"]["ranks"])
+    ranks_val = int(ranks)
     epu_cmd = [
-        settings["sculpt"]["epu"],
+        epu_exe,
         "-auto",
-        outfile + ".e" + f".{ranks}.0",
+        outfile + ".e" + f".{ranks_val}.0",
     ]
     subprocess.run(
         epu_cmd,
         check=True,
-        env=settings["sculpt"].get("environment", {}) | os.environ,
+        env=sculpt_settings.get("environment", {}) | os.environ,
         capture_output=(not settings.get("verbose", False)),
     )
 
