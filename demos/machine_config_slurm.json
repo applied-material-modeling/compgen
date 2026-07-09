@@ -9,10 +9,6 @@
             "OPAL_PREFIX": "/users/rghill/Cubit-16.14/bin/mpi"
         },
         "options": [
-            "-j",
-            "1",
-            "-p",
-            "1",
             "--smooth",
             "8",
             "--csmooth",
