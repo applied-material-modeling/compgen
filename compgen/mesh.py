@@ -191,12 +191,23 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         + options
         + ["-ice", mesh, "--exodus_file", outfile]
     )
-    subprocess.run(
-        cmd,
-        check=True,
-        env=sculpt_settings.get("environment", {}) | os.environ,
-        capture_output=(not settings.get("verbose", False)),
-    )
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            env=sculpt_settings.get("environment", {}) | os.environ,
+            capture_output=(not settings.get("verbose", False)),
+        )
+    except subprocess.CalledProcessError as e:
+        import sys
+        stdout_str = e.stdout.decode("utf-8", errors="replace") if e.stdout else ""
+        stderr_str = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
+        sys.stderr.write(f"Sculpt Command failed: {cmd}\n")
+        if stdout_str:
+            sys.stderr.write(f"Sculpt stdout:\n{stdout_str}\n")
+        if stderr_str:
+            sys.stderr.write(f"Sculpt stderr:\n{stderr_str}\n")
+        raise e
     
     ranks_val = int(ranks)
     epu_cmd = [
@@ -204,12 +215,23 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         "-auto",
         outfile + ".e" + f".{ranks_val}.0",
     ]
-    subprocess.run(
-        epu_cmd,
-        check=True,
-        env=sculpt_settings.get("environment", {}) | os.environ,
-        capture_output=(not settings.get("verbose", False)),
-    )
+    try:
+        subprocess.run(
+            epu_cmd,
+            check=True,
+            env=sculpt_settings.get("environment", {}) | os.environ,
+            capture_output=(not settings.get("verbose", False)),
+        )
+    except subprocess.CalledProcessError as e:
+        import sys
+        stdout_str = e.stdout.decode("utf-8", errors="replace") if e.stdout else ""
+        stderr_str = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
+        sys.stderr.write(f"EPU Command failed: {epu_cmd}\n")
+        if stdout_str:
+            sys.stderr.write(f"EPU stdout:\n{stdout_str}\n")
+        if stderr_str:
+            sys.stderr.write(f"EPU stderr:\n{stderr_str}\n")
+        raise e
 
 
 def extrude(mesh, lx=1.0, ly=1.0, prefix="extruded_", lz=0.01, tol=1e-6):
