@@ -1,10 +1,15 @@
 import os
 import shutil
 import subprocess
+import sys
 
 import numpy as np
 
 from compgen import temp
+
+# Module loaded - debug marker
+sys.stderr.write("[DEBUG] racoon.py module loaded\n")
+sys.stderr.flush()
 from compgen.moose import (
     get_physics,
     material_property_substitutions,
@@ -204,10 +209,68 @@ def execute_racoon_simulations(
                     + cmd
                 )
 
+            # Debug: write the actual command to a file in shared storage
+            debug_file = "/lustre/roscratch1/rghill/AlSiC_2/compgen/demos/raccoon_debug_cmd.txt"
+            with open(debug_file, "a") as f:
+                f.write(f"\n[DEBUG] Executing command: {' '.join(cmd)}\n")
+                f.write(f"[DEBUG] CWD: {os.getcwd()}\n")
+                f.write(f"[DEBUG] MPI in settings: {'mpi' in settings}\n")
+                if "mpi" in settings:
+                    f.write(f"[DEBUG] MPI config: {settings['mpi']}\n")
+                f.write("\n")
+
+            # Build environment with JIT compiler configuration
+            run_env = dict(os.environ)
+
+            # Add RACCOON-specific environment from config
+            run_env.update(settings.get("racoon", {}).get("environment", {}))
+
+            # Ensure libMesh JIT compiler is configured for HPC systems
+            # This fixes "cmath not found" errors when using cray-mpich
+            if "CONDA_PREFIX" in run_env:
+                conda_prefix = run_env["CONDA_PREFIX"]
+
+                # Always set these, even if they exist (override)
+                run_env["LIBMESH_CXX"] = f"{conda_prefix}/bin/g++"
+
+                # Get GCC version dynamically
+                try:
+                    gcc_version = subprocess.check_output(
+                        [f"{conda_prefix}/bin/g++", "-dumpversion"],
+                        text=True
+                    ).strip()
+                    cxx_include = f"{conda_prefix}/lib/gcc/x86_64-conda-linux-gnu/{gcc_version}/include/c++"
+                    run_env["LIBMESH_CXXFLAGS"] = (
+                        f"-I{cxx_include} "
+                        f"-I{conda_prefix}/x86_64-conda-linux-gnu/sysroot/usr/include "
+                        f"-L{conda_prefix}/lib "
+                        f"-Wl,-rpath,{conda_prefix}/lib"
+                    )
+
+                    # Debug output
+                    print(f"[JIT Config] CONDA_PREFIX: {conda_prefix}")
+                    print(f"[JIT Config] GCC version: {gcc_version}")
+                    print(f"[JIT Config] LIBMESH_CXX: {run_env['LIBMESH_CXX']}")
+                    print(f"[JIT Config] LIBMESH_CXXFLAGS: {run_env['LIBMESH_CXXFLAGS']}")
+                except Exception as e:
+                    print(f"[JIT Config] WARNING: Failed to configure JIT: {e}")
+                    # Fallback to hardcoded GCC 14.3.0 paths
+                    gcc_version = "14.3.0"
+                    cxx_include = f"{conda_prefix}/lib/gcc/x86_64-conda-linux-gnu/{gcc_version}/include/c++"
+                    run_env["LIBMESH_CXXFLAGS"] = (
+                        f"-I{cxx_include} "
+                        f"-I{conda_prefix}/x86_64-conda-linux-gnu/sysroot/usr/include "
+                        f"-L{conda_prefix}/lib "
+                        f"-Wl,-rpath,{conda_prefix}/lib"
+                    )
+                    print(f"[JIT Config] Using fallback GCC {gcc_version}")
+            else:
+                print("[JIT Config] WARNING: CONDA_PREFIX not found in environment!")
+
             subprocess.run(
                 cmd,
                 check=True,
-                env=settings.get("racoon", {}).get("environment", {}) | os.environ,
+                env=run_env,
                 capture_output=False,
             )
 

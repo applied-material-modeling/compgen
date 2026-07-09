@@ -1,0 +1,349 @@
+JIT Compiler Configuration:
+  LIBMESH_CXX: /users/rghill/miniconda3/envs/racoon/bin/g++
+  GCC Version: 14.3.0
+  C++ Headers: /users/rghill/miniconda3/envs/racoon/lib/gcc/x86_64-conda-linux-gnu/14.3.0/include/c++
+  LIBMESH_CXXFLAGS: -I/users/rghill/miniconda3/envs/racoon/lib/gcc/x86_64-conda-linux-gnu/14.3.0/include/c++ -I/users/rghill/miniconda3/envs/racoon/x86_64-conda-linux-gnu/sysroot/usr/include -L/users/rghill/miniconda3/envs/racoon/lib -Wl,-rpath,/users/rghill/miniconda3/envs/racoon/lib
+
+
+[36m
+*** Info ***
+/lustre/roscratch1/.mdt0/rghill/AlSiC_2/compgen/demos/results/tmpnn4uyvfc/results/tmp2dmff2q7/input.i:303.1:
+The following occurred in the Convergence 'default_nonlinear_convergencenl0' of type ReferenceResidualConvergence.
+
+Neither the `reference_residual_variables` nor `reference_vector` parameter is specified, which means that no reference quantites are set. Because of this, the standard technique of comparing the norm of the full residual vector with its initial value will be used.[39m
+Currently Setting Up
+  Finished Instantiating Sub-Apps                                                        [[33m  9.05 s[39m] [[33m  351 MB[39m]
+Finished Setting Up                                                                      [[33m 11.14 s[39m] [[33m  409 MB[39m]
+Framework Information:
+MOOSE Version:           git commit 59c9432dc9 on 2026-03-20
+LibMesh Version:         
+PETSc Version:           3.24.5
+SLEPc Version:           3.24.0
+Current Time:            Wed Jun 24 12:48:46 2026
+Executable Timestamp:    Fri Apr  3 17:02:41 2026
+
+Input File(s):
+  /lustre/roscratch1/.mdt0/rghill/AlSiC_2/compgen/demos/results/tmpnn4uyvfc/results/tmp2dmff2q7/input.i
+
+Command Line Input Argument(s):
+  E_A=68000.0
+  E_B=401000.0
+  nu_A=0.35
+  nu_B=0.19
+  l=0.015
+  l=0.015
+  Gc_A=20.0
+  Gc_B=0.036
+  psic_A=90.0
+  psic_B=0.3
+  GI_c=0.00228
+  GII_c=0.00097
+  N=378.0
+  T=97.0
+  eta=1.5
+  Outputs/file_base=output_0
+
+Checkpoint:
+  Wall Time Interval:      Every 1e+07 s
+  User Checkpoint:         Outputs/checkpoint
+  # Checkpoints Kept:      999999
+  Execute On:              FINAL 
+
+Parallelism:
+  Num Processors:          4
+  Num Threads:             1
+
+Mesh: 
+  Parallel Type:           replicated
+  Mesh Dimension:          2
+  Spatial Dimension:       2
+  Nodes:                   
+    Total:                 66689
+    Local:                 16813
+    Min/Max/Avg:           16527/16813/16672
+  Elems:                   
+    Total:                 65536
+    Local:                 16384
+    Min/Max/Avg:           16384/16384/16384
+  Num Subdomains:          2
+  Num Partitions:          4
+  Partitioner:             metis
+
+Nonlinear System:
+  Num DOFs:                133378
+  Num Local DOFs:          33626
+  Variables:               { "disp_x" "disp_y" } 
+  Finite Element Types:    "LAGRANGE" 
+  Approximation Orders:    "FIRST" 
+
+Auxiliary System:
+  Num DOFs:                461058
+  Num Local DOFs:          115546
+  Variables:               "d" { "d_interface" "psie_active" } "react_y" { "stress_xx" "stress_yy" "stress_xy" 
+                             } 
+  Finite Element Types:    "LAGRANGE" "MONOMIAL" "LAGRANGE" "MONOMIAL" 
+  Approximation Orders:    "FIRST" "CONSTANT" "FIRST" "CONSTANT" 
+
+Execution Information:
+  Executioner:             Transient
+  TimeStepper:             IterationAdaptiveDT
+  TimeIntegrator(s):       ImplicitEuler
+  Solver Mode:             NEWTON 
+  PETSc Preconditioner:    asm 
+  MOOSE Preconditioner:    SMP (auto) 
+
+[36mfracture0: [39mFramework Information:
+[36mfracture0: [39mMOOSE Version:           git commit 59c9432dc9 on 2026-03-20
+[36mfracture0: [39mLibMesh Version:         
+[36mfracture0: [39mPETSc Version:           3.24.5
+[36mfracture0: [39mSLEPc Version:           3.24.0
+[36mfracture0: [39mCurrent Time:            Wed Jun 24 12:48:47 2026
+[36mfracture0: [39mExecutable Timestamp:    Fri Apr  3 17:02:41 2026
+[36mfracture0: [39m
+[36mfracture0: [39mInput File(s):
+[36mfracture0: [39m  /lustre/roscratch1/.mdt0/rghill/AlSiC_2/compgen/demos/results/tmpnn4uyvfc/results/tmp2dmff2q7/fracture.i
+[36mfracture0: [39m
+[36mfracture0: [39mCommand Line Input Argument(s):
+[36mfracture0: [39m  psic_A=90.0
+[36mfracture0: [39m  Gc_A=20.0
+[36mfracture0: [39m  psic_B=0.3
+[36mfracture0: [39m  Gc_B=0.036
+[36mfracture0: [39m  l=0.015
+[36mfracture0: [39m
+[36mfracture0: [39mParallelism:
+[36mfracture0: [39m  Num Processors:          4
+[36mfracture0: [39m  Num Threads:             1
+[36mfracture0: [39m
+[36mfracture0: [39mMesh: 
+[36mfracture0: [39m  Parallel Type:           replicated
+[36mfracture0: [39m  Mesh Dimension:          2
+[36mfracture0: [39m  Spatial Dimension:       2
+[36mfracture0: [39m  Nodes:                   
+[36mfracture0: [39m    Total:                 66689
+[36mfracture0: [39m    Local:                 16813
+[36mfracture0: [39m    Min/Max/Avg:           16527/16813/16672
+[36mfracture0: [39m  Elems:                   
+[36mfracture0: [39m    Total:                 65536
+[36mfracture0: [39m    Local:                 16384
+[36mfracture0: [39m    Min/Max/Avg:           16384/16384/16384
+[36mfracture0: [39m  Num Subdomains:          2
+[36mfracture0: [39m  Num Partitions:          4
+[36mfracture0: [39m  Partitioner:             metis
+[36mfracture0: [39m
+[36mfracture0: [39mNonlinear System:
+[36mfracture0: [39m  Num DOFs:                66689
+[36mfracture0: [39m  Num Local DOFs:          16813
+[36mfracture0: [39m  Variables:               "d" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" 
+[36mfracture0: [39m
+[36mfracture0: [39mAuxiliary System:
+[36mfracture0: [39m  Num DOFs:                132225
+[36mfracture0: [39m  Num Local DOFs:          33197
+[36mfracture0: [39m  Variables:               "bounds_dummy" "psie_active" 
+[36mfracture0: [39m  Finite Element Types:    "LAGRANGE" "MONOMIAL" 
+[36mfracture0: [39m  Approximation Orders:    "FIRST" "CONSTANT" 
+[36mfracture0: [39m
+[36mfracture0: [39mExecution Information:
+[36mfracture0: [39m  Executioner:             Transient
+[36mfracture0: [39m  TimeStepper:             ConstantDT
+[36mfracture0: [39m  TimeIntegrator(s):       ImplicitEuler
+[36mfracture0: [39m  Solver Mode:             NEWTON 
+[36mfracture0: [39m  PETSc Preconditioner:    hypre boomeramg 
+[36mfracture0: [39m  MOOSE Preconditioner:    SMP (auto) 
+[36mfracture0: [39m
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 0, time = 0
+[36mfracture0: [39m
+[36mfracture0: [39mPostprocessor Values:
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m| time           | max_d          | max_psie_active| min_d          |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m|   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m
+
+Time Step 0, time = 0
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
++----------------+----------------+
+
+
+Time Step 1, time = 0.0002, dt = 0.0002
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 1, time = 0.0002, dt = 0.0002
+[36mfracture0: [39m
+[36mfracture0: [39mPerforming automatic scaling calculation
+[36mfracture0: [39m
+[36mfracture0: [39m 0 Nonlinear |R| = [32m0.000000e+00[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m3.937468e+00[39m
+[36mfracture0: [39m
+[36mfracture0: [39mPostprocessor Values:
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m| time           | max_d          | max_psie_active| min_d          |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m|   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   2.000000e-04 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m
+
+Performing automatic scaling calculation
+
+ 0 Nonlinear |R| = [32m3.206244e-03[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 1197
+ 1 Nonlinear |R| = [32m1.103226e-05[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 8526
+ 2 Nonlinear |R| = [32m1.103193e-10[39m
+  Finished Solving                                                                       [[33m2096.95 s[39m] [[33m  579 MB[39m]
+[32m Solve Converged![39m
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   2.000000e-04 |   1.893012e+01 |
++----------------+----------------+
+
+
+Time Step 2, time = 0.0003, dt = 0.0001
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 2, time = 0.0003, dt = 0.0001
+[36mfracture0: [39m 0 Nonlinear |R| = [32m0.000000e+00[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m3.937385e+00[39m
+[36mfracture0: [39m
+[36mfracture0: [39mPostprocessor Values:
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m| time           | max_d          | max_psie_active| min_d          |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m|   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   2.000000e-04 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   3.000000e-04 |   0.000000e+00 |   9.287992e-03 |   0.000000e+00 |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m
+ 0 Nonlinear |R| = [32m1.603122e-03[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 928
+ 1 Nonlinear |R| = [32m1.528984e-08[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 3058
+ 2 Nonlinear |R| = [32m1.305446e-13[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m863.62 s[39m] [[33m  580 MB[39m]
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   2.000000e-04 |   1.893012e+01 |
+|   3.000000e-04 |   2.838848e+01 |
++----------------+----------------+
+
+
+Time Step 3, time = 0.00035, dt = 5e-05
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 3, time = 0.00035, dt = 5e-05
+[36mfracture0: [39m 0 Nonlinear |R| = [32m0.000000e+00[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m3.937281e+00[39m
+[36mfracture0: [39m
+[36mfracture0: [39mPostprocessor Values:
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m| time           | max_d          | max_psie_active| min_d          |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m|   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   2.000000e-04 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   3.000000e-04 |   0.000000e+00 |   9.287992e-03 |   0.000000e+00 |
+[36mfracture0: [39m|   3.500000e-04 |   0.000000e+00 |   2.089486e-02 |   0.000000e+00 |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m
+ 0 Nonlinear |R| = [32m8.015610e-04[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 523
+ 1 Nonlinear |R| = [32m7.916850e-09[39m
+  Finished Solving                                                                       [[33m117.81 s[39m] [[33m  585 MB[39m]
+[32m Solve Converged![39m
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   2.000000e-04 |   1.893012e+01 |
+|   3.000000e-04 |   2.838848e+01 |
+|   3.500000e-04 |   3.333405e+01 |
++----------------+----------------+
+
+
+Time Step 4, time = 0.000375, dt = 2.5e-05
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 4, time = 0.000375, dt = 2.5e-05
+[36mfracture0: [39m 0 Nonlinear |R| = [32m0.000000e+00[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m3.937214e+00[39m
+[36mfracture0: [39m
+[36mfracture0: [39mPostprocessor Values:
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m| time           | max_d          | max_psie_active| min_d          |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m|   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   2.000000e-04 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   3.000000e-04 |   0.000000e+00 |   9.287992e-03 |   0.000000e+00 |
+[36mfracture0: [39m|   3.500000e-04 |   0.000000e+00 |   2.089486e-02 |   0.000000e+00 |
+[36mfracture0: [39m|   3.750000e-04 |   0.000000e+00 |   2.850867e-02 |   0.000000e+00 |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m
+ 0 Nonlinear |R| = [32m4.007805e-04[39m
+    Linear solve converged due to CONVERGED_RTOL iterations 620
+ 1 Nonlinear |R| = [32m3.935824e-09[39m
+[32m Solve Converged![39m
+  Finished Solving                                                                       [[33m136.41 s[39m] [[33m  583 MB[39m]
+
+Postprocessor Values:
++----------------+----------------+
+| time           | R_y            |
++----------------+----------------+
+|   0.000000e+00 |   0.000000e+00 |
+|   2.000000e-04 |   1.893012e+01 |
+|   3.000000e-04 |   2.838848e+01 |
+|   3.500000e-04 |   3.333405e+01 |
+|   3.750000e-04 |   3.558131e+01 |
++----------------+----------------+
+
+
+Time Step 5, time = 0.0003875, dt = 1.25e-05
+[36mfracture0: [39m
+[36mfracture0: [39mTime Step 5, time = 0.0003875, dt = 1.25e-05
+[36mfracture0: [39m 0 Nonlinear |R| = [32m0.000000e+00[39m
+[36mfracture0: [39m[32m Solve Converged![39m
+[36mfracture0: [39m
+[36mfracture0: [39mOutlier Variable Residual Norms:
+[36mfracture0: [39m  d: [31m3.937176e+00[39m
+[36mfracture0: [39m
+[36mfracture0: [39mPostprocessor Values:
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m| time           | max_d          | max_psie_active| min_d          |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m|   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   2.000000e-04 |   0.000000e+00 |   0.000000e+00 |   0.000000e+00 |
+[36mfracture0: [39m|   3.000000e-04 |   0.000000e+00 |   9.287992e-03 |   0.000000e+00 |
+[36mfracture0: [39m|   3.500000e-04 |   0.000000e+00 |   2.089486e-02 |   0.000000e+00 |
+[36mfracture0: [39m|   3.750000e-04 |   0.000000e+00 |   2.850867e-02 |   0.000000e+00 |
+[36mfracture0: [39m|   3.875000e-04 |   0.000000e+00 |   3.272846e-02 |   0.000000e+00 |
+[36mfracture0: [39m+----------------+----------------+----------------+----------------+
+[36mfracture0: [39m
+ 0 Nonlinear |R| = [32m2.003902e-04[39m
+    Linear solve did not converge due to DIVERGED_ITS iterations 10000
+ 1 Nonlinear |R| = [32m1.140147e-08[39m

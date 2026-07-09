@@ -103,7 +103,7 @@ eta = 1.5
     normal_strength = ${N}
     shear_strength = ${T}
     eta = ${eta}
-    viscosity = 0
+    viscosity = 1e-5
   []
 []
 
@@ -306,13 +306,29 @@ eta = 1.5
   petsc_options = '-ksp_converged_reason'
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
   petsc_options_value = 'lu       superlu_dist'
+  
+  # Initial time step size
   dt = 2e-4
+  
+  # Limits to prevent the time step from getting too small or too large
+  dtmin = 1e-8
+  dtmax = 1e-2
+  
   end_time = 5e-2
   nl_abs_tol = 1e-08
-  nl_rel_tol = 1e-06
+  nl_rel_tol = 1e-04
+  nl_max_its = 20
   automatic_scaling = true
   reuse_preconditioner = true
-
+  # Adaptive Time Stepper Sub-block
+  [TimeStepper]
+    type = IterationAdaptiveDT
+    dt = 2e-4
+    optimal_iterations = 6
+    iteration_window = 1
+    growth_factor = 1.2
+    cutback_factor = 0.5
+  []
   [Quadrature]
     order = SECOND
   []

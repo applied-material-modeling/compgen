@@ -136,12 +136,12 @@
   type = Transient
 
   solve_type = NEWTON
-  petsc_options_iname = '-pc_type -snes_type'
-  petsc_options_value = 'lu vinewtonrsls'
+  petsc_options_iname = '-pc_type -pc_hypre_type -ksp_type -snes_type'
+  petsc_options_value = 'hypre     boomeramg      cg        vinewtonrsls'
   automatic_scaling = true
 
-  nl_rel_tol = 1e-08
-  nl_abs_tol = 1e-10
+  nl_rel_tol = 1e-06
+  nl_abs_tol = 1e-08
   nl_max_its = 50
 
   dt = 1e12

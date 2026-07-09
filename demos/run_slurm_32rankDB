@@ -3,7 +3,8 @@
 # Submit this script with: sbatch run_slurm.sh
 
 #SBATCH --time=02:00:00
-#SBATCH -N 4
+#SBATCH -N 1
+#SBATCH -n 6
 #SBATCH --job-name=compgen_parallel
 #SBATCH --output=JOB_%j.out
 #SBATCH --error=JOB_%j.err
@@ -16,5 +17,31 @@
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate racoon
 
+# DON'T load cray-mpich - use conda's MPI (openmpi) instead
+# RACCOON was built with openmpi, not cray-mpich
+# module load cray-mpich
+
+# Prepend compiler wrapper directory to PATH to intercept all compiler calls
+export PATH="$HOME/.local/compiler-wrappers:$PATH"
+
+# Configure libMesh JIT compiler to use conda's g++ (not Cray's CC)
+# The diagnostic showed that conda's g++ works, Cray's CC doesn't
+export LIBMESH_CXX="${CONDA_PREFIX}/bin/g++"
+
+# C++ headers are in the gcc lib directory for conda
+GCC_VERSION=$(${CONDA_PREFIX}/bin/g++ -dumpversion)
+CXX_INCLUDE_DIR="${CONDA_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/${GCC_VERSION}/include/c++"
+
+# Set compiler flags for JIT compilation with explicit include paths
+export LIBMESH_CXXFLAGS="-I${CXX_INCLUDE_DIR} -I${CONDA_PREFIX}/x86_64-conda-linux-gnu/sysroot/usr/include -L${CONDA_PREFIX}/lib -Wl,-rpath,${CONDA_PREFIX}/lib"
+
+echo "JIT Compiler Configuration:"
+echo "  LIBMESH_CXX: $LIBMESH_CXX"
+echo "  GCC Version: $GCC_VERSION"
+echo "  C++ Headers: $CXX_INCLUDE_DIR"
+echo "  LIBMESH_CXXFLAGS: $LIBMESH_CXXFLAGS"
+echo ""
+
 # The python script will use multiprocess internally to map jobs over srun --exclusive --exact
 python run_fracture_predefined_slurm.py
+

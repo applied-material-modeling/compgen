@@ -1,0 +1,11 @@
+[DEBUG] racoon.py module loaded
+[RACCOON Wrapper] PATH set to include compiler wrappers
+[RACCOON Wrapper] PATH set to include compiler wrappers
+[RACCOON Wrapper] PATH set to include compiler wrappers
+[RACCOON Wrapper] PATH set to include compiler wrappers
+[RACCOON Wrapper] which mpicxx: /users/rghill/.local/compiler-wrappers/mpicxx
+[RACCOON Wrapper] which mpicxx: /users/rghill/.local/compiler-wrappers/mpicxx
+[RACCOON Wrapper] which mpicxx: /users/rghill/.local/compiler-wrappers/mpicxx
+[RACCOON Wrapper] which mpicxx: /users/rghill/.local/compiler-wrappers/mpicxx
+[2026-06-24T14:48:39.013] error: *** STEP 1574733.0 ON nid001401 CANCELLED AT 2026-06-24T14:48:39 DUE TO TIME LIMIT ***
+[2026-06-24T14:48:39.014] error: *** JOB 1574733 ON nid001401 CANCELLED AT 2026-06-24T14:48:39 DUE TO TIME LIMIT ***

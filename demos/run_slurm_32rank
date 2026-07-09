@@ -4,6 +4,7 @@
 
 #SBATCH --time=01:00:00
 #SBATCH -N 1
+#SBATCH -n 6
 #SBATCH --job-name=compgen_parallel
 #SBATCH --output=JOB_%j.out
 #SBATCH --error=JOB_%j.err

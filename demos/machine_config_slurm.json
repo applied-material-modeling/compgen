@@ -20,20 +20,16 @@
         }
     },
     "racoon": {
-        "executable": "/users/rghill/racoon/raccoon/raccoon-opt",
+        "executable": "/users/rghill/bin/raccoon-wrapped",
         "options": [],
         "environment": {
             "FI_PROVIDER": "tcp"
         }
     },
     "mpi": {
-        "executable": "srun",
-        "rank_command": "-n",
-        "ranks": "32",
-        "extra_args": [
-            "--exclusive",
-            "--exact"
-        ]
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "6"
     },
     "storage": {
         "delete_temp_dir": false

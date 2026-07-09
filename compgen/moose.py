@@ -335,10 +335,38 @@ def execute_moose_simulations(
                     + cmd
                 )
 
+            # Build environment with JIT compiler configuration
+            run_env = dict(os.environ)
+
+            # Add MOOSE-specific environment from config
+            run_env.update(settings["moose"].get("environment", {}))
+
+            # Ensure libMesh JIT compiler is configured for HPC systems
+            # This fixes "cmath not found" errors when using cray-mpich
+            if "CONDA_PREFIX" in run_env and "LIBMESH_CXX" not in run_env:
+                conda_prefix = run_env["CONDA_PREFIX"]
+                run_env["LIBMESH_CXX"] = f"{conda_prefix}/bin/g++"
+
+                # Get GCC version dynamically
+                try:
+                    gcc_version = subprocess.check_output(
+                        [f"{conda_prefix}/bin/g++", "-dumpversion"],
+                        text=True
+                    ).strip()
+                    cxx_include = f"{conda_prefix}/lib/gcc/x86_64-conda-linux-gnu/{gcc_version}/include/c++"
+                    run_env["LIBMESH_CXXFLAGS"] = (
+                        f"-I{cxx_include} "
+                        f"-I{conda_prefix}/x86_64-conda-linux-gnu/sysroot/usr/include "
+                        f"-L{conda_prefix}/lib "
+                        f"-Wl,-rpath,{conda_prefix}/lib"
+                    )
+                except Exception:
+                    pass  # If we can't get GCC version, hope the env vars were set externally
+
             subprocess.run(
                 cmd,
                 check=True,
-                env=settings["moose"].get("environment", {}) | os.environ,
+                env=run_env,
                 capture_output=(not settings.get("verbose", False)),
             )
 

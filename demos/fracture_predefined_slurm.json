@@ -7,9 +7,15 @@
         1.0
     ],
     "generator": {
-        "type": "gen.FromNumpyGenerator",
+        "type": "gen.SpinodalGenerator",
         "params": {
-            "filename": "test_structures.npy"
+            "N": [
+                256,
+                256
+            ],
+            "vf": 0.25,
+            "l": 50.0,
+            "bandwidth": 0.05
         }
     },
     "filtering": [
@@ -26,7 +32,7 @@
     "mesh": {
         "type": "mesh.generate_mesh_2d",
         "params": {
-            "run_sculpt": false
+            "run_sculpt": true
         }
     },
     "executor": {
@@ -60,8 +66,8 @@
         "params": {
             "GI_c": 0.00228,
             "GII_c": 0.00097,
-            "normal_strength": 378.0,
-            "shear_strength": 97.0,
+            "normal_strength": 75.6,
+            "shear_strength": 19.4,
             "eta": 1.5
         }
     },
