@@ -1,6 +1,13 @@
 {
     "sculpt": {
         "executable": "/users/rghill/Cubit-16.14/bin/psculpt",
+        "mpi": "/users/rghill/Cubit-16.14/bin/mpi/bin/mpiexec",
+        "rank_command": "-np",
+        "epu": "/users/rghill/Cubit-16.14/bin/epu",
+        "environment": {
+            "OPAL_LIBDIR": "/users/rghill/Cubit-16.14/bin/mpi/lib",
+            "OPAL_PREFIX": "/users/rghill/Cubit-16.14/bin/mpi"
+        },
         "options": [
             "-j",
             "1",
