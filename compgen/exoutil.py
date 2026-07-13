@@ -52,7 +52,7 @@ def _coord_key(coord, dims, decimals):
     return tuple(round(float(x), decimals) for x in coord[:dims])
 
 
-def get_node_field_aligned(output_exo, field, coords, decimals=8):
+def get_node_field_aligned(output_exo, field, coords, decimals=8, conflict_resolution="max"):
     """Retrieve a node field from an Exodus file aligned to the reference coords order.
 
     Args:
@@ -60,6 +60,9 @@ def get_node_field_aligned(output_exo, field, coords, decimals=8):
         field (str): Name of the node field to retrieve.
         coords (np.ndarray): Reference coordinates ordering from the simplified mesh.
         decimals (int): Decimal places used when matching coordinates.
+        conflict_resolution (str): Strategy to resolve multiple values at the same coordinate
+                                    (e.g., from split interface nodes). Options: 'max', 'mean',
+                                    'min', 'first'.
     """
     reader = pv.get_reader(output_exo)
     reader.enable_all_point_arrays()
@@ -82,19 +85,33 @@ def get_node_field_aligned(output_exo, field, coords, decimals=8):
             values = np.asarray(block.point_data[field])
             for point, value in zip(points, values):
                 key = _coord_key(point, coords.shape[1], decimals)
-                existing = values_by_coord.get(key)
-                if existing is not None and not np.isclose(existing, value):
-                    raise ValueError(
-                        f"Inconsistent nodal values encountered for field '{field}' at {key}."
-                    )
-                values_by_coord[key] = value
+                if key not in values_by_coord:
+                    values_by_coord[key] = []
+                values_by_coord[key].append(value)
 
-        missing = [key for key in ref_keys if key not in values_by_coord]
+        # Resolve multiple values per coordinate (e.g. at split interfaces)
+        resolved_values = {}
+        for key, val_list in values_by_coord.items():
+            if len(val_list) == 1:
+                resolved_values[key] = val_list[0]
+            else:
+                if conflict_resolution == "max":
+                    resolved_values[key] = np.max(val_list)
+                elif conflict_resolution == "mean":
+                    resolved_values[key] = np.mean(val_list)
+                elif conflict_resolution == "min":
+                    resolved_values[key] = np.min(val_list)
+                elif conflict_resolution == "first":
+                    resolved_values[key] = val_list[0]
+                else:
+                    raise ValueError(f"Unknown conflict_resolution strategy: {conflict_resolution}")
+
+        missing = [key for key in ref_keys if key not in resolved_values]
         if missing:
             raise ValueError(
                 f"Could not align all coordinates for node field '{field}'. Missing {len(missing)} values."
             )
 
-        data[time_index] = [values_by_coord[key] for key in ref_keys]
+        data[time_index] = [resolved_values[key] for key in ref_keys]
 
     return data
