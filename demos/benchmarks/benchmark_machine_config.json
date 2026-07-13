@@ -32,7 +32,7 @@
         "ranks": "1"
     },
     "storage": {
-        "delete_temp_dir": false
+        "delete_temp_dir": true
     },
     "verbose": false,
     "log_file": "benchmark.log",

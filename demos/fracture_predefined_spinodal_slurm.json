@@ -81,7 +81,5 @@
         "add_density": true,
         "output_prefix": "slurm_result"
     },
-    "storage": {
-        "temp_dir": "results"
-    }
+    "storage": {}
 }

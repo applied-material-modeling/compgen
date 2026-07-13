@@ -76,7 +76,5 @@
         "output_prefix": "benchmark_result",
         "output_dir": "results"
     },
-    "storage": {
-        "temp_dir": "results"
-    }
+    "storage": {}
 }
