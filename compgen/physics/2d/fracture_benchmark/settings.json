@@ -46,11 +46,11 @@
         "substitution_mode": "iterative"
     },
     "stimuli_fields": {
-        "psie_active": {
+        "d_interface": {
             "type": "scalar",
             "dim": 2,
             "field_components": [
-                "psie_active"
+                "d_interface"
             ]
         },
         "d": {

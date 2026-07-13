@@ -317,7 +317,7 @@ eta = 1.5
   end_time = 5e-2
   nl_abs_tol = 1e-08
   nl_rel_tol = 1e-04
-  nl_max_its = 20
+  nl_max_its = 8
   automatic_scaling = true
   reuse_preconditioner = true
   # Adaptive Time Stepper Sub-block
