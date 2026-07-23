@@ -4,6 +4,7 @@ import os
 import os.path
 import json
 import shutil
+import signal
 import subprocess
 import logging
 
@@ -241,8 +242,47 @@ def process_output(physics, mesh, material_properties, output_exo, output_csv):
     }
 
 
+def _run_moose_command(cmd, env, capture, timeout_s):
+    """Run a single MOOSE command, killing the whole process tree on timeout.
+
+    ``subprocess.run(timeout=...)`` only kills the direct child (e.g. ``mpirun``);
+    the MPI ranks it spawned would be orphaned and keep running. Launching the
+    command in its own session and killing the process group on timeout tears the
+    whole tree down (mpirun -> hydra_pmi_proxy -> solid_mechanics ranks).
+
+    Args:
+        cmd (list[str]): Command and arguments.
+        env (dict): Environment for the subprocess.
+        capture (bool): Capture stdout/stderr instead of inheriting them.
+        timeout_s (float | None): Wall-clock limit in seconds; ``None`` disables it.
+
+    Raises:
+        subprocess.TimeoutExpired: The command exceeded ``timeout_s`` (tree killed).
+        subprocess.CalledProcessError: The command exited with a non-zero code.
+    """
+    pipe = subprocess.PIPE if capture else None
+    proc = subprocess.Popen(
+        cmd, env=env, stdout=pipe, stderr=pipe, start_new_session=True
+    )
+    try:
+        out, err = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        # Kill the entire process group (mpirun + hydra_pmi_proxy + ranks).
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.communicate()  # reap the killed tree
+        raise
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(
+            proc.returncode, cmd, output=out, stderr=err
+        )
+
+
 def execute_moose_simulations(
-    physics, mesh, material_properties, settings=None, output_name="output"
+    physics, mesh, material_properties, settings=None, output_name="output",
+    problem_id=None,
 ):
     """
     Execute the MOOSE simulations for a given physics template and mesh.
@@ -255,6 +295,8 @@ def execute_moose_simulations(
     Keyword Args:
         settings (dict): Global settings dict
         output_name (str): Base name for output files
+        problem_id (str): Problem UUID, used only to tag per-load-case log messages
+            so failures/timeouts are greppable by problem.
     """
     if settings is None:
         settings = {}
@@ -289,6 +331,11 @@ def execute_moose_simulations(
             N = int(physics_settings["number_of_targets"])
         else:
             raise ValueError(f"Unknown substitution mode '{sub_type}'.")
+
+        # Per-load-case wall-clock limit. The config value is in MINUTES; an
+        # absent value or any value <= 0 means no timeout.
+        timeout_min = settings.get("moose", {}).get("timeout")
+        timeout_s = timeout_min * 60 if timeout_min and timeout_min > 0 else None
 
         for target in range(N):
             if sub_type == "dictlist":
@@ -325,19 +372,34 @@ def execute_moose_simulations(
                 )
 
             try:
-                subprocess.run(
+                _run_moose_command(
                     cmd,
-                    check=True,
                     env=settings["moose"].get("environment", {}) | os.environ,
-                    capture_output=(not settings.get("verbose", False)),
+                    capture=(not settings.get("verbose", False)),
+                    timeout_s=timeout_s,
                 )
+            except subprocess.TimeoutExpired:
+                # The solve exceeded the configured wall-clock limit (typically a
+                # solve stuck in time-step cutback).  The whole process tree has
+                # been killed; skip this load case and continue with the next.
+                logger.warning(
+                    "Problem %s: Load case %d of physics '%s' exceeded the "
+                    "%g-minute timeout; killed it and skipping this load and "
+                    "continuing.",
+                    problem_id,
+                    target,
+                    physics,
+                    timeout_min,
+                )
+                continue
             except subprocess.CalledProcessError as e:
                 # A non-converged (or otherwise failed) MOOSE solve aborts with a
                 # non-zero exit code.  Skip just this load case and continue with
                 # the next one, keeping the loads that already succeeded.
                 logger.warning(
-                    "Load case %d of physics '%s' did not converge "
+                    "Problem %s: Load case %d of physics '%s' did not converge "
                     "(exit code %s); skipping this load and continuing.",
+                    problem_id,
                     target,
                     physics,
                     e.returncode,

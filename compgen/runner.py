@@ -397,6 +397,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     "AB": material_AB,
                 },
                 settings=config,
+                problem_id=uid,
                 **config["executor"].get("params", {}),
             )
         except Exception as e:
@@ -454,7 +455,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     logger.error(
                         "Problem %s: Error extracting grid for subresult %i: %s",
                         uid,
-                        i,
+                        idx,
                         str(e),
                     )
                 return EXEC_FAILED
@@ -470,7 +471,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     "Problem %s: Added density %f to output for subresult %i",
                     uid,
                     rho,
-                    i,
+                    idx,
                 )
 
         if not write_files:
@@ -491,7 +492,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                 logger.error(
                     "Problem %s: Error writing output file for subresult %i: %s",
                     uid,
-                    i,
+                    idx,
                     str(e),
                 )
             return EXEC_FAILED
