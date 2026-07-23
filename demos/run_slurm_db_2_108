@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#SBATCH --time=02:00:00
+#SBATCH --nodes=2
+#SBATCH --ntasks=216
+#SBATCH --ntasks-per-node=108
+#SBATCH --cpus-per-task=1
+#SBATCH --hint=nomultithread
+#SBATCH --exclusive
+#SBATCH --job-name=compgen_2node
+#SBATCH --output=JOB_%j.out
+#SBATCH --error=JOB_%j.err
+#SBATCH --reservation=debug
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate racoon
+
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+
+export PATH="$HOME/.local/compiler-wrappers:$PATH"
+export LIBMESH_CXX="${CONDA_PREFIX}/bin/g++"
+
+GCC_VERSION=$("${CONDA_PREFIX}/bin/g++" -dumpversion)
+CXX_INCLUDE_DIR="${CONDA_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/${GCC_VERSION}/include/c++"
+
+export LIBMESH_CXXFLAGS="-I${CXX_INCLUDE_DIR} -I${CONDA_PREFIX}/x86_64-conda-linux-gnu/sysroot/usr/include -L${CONDA_PREFIX}/lib -Wl,-rpath,${CONDA_PREFIX}/lib"
+
+cd "${SLURM_SUBMIT_DIR}"
+
+scontrol show hostnames "${SLURM_JOB_NODELIST}"
+
+python run_fracture_predefined_slurm.py

@@ -163,8 +163,14 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
     sculpt_settings = settings.get("sculpt", {})
     mpi_settings = settings.get("mpi", {})
 
-    mpi_exe = sculpt_settings.get("mpi") or mpi_settings.get("executable", "mpiexec")
-    rank_command = sculpt_settings.get("rank_command") or mpi_settings.get("rank_command", "-np")
+    if sculpt_settings.get("mpi"):
+        mpi_exe = sculpt_settings["mpi"]
+        rank_command = sculpt_settings.get("rank_command", "-np")
+        mpi_extra_args = sculpt_settings.get("mpi_extra_args", [])
+    else:
+        mpi_exe = mpi_settings.get("executable", "mpiexec")
+        rank_command = mpi_settings.get("rank_command", "-np")
+        mpi_extra_args = mpi_settings.get("extra_args", [])
     ranks = str(mpi_settings.get("ranks", "1"))
     sculpt_exe = sculpt_settings.get("executable", "psculpt")
     options = sculpt_settings.get("options", [])
@@ -187,15 +193,26 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
             rank_command,
             ranks,
         ]
+        # Previous behavior always used mpi_settings.get("extra_args", []).
+        + mpi_extra_args
         + [sculpt_exe]
         + options
         + ["-ice", mesh, "--exodus_file", outfile]
     )
+
+    # Keep Sculpt's MPI runtime isolated from Conda or system MPI settings.
+    # Previous behavior gave inherited environment variables precedence:
+    # run_env = sculpt_settings.get("environment", {}) | os.environ
+    run_env = os.environ.copy()
+    run_env.update(sculpt_settings.get("environment", {}))
+
     try:
         subprocess.run(
             cmd,
             check=True,
-            env=sculpt_settings.get("environment", {}) | os.environ,
+            # Previous behavior:
+            # env=sculpt_settings.get("environment", {}) | os.environ,
+            env=run_env,
             capture_output=(not settings.get("verbose", False)),
         )
     except subprocess.CalledProcessError as e:
@@ -219,7 +236,9 @@ def sculpt(mesh, prefix="sculpted_", settings={}):
         subprocess.run(
             epu_cmd,
             check=True,
-            env=sculpt_settings.get("environment", {}) | os.environ,
+            # Previous behavior:
+            # env=sculpt_settings.get("environment", {}) | os.environ,
+            env=run_env,
             capture_output=(not settings.get("verbose", False)),
         )
     except subprocess.CalledProcessError as e:

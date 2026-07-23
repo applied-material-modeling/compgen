@@ -4,7 +4,7 @@
 
 #SBATCH --time=02:00:00
 #SBATCH -N 1
-#SBATCH -n 6
+##SBATCH -n 6
 #SBATCH --job-name=compgen_parallel
 #SBATCH --output=JOB_%j.out
 #SBATCH --error=JOB_%j.err
@@ -16,6 +16,11 @@
 # Initialize the conda environment for python scripts
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate racoon
+
+CUBIT_ROOT=/users/rghill/Cubit-16.14
+export OPAL_PREFIX="${CUBIT_ROOT}/bin/mpi"
+export OPAL_LIBDIR="${CUBIT_ROOT}/bin/mpi/lib"
+export OPAL_BINDIR="${CUBIT_ROOT}/bin/mpi/bin"
 
 # DON'T load cray-mpich - use conda's MPI (openmpi) instead
 # RACCOON was built with openmpi, not cray-mpich
@@ -43,5 +48,7 @@ echo "  LIBMESH_CXXFLAGS: $LIBMESH_CXXFLAGS"
 echo ""
 
 # The python script will use multiprocess internally to map jobs over srun --exclusive --exact
+"${OPAL_BINDIR}/mpiexec" -np 6 /bin/hostname
+
 python run_fracture_predefined_slurm.py
 

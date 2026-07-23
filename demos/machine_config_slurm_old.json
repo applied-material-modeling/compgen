@@ -1,0 +1,44 @@
+{
+    "sculpt": {
+        "executable": "/users/rghill/Cubit-16.14/bin/psculpt",
+        "mpi": "/users/rghill/Cubit-16.14/bin/mpi/bin/mpiexec",
+        "rank_command": "-np",
+        "epu": "/users/rghill/Cubit-16.14/bin/epu",
+        "environment": {
+            "OPAL_PREFIX": "/users/rghill/Cubit-16.14/bin/mpi",
+            "OPAL_LIBDIR": "/users/rghill/Cubit-16.14/bin/mpi/lib",
+            "OPAL_BINDIR": "/users/rghill/Cubit-16.14/bin/mpi/bin"
+        },
+        "options": [
+            "--smooth",
+            "8",
+            "--csmooth",
+            "5"
+        ]
+    },
+    "moose": {
+        "executable": "/users/rghill/projects/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "options": [],
+        "environment": {
+            "FI_PROVIDER": "tcp"
+        }
+    },
+    "racoon": {
+        "executable": "/users/rghill/bin/raccoon-wrapped",
+        "options": [],
+        "environment": {
+            "FI_PROVIDER": "tcp"
+        }
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "6"
+    },
+    "storage": {
+        "delete_temp_dir": true
+    },
+    "verbose": false,
+    "log_file": "demo_slurm.log",
+    "log_level": "INFO"
+}

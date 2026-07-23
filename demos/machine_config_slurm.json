@@ -3,10 +3,13 @@
         "executable": "/users/rghill/Cubit-16.14/bin/psculpt",
         "mpi": "/users/rghill/Cubit-16.14/bin/mpi/bin/mpiexec",
         "rank_command": "-np",
+        "mpi_extra_args": [],
         "epu": "/users/rghill/Cubit-16.14/bin/epu",
         "environment": {
+            "OPAL_PREFIX": "/users/rghill/Cubit-16.14/bin/mpi",
             "OPAL_LIBDIR": "/users/rghill/Cubit-16.14/bin/mpi/lib",
-            "OPAL_PREFIX": "/users/rghill/Cubit-16.14/bin/mpi"
+            "OPAL_BINDIR": "/users/rghill/Cubit-16.14/bin/mpi/bin",
+            "LD_LIBRARY_PATH": "/users/rghill/Cubit-16.14/bin/mpi/lib:/users/rghill/Cubit-16.14/bin"
         },
         "options": [
             "--smooth",
