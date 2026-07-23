@@ -772,6 +772,8 @@ class ParticleGenerator(GenerativeStructureGenerator):
             pdim=self.pdim,
             phi=vf,
             shape_params=shape_params,
+            # Cap placement to stop a runaway/degenerate sample from hanging.
+            max_particles=(self.res // 2) ** self.pdim,
             torch_rng=self.torch_rng,
         )
 
@@ -812,6 +814,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         pdim: int,
         phi: float,
         shape_params: dict,
+        max_particles: int | None = None,
         dtype: torch.dtype | None = None,
         device: str | torch.device = "cpu",
         torch_rng: torch.Generator | None = None,
@@ -865,6 +868,17 @@ class ParticleGenerator(GenerativeStructureGenerator):
         rows = []
 
         while total < target:
+
+            # Anti-hang guard: a too-small sampled particle size would otherwise
+            # need an unbounded number of particles to reach the target volume
+            # fraction (and if a particle's volume falls below the FP resolution
+            # of `total`, the loop would never terminate). `rows` grows every
+            # iteration even when `total` stalls, so this catches both cases.
+            if max_particles is not None and len(rows) >= max_particles:
+                raise RuntimeError(
+                    f"Placement exceeded {max_particles} particles; the sampled "
+                    "particle size is too small for the target volume fraction."
+                )
 
             if pdim == 1:
                 a = _uniform(size_m, size_s)

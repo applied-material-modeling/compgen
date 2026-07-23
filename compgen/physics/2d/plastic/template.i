@@ -40,14 +40,6 @@ eq_strain_max = 0.02 # Should cause termination
     use_closest_node = true
     new_boundary = 'center'
   []
-
-  [up]
-    type = ExtraNodesetGenerator
-    input = center
-    coord = '0.5 0.75'
-    use_closest_node = true
-    new_boundary = 'up'
-  []
 []
 
 [BCs]
@@ -62,12 +54,6 @@ eq_strain_max = 0.02 # Should cause termination
     []
   []
 
-  [apply_up_x]
-    type = DirichletBC
-    boundary = up
-    value = 0
-    variable = disp_x
-  []
   [fix_center_x]
     type = DirichletBC
     boundary = center
@@ -415,7 +401,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all0]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 0
-    constraint_types = 'stress stress none stress stress none none none none'
+    constraint_types = 'stress stress none strain stress none none none none'
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -425,7 +411,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all1]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 1
-    constraint_types = 'stress stress none stress stress none none none none'
+    constraint_types = 'stress stress none strain stress none none none none'
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -443,7 +429,7 @@ eq_strain_max = 0.02 # Should cause termination
   []
   [all_compute_homogenization_gradient]
     type = ComputeHomogenizedLagrangianStrain
-    constraint_types = 'stress stress none stress stress none none none none'
+    constraint_types = 'stress stress none strain stress none none none none'
     homogenization_gradient_name = homogenization_gradient
     macro_gradient = hvar
     targets = 'value_xx zero zero value_yy'
