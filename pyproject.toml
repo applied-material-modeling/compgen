@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compgen"
+version = "0.1.0"
+description = "Python toolkit for generating simulation data for two phase composite materials."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy",
+    "h5py",
+    "matplotlib",
+    "scikit-image",
+    "tqdm",
+    "gstools",
+    "multiprocess",
+    "pyvista",
+    "exodusii @ git+https://github.com/sandialabs/exodusii.git@main",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint",
+]
+
+[tool.setuptools.packages.find]
+include = ["compgen*"]
+
+[tool.setuptools.package-data]
+compgen = ["physics/**/*.i", "physics/**/*.json"]
