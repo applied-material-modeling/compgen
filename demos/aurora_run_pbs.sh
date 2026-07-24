@@ -3,7 +3,7 @@
 #PBS -A AISim4NS 
 #PBS -N compgen_raccoon
 #PBS -l select=1
-#PBS -l walltime=01:00:00
+#PBS -l walltime=00:59:00
 #PBS -k doe
 #PBS -l place=scatter
 #PBS -q debug
@@ -26,16 +26,19 @@
 ### TODO end
 
 ### TEST
-echo "Hello world" 
+echo "Our script started running. "
 ### TEST end
 
 ### Run Compgen 
-# # Change to the directory from which the job was submitted
-# cd $PBS_O_WORKDIR
 
-# # Initialize the conda environment for python scripts
-# module load miniconda3 
-# conda activate /home/bbrunsvik/environments/moose/bin
+# Change to the directory from which the job was submitted
+cd $PBS_O_WORKDIR
 
-# # The python script will use multiprocess internally to map jobs over the PBS environment
-# python aurora_run_fracture_predefined.py
+# Initialize the conda environment for python scripts
+module load frameworks
+conda activate /home/bbrunsvik/environments/moose
+
+# The python script will use multiprocess internally to map jobs over the PBS environment 
+python aurora_run_fracture_predefined.py
+
+### Run Compgen end
