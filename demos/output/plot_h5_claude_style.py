@@ -28,14 +28,22 @@ def plot_h5_result(filename, time_index=-1, output_path=None):
         # Load field data at specified time step
         damage = f["unstructured_mesh/node_fields/stimuli/d/data"][time_index, :]
         cauchy_stress = f["unstructured_mesh/element_fields/responses/cauchy_stress/data"][time_index, :]
+        d_interface = f["unstructured_mesh/element_fields/stimuli/d_interface/data"][time_index, :]
+
+        ### Can use this to see what else is available to plot. 
+        # target = "unstructured_mesh/element_fields"
+        # for k1 in f[target].keys():
+        #     print(k1)
+        #     for k2 in f[f"{target}/{k1}"].keys():
+        #         print(f"  {k2}")
         
         # Extract stress components
         stress_xx = cauchy_stress[:, 0]
         stress_yy = cauchy_stress[:, 1]
         stress_xy = cauchy_stress[:, 2] if cauchy_stress.shape[1] > 2 else np.zeros_like(stress_xx)
         
-        # Compute von Mises stress (for 2D plane stress)
-        von_mises = np.sqrt(stress_xx**2 - stress_xx*stress_yy + stress_yy**2 + 3*stress_xy**2)
+        # # Compute von Mises stress (for 2D plane stress)
+        # von_mises = np.sqrt(stress_xx**2 - stress_xx*stress_yy + stress_yy**2 + 3*stress_xy**2)
         
     # Split quads into triangles for visualization
     triangles = np.vstack([conn[:, [0, 1, 2]], conn[:, [0, 2, 3]]])
@@ -94,10 +102,10 @@ def plot_h5_result(filename, time_index=-1, output_path=None):
     tpc4 = plot_field(ax4, stress_xy, 'Cauchy Stress σ_xy (Shear)', 'PuOr_r', is_nodal=False)
     fig.colorbar(tpc4, ax=ax4, label='Stress [Pa]', fraction=0.046)
     
-    # Plot 5: von Mises Stress (element)
+    # Plot 5: Interface Damage (element)
     ax5 = fig.add_subplot(gs[1, 1])
-    tpc5 = plot_field(ax5, von_mises, 'von Mises Stress', 'plasma', is_nodal=False)
-    fig.colorbar(tpc5, ax=ax5, label='Stress [Pa]', fraction=0.046)
+    tpc5 = plot_field(ax5, d_interface, 'Interface Damage (d_interface)', 'Reds', is_nodal=False)
+    fig.colorbar(tpc5, ax=ax5, label='Interface Damage', fraction=0.046)
     
     # Plot 6: Mesh visualization
     ax6 = fig.add_subplot(gs[1, 2])
