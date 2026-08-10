@@ -232,6 +232,60 @@ def extract_physics_data(physics):
     }
 
 
+def get_simulation_times(output_exo):
+    """Read the physical simulation time associated with each Exodus frame."""
+    with exodusii.File(output_exo, mode="r") as exo:
+        times = np.asarray(exo.get_times(), dtype=np.float64)
+
+    if times.ndim != 1:
+        raise ValueError(
+            f"Expected a one-dimensional time vector in '{output_exo}', "
+            f"but found shape {times.shape}."
+        )
+    if times.size == 0:
+        raise ValueError(f"No simulation times were found in '{output_exo}'.")
+    if not np.all(np.isfinite(times)):
+        raise ValueError(f"Non-finite simulation times were found in '{output_exo}'.")
+    if np.any(np.diff(times) < 0):
+        raise ValueError(
+            f"Simulation times are not monotonically increasing in '{output_exo}'."
+        )
+
+    return np.copy(times)
+
+
+def validate_time_alignment(data, times):
+    """Verify that every transient tensor has one frame per saved time value."""
+    times = np.asarray(times)
+    constant_fields = {"material", "material_reprojected"}
+
+    def visit(value, path=()):
+        if not isinstance(value, dict):
+            return
+
+        if {"type", "shape", "data"}.issubset(value):
+            tensor_data = np.asarray(value["data"])
+            field_name = path[-1] if path else "<root>"
+            allowed_frame_counts = {len(times)}
+            if field_name in constant_fields:
+                allowed_frame_counts.add(1)
+
+            if (
+                tensor_data.ndim == 0
+                or tensor_data.shape[0] not in allowed_frame_counts
+            ):
+                location = "/".join(path)
+                raise ValueError(
+                    f"Time alignment error for '{location}': field shape "
+                    f"{tensor_data.shape} does not match {len(times)} saved times."
+                )
+
+        for key, child in value.items():
+            visit(child, path + (key,))
+
+    visit(data)
+
+
 def process_output(physics, mesh, material_properties, output_exo, output_csv):
     """Process the output from a MOOSE simulation into partial (unstructured grid) data.
 
@@ -249,12 +303,15 @@ def process_output(physics, mesh, material_properties, output_exo, output_csv):
     # Extract generalized stimuli and forces from the CSV output
     output_csv_data = generalized_stimuli_and_forces(physics, output_csv)
 
-    return {
+    result = {
         "physics": extract_physics_data(physics),
+        "time": get_simulation_times(output_exo),
         "unstructured_mesh": simple_mesh,
         "generalized": output_csv_data,
         "material_properties": material_properties,
     }
+    validate_time_alignment(result, result["time"])
+    return result
 
 
 def execute_moose_simulations(
@@ -294,7 +351,9 @@ def execute_moose_simulations(
             # Check that all values in the dictionary have the same length
             lengths = [len(v) for v in sub_dict.values()]
             if len(set(lengths)) != 1:
-                raise ValueError("All values in the substitution dictionary must have the same length.")
+                raise ValueError(
+                    "All values in the substitution dictionary must have the same length."
+                )
             N = lengths[0]
         elif sub_type == "iterative":
             N = int(physics_settings["number_of_targets"])
@@ -350,8 +409,7 @@ def execute_moose_simulations(
                 # Get GCC version dynamically
                 try:
                     gcc_version = subprocess.check_output(
-                        [f"{conda_prefix}/bin/g++", "-dumpversion"],
-                        text=True
+                        [f"{conda_prefix}/bin/g++", "-dumpversion"], text=True
                     ).strip()
                     cxx_include = f"{conda_prefix}/lib/gcc/x86_64-conda-linux-gnu/{gcc_version}/include/c++"
                     run_env["LIBMESH_CXXFLAGS"] = (

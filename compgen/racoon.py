@@ -209,8 +209,15 @@ def execute_racoon_simulations(
                     + cmd
                 )
 
-            # Debug: write the actual command to a file in shared storage
-            debug_file = "/lustre/roscratch1/rghill/AlSiC_2/compgen/demos/raccoon_debug_cmd.txt"
+            # Debug: write the actual command to a configurable local file.
+            # Keep the default relative to the caller's working directory so
+            # local runs do not depend on an HPC-specific filesystem path.
+            debug_file = settings.get("storage", {}).get(
+                "debug_command_file",
+                os.path.join(cwd, "raccoon_debug_cmd.txt"),
+            )
+            debug_parent = os.path.dirname(os.path.abspath(debug_file))
+            os.makedirs(debug_parent, exist_ok=True)
             with open(debug_file, "a") as f:
                 f.write(f"\n[DEBUG] Executing command: {' '.join(cmd)}\n")
                 f.write(f"[DEBUG] CWD: {os.getcwd()}\n")

@@ -13,8 +13,8 @@
                 256,
                 256
             ],
-            "vf": 0.5,
-            "l": 0.1,
+            "vf": 0.75,
+            "l": 50.0,
             "bandwidth": 0.2
         }
     },
@@ -44,9 +44,9 @@
         "params": {
             "youngs_modulus": 68000.0,
             "poissons_ratio": 0.35,
-            "density": 2.7,
-            "l": 0.02,
-            "Gc": 20000.0,
+            "density": 5.0,
+            "l": 0.015,
+            "Gc": 20.0,
             "psic": 90.0
         }
     },
@@ -55,19 +55,19 @@
         "params": {
             "youngs_modulus": 401000.0,
             "poissons_ratio": 0.19,
-            "density": 3.21,
-            "l": 0.02,
-            "Gc": 36.0,
+            "density": 5.0,
+            "l": 0.015,
+            "Gc": 0.036,
             "psic": 0.3
         }
     },
     "material_AB": {
         "type": "materials.FixedMaterialGenerator",
         "params": {
-            "GI_c": 2.28,
-            "GII_c": 0.97,
-            "normal_strength": 7560.0,
-            "shear_strength": 1940.0,
+            "GI_c": 0.0002008,
+            "GII_c": 0.0001101,
+            "normal_strength": 389.4,
+            "shear_strength": 127.5,
             "eta": 1.5
         }
     },
@@ -79,7 +79,7 @@
     "output": {
         "write_files": true,
         "add_density": true,
-        "output_prefix": "slurm_result"
+        "output_prefix": "local_result"
     },
     "storage": {}
 }

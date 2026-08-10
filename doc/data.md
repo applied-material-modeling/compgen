@@ -20,9 +20,22 @@ The intermediate dimensions are optional, for global data, like the generalized 
 
 If the data is constant over time (like the distribution of material A and B) then the first dimension will have length 1, but still be present.
 
+The physical MOOSE simulation time for every saved frame is stored in the
+top-level `time` dataset as a one-dimensional float64 array with shape
+`(ntime,)`. `time[i]` corresponds exactly to index `i` of every transient tensor
+dataset. The values come directly from the Exodus output time vector. Constant
+fields such as material identity may have a time-axis length of one instead.
+
 ## HDF5 structure
 
 The rest of this document is hierarchical, just like the HDF5 files.  Each subsection is a group name, with the subsequent text describing what that group stores.
+
+### Time
+
+The `time` dataset contains the exact physical simulation time recorded by MOOSE
+for each saved Exodus frame. Adaptive time stepping means these values are not
+necessarily uniformly spaced. Older HDF5 files created before this dataset was
+added do not contain enough information to reconstruct their exact frame times.
 
 ### Density
 
