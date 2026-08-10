@@ -281,7 +281,11 @@ def _run_moose_command(cmd, env, capture, timeout_s):
 
 
 def execute_moose_simulations(
-    physics, mesh, material_properties, settings=None, output_name="output",
+    physics,
+    mesh,
+    material_properties,
+    settings=None,
+    output_name="output",
     problem_id=None,
 ):
     """
