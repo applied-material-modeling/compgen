@@ -1,4 +1,4 @@
-# pylint: disable=broad-exception-caught, too-many-branches, too-many-statements
+# pylint: disable=broad-exception-caught, too-many-branches, too-many-statements, too-many-locals, too-many-return-statements
 """High-level orchestration for generating structures, meshing, solving, and writing outputs."""
 
 import os
@@ -14,6 +14,7 @@ from compgen import temp, hdfwriter, utils, mesh
 
 logger = logging.getLogger(__name__)
 
+
 # Sentinels for the two failure modes run_single can report. MESH_FAILED
 # (sculpt / quality / mesh-prep) is backfilled by drawing a new structure;
 # EXEC_FAILED (executor, e.g. MOOSE) consumes a slot and is dropped.
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 # are class instances identified by a `.kind` attribute (NOT bare `object()`
 # compared with `is` -- identity does not survive pickling, which silently turned
 # parallel failures into phantom "successes").
-class _Failure:
+class _Failure:  # pylint: disable=too-few-public-methods
     """Sentinel marking a failed run_single attempt (pickling-safe)."""
 
     def __init__(self, kind):
@@ -257,7 +258,11 @@ def run(*config_files):
         def refill():
             # Keep the window full while a free worker exists AND the result is
             # still needed (preserves succeeded + in_flight <= number).
-            while in_flight < nthreads and succeeded + in_flight < number and not exhausted:
+            while (
+                in_flight < nthreads
+                and succeeded + in_flight < number
+                and not exhausted
+            ):
                 if not submit_one():
                     break
 
@@ -330,6 +335,7 @@ def run_single(img, material_A, material_B, material_AB, config):
         uid = "no_output"
         if log:
             logger.info("No output files will be written for this computation")
+
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
@@ -437,7 +443,7 @@ def run_single(img, material_A, material_B, material_AB, config):
 
     # Material image at the mesh/output resolution N (the generated image is at
     # N * 2**refinement when refining), so the grid projection lands on the N grid.
-    grid_img = mesh.downsample_vfrac(img, 2 ** refinement) > 0.5 if refinement else img
+    grid_img = mesh.downsample_vfrac(img, 2**refinement) > 0.5 if refinement else img
 
     # Actually write the output
     for i, result in enumerate(res):
@@ -528,7 +534,7 @@ def setup_generator(config_input):
     refinement = params.pop("refinement", 0)
     base_N = params.get("N")
     if base_N is not None and refinement:
-        params["N"] = [int(n * 2 ** refinement) for n in base_N]
+        params["N"] = [int(n * 2**refinement) for n in base_N]
     gen = gen_cls(**params)
     gen.refinement = refinement
     gen.base_N = base_N

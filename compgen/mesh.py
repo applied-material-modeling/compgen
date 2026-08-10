@@ -77,7 +77,7 @@ def generate_mesh_2d(
         settings = {}
 
     lx, ly = L
-    factor = 2 ** refinement
+    factor = 2**refinement
 
     with temp.TempDirectory(settings) as (cwd, _):
         if not run_sculpt:
@@ -90,12 +90,14 @@ def generate_mesh_2d(
             slice_mesh("sculpted_extruded_temp_mesh.e", prefix="sliced_")
             os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
         else:
-            assert all(n % factor == 0 for n in img.shape), (
-                f"image {img.shape} not divisible by 2**refinement={factor}"
-            )
+            assert all(
+                n % factor == 0 for n in img.shape
+            ), f"image {img.shape} not divisible by 2**refinement={factor}"
             phi = downsample_vfrac(img, factor)
             _write_micro(phi, "micro.tec")
-            sculpt("micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims")
+            sculpt(
+                "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
+            )
             # -ims output is a unit-cell, origin-centred 3D slab; map to the domain
             # (this also puts the z-bottom at 0 so the unchanged slice works).
             normalize_mesh("sculpted_micro.e", (lx, ly, lx / phi.shape[0]))
@@ -139,7 +141,7 @@ def generate_mesh_3d(
         settings = {}
 
     lx, ly, lz = L
-    factor = 2 ** refinement
+    factor = 2**refinement
 
     with temp.TempDirectory(settings) as (cwd, _):
         if not run_sculpt:
@@ -150,12 +152,14 @@ def generate_mesh_3d(
             sculpt("temp_mesh.e", prefix="sculpted_", settings=settings)
             os.rename("sculpted_temp_mesh.e", os.path.join(cwd, fname))
         else:
-            assert all(n % factor == 0 for n in img.shape), (
-                f"image {img.shape} not divisible by 2**refinement={factor}"
-            )
+            assert all(
+                n % factor == 0 for n in img.shape
+            ), f"image {img.shape} not divisible by 2**refinement={factor}"
             phi = downsample_vfrac(img, factor)
             _write_micro(phi, "micro.tec")
-            sculpt("micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims")
+            sculpt(
+                "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
+            )
             normalize_mesh("sculpted_micro.e", (lx, ly, lz))  # unit-cell -> domain
             os.rename("sculpted_micro.e", os.path.join(cwd, fname))
 
