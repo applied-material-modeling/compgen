@@ -8,6 +8,49 @@ from scipy import ndimage
 from compgen import utils
 
 
+class FilterInputError(ValueError):
+    """A filter rejected its input for a reason that recurs on every draw.
+
+    The image shape and the filter params are fixed by the config, so redrawing a
+    structure cannot help: ``runner.run_single`` aborts the run instead of
+    reporting a retryable failure. Third-party filters can raise this to opt into
+    the same treatment.
+    """
+
+
+class NonBinaryImageError(FilterInputError):
+    """A filter was given a non-binary image."""
+
+
+def _as_binary(img, name):
+    """Return `img` as a bool array, rejecting anything that is not 0/1.
+
+    Filters take and return bool, matching the generators. Non-binary input is
+    rejected rather than coerced, since the filters would each reduce it
+    differently (truncating cast, nonzero test, quantile threshold).
+
+    Args:
+        img (np.ndarray): Candidate image.
+        name (str): Filter name, used in the error message.
+
+    Returns:
+        np.ndarray: Boolean view or copy of `img`.
+
+    Raises:
+        NonBinaryImageError: If `img` holds values other than 0 and 1.
+    """
+    arr = np.asarray(img)
+    if arr.dtype == bool:
+        return arr
+    if not ((arr == 0) | (arr == 1)).all():
+        raise NonBinaryImageError(
+            f"{name} requires a binary image (bool, or numeric holding only 0/1); "
+            f"got dtype {arr.dtype} with values outside {{0, 1}}. Binarize first, "
+            f"e.g. with compgen.utils.standardize_image(img, dtype=bool)."
+        )
+    return arr.astype(bool)
+
+
 def mean_filter(img, radius=3, periodic=True):
     """Apply a mean filter to an image.
 
@@ -17,8 +60,9 @@ def mean_filter(img, radius=3, periodic=True):
         periodic (bool): If True, use periodic wrapping at the boundaries.
 
     Returns:
-        np.ndarray: Smoothed binary image.
+        np.ndarray: Smoothed binary image (bool).
     """
+    img = _as_binary(img, "mean_filter")
     ndim = img.ndim
 
     if ndim == 3:
@@ -26,7 +70,7 @@ def mean_filter(img, radius=3, periodic=True):
     elif ndim == 2:
         footprint = skimage.morphology.disk(radius)
     else:
-        raise ValueError("mean_filter only supports 2D and 3D images")
+        raise FilterInputError("mean_filter only supports 2D and 3D images")
 
     def smooth(i):
         i_u8 = skimage.util.img_as_ubyte(i.astype(float))
@@ -52,9 +96,9 @@ def make_orthogonal(img):
 
     This works for arrays of arbitrary dimensionality by concatenating the
     array with its flipped version along each axis (processing axes from
-    last to first).
+    last to first). Takes and returns a bool array.
     """
-    arr = np.asarray(img)
+    arr = _as_binary(img, "make_orthogonal")
     for axis in reversed(range(arr.ndim)):
         arr = np.concatenate([arr, np.flip(arr, axis=axis)], axis=axis)
     return arr
@@ -69,15 +113,18 @@ def make_periodic(img: np.ndarray, margin: int = 2, shift: bool = True) -> np.nd
     If shift is True, check the circular shift that minimizes the overwrite cost.
 
     A value `margin = 2` seems to work consistently with Sculpt/MOOSE.
+
+    Takes and returns a bool array; the work array is int because the overwrite
+    cost below subtracts, which numpy refuses to do on bools.
     """
-    arr = np.array(img, copy=True, dtype=int)
+    arr = _as_binary(img, "make_periodic").astype(int)
 
     if arr.ndim not in (2, 3):
-        raise RuntimeError(f"Expected 2D or 3D array, got {arr.ndim}D")
+        raise FilterInputError(f"Expected 2D or 3D array, got {arr.ndim}D")
     if not isinstance(margin, int) or margin < 1:
-        raise ValueError(f"margin must be a positive integer, got {margin}")
+        raise FilterInputError(f"margin must be a positive integer, got {margin}")
     if any(2 * margin >= s for s in arr.shape):
-        raise ValueError(f"margin={margin} is too large for shape {arr.shape}")
+        raise FilterInputError(f"margin={margin} is too large for shape {arr.shape}")
 
     def slices(ax):
         master = [slice(None)] * arr.ndim
@@ -110,7 +157,7 @@ def make_periodic(img: np.ndarray, margin: int = 2, shift: bool = True) -> np.nd
             arr = np.roll(arr, shift=best_shift, axis=ax)
         arr = apply(arr, ax)
 
-    return arr
+    return arr.astype(bool)
 
 
 def _label_periodic(mask, structure, connectivity):
@@ -183,7 +230,7 @@ def defeature(img, min_size, connectivity=1, periodic=True):
     Returns:
         np.ndarray: Boolean image with small islands removed.
     """
-    arr = np.asarray(img).astype(bool)
+    arr = _as_binary(img, "defeature")
     if not min_size:
         return arr
     out = arr.copy()
