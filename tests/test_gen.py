@@ -10,6 +10,7 @@ from compgen.gen import (
     Reconstruction2D,
     ParticleGenerator,
     VoronoiGenerator,
+    FromNumpyGenerator,
 )
 
 
@@ -160,3 +161,45 @@ def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter)
     assert img.dtype == bool
     # Both grains and boundaries should be present for these parameters.
     assert img.any() and not img.all()
+
+
+@pytest.mark.parametrize("dtype", [bool, np.uint8, np.int64, np.float32])
+def test_from_numpy_generator_normalizes_dtype(tmp_path, dtype):
+    """Whatever the file's dtype, the generator yields bool with content intact."""
+    ref = np.random.default_rng(3).random((4, 16, 16)) > 0.5
+    path = tmp_path / "structures.npy"
+    np.save(path, ref.astype(dtype))
+
+    gen = FromNumpyGenerator(str(path))
+    for expected in ref:
+        img = gen.sample()
+        assert img.dtype == bool
+        assert np.array_equal(img, expected)
+
+
+def test_from_numpy_generator_binarizes_grayscale(tmp_path):
+    """A grayscale file is thresholded at 0.5 rather than passed through."""
+    data = np.random.default_rng(4).random((2, 16, 16))
+    path = tmp_path / "grayscale.npy"
+    np.save(path, data)
+
+    img = FromNumpyGenerator(str(path)).sample()
+    assert img.dtype == bool
+    assert np.array_equal(img, data[0] > 0.5)
+
+
+def test_all_generators_return_bool():
+    """Every generator honours the bool contract in the base-class docstring."""
+    rng = np.random.default_rng(5)
+    generators = [
+        RandomGenerator([32, 32], 0.4, random_seed=0),
+        SpinodalGenerator([32, 32], 0.4, 8.0, 0.2, random_seed=0),
+        TwoPointGenerator([32, 32], rng.random((32, 32)) > 0.6, random_seed=0),
+        VoronoiGenerator([32, 32], 0.25, 0.2, random_seed=0),
+        ParticleGenerator([32, 32], 0.3, "disks", {"size_m": 0.2}, random_seed=0),
+        RandomGenerator([16, 16, 16], 0.4, random_seed=0),
+        VoronoiGenerator([16, 16, 16], 0.4, 0.2, random_seed=0),
+        ParticleGenerator([16, 16, 16], 0.3, "spheres", {"size_m": 0.3}, random_seed=0),
+    ]
+    for gen in generators:
+        assert gen.sample().dtype == bool, type(gen).__name__

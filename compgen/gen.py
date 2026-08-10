@@ -412,14 +412,17 @@ class FromNumpyGenerator(StructureGenerator):
     def sample(self):
         """Generate the next structure from the loaded data.
 
+        The file's dtype is not trusted: like every other generator this returns
+        bool, thresholding non-binary values at 0.5.
+
         Returns:
-            np.ndarray: An array of shape corresponding to the loaded structures.
+            np.ndarray: A bool array of shape corresponding to the loaded structures.
         """
         if self.index >= self.total:
             self.index = 0  # Reset to the beginning if we reach the end
         generated = self.data[self.index]
         self.index += 1
-        return generated
+        return standardize_image(generated, dtype=bool)
 
 
 # pylint: disable=too-many-instance-attributes

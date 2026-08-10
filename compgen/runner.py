@@ -10,7 +10,7 @@ import logging
 import numpy as np
 import multiprocess
 
-from compgen import temp, hdfwriter, utils, mesh
+from compgen import temp, hdfwriter, utils, mesh, filters
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,11 @@ class _Failure:  # pylint: disable=too-few-public-methods
 
 MESH_FAILED = _Failure("mesh")
 EXEC_FAILED = _Failure("exec")
+
+# Filter errors that cannot be fixed by redrawing: the filter params and the image
+# shape both come from the config. Third-party filters opt in via FilterInputError;
+# TypeError catches a misspelled entry in a filter's `params`.
+_FATAL_FILTER_ERRORS = (filters.FilterInputError, TypeError)
 
 
 def _is_mesh_failure(r):
@@ -173,6 +178,16 @@ def run(*config_files):
     if log:
         logger.info("Materials set up successfully")
 
+    # Resolve the filter chain up front: a bad `type` is a config error that would
+    # otherwise fail identically on every draw, in a worker where it looks retryable.
+    try:
+        for filter_spec in config.get("filtering", []):
+            get_object_from_module(filter_spec.get("type"))
+    except Exception as e:
+        if log:
+            logger.error("Error resolving filters: %s", str(e))
+        raise e
+
     if log:
         logger.info("Starting computations")
 
@@ -291,11 +306,17 @@ def run(*config_files):
                     # success or EXEC_FAILED (EXEC_FAILED consumes a slot, dropped later)
                     collected.append(payload)
                     succeeded += 1
-                elif not ok and log:
-                    logger.error(
-                        "Unexpected worker error (treated as a mesh failure): %s",
-                        str(payload),
-                    )
+                elif not ok:
+                    # A worker exception arrives here rather than propagating, so
+                    # the non-retryable one has to be re-raised explicitly (the
+                    # handler below tears the pool down).
+                    if isinstance(payload, _FATAL_FILTER_ERRORS):
+                        raise payload
+                    if log:
+                        logger.error(
+                            "Unexpected worker error (treated as a mesh failure): %s",
+                            str(payload),
+                        )
                 refill()
         except BaseException:
             # On any error, kill outstanding work rather than leaking it.
@@ -359,6 +380,18 @@ def run_single(img, material_A, material_B, material_AB, config):
         try:
             filter_func = get_object_from_module(filter_spec.get("type"))
             img = filter_func(img, **filter_spec.get("params", {}))
+        except _FATAL_FILTER_ERRORS as e:
+            # Deterministic: bad params (TypeError) or an input the config fixes
+            # for every draw. Redrawing fails identically, so abort rather than
+            # spend the retry budget. Logged unconditionally so it is visible
+            # without a configured log_file.
+            logger.error(
+                "Problem %s: filter %s failed deterministically (%s); aborting run",
+                uid,
+                filter_spec.get("type"),
+                str(e),
+            )
+            raise
         except Exception as e:
             if log:
                 logger.error(
@@ -459,7 +492,13 @@ def run_single(img, material_A, material_B, material_AB, config):
 
     # Material image at the mesh/output resolution N (the generated image is at
     # N * 2**refinement when refining), so the grid projection lands on the N grid.
-    grid_img = mesh.downsample_vfrac(img, 2**refinement) > 0.5 if refinement else img
+    # Bool either way: the material field is documented as boolean and every
+    # refined run already forced it via the `> 0.5` below.
+    grid_img = (
+        mesh.downsample_vfrac(img, 2**refinement) > 0.5
+        if refinement
+        else np.asarray(img, dtype=bool)
+    )
 
     # Actually write the output
     for i, result in enumerate(res):

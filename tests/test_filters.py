@@ -2,7 +2,48 @@
 
 import pytest
 import numpy as np
-from compgen.filters import mean_filter, make_orthogonal, make_periodic, defeature
+from compgen.filters import (
+    FilterInputError,
+    NonBinaryImageError,
+    mean_filter,
+    make_orthogonal,
+    make_periodic,
+    defeature,
+)
+
+# (filter, kwargs) for the checks that must hold for every filter alike.
+ALL_FILTERS = [
+    (mean_filter, {"radius": 1}),
+    (make_orthogonal, {}),
+    (make_periodic, {"margin": 1, "shift": False}),
+    (defeature, {"min_size": 4}),
+]
+
+
+@pytest.mark.parametrize("filt,kwargs", ALL_FILTERS)
+@pytest.mark.parametrize("shape", [(12, 12), (8, 8, 8)])
+def test_filters_return_bool(filt, kwargs, shape):
+    """Every filter returns bool, so a chain cannot change the image dtype."""
+    img = np.random.default_rng(0).random(shape) > 0.5
+    assert filt(img, **kwargs).dtype == np.bool_
+
+
+@pytest.mark.parametrize("filt,kwargs", ALL_FILTERS)
+@pytest.mark.parametrize("dtype", [np.uint8, np.int64, np.float64])
+def test_filters_accept_zero_one_numeric(filt, kwargs, dtype):
+    """0/1 numeric input is accepted and normalized to bool."""
+    ref = np.random.default_rng(1).random((12, 12)) > 0.5
+    out = filt(ref.astype(dtype), **kwargs)
+    assert out.dtype == np.bool_
+    assert np.array_equal(out, filt(ref, **kwargs))
+
+
+@pytest.mark.parametrize("filt,kwargs", ALL_FILTERS)
+def test_filters_reject_non_binary(filt, kwargs):
+    """Grayscale input is rejected rather than silently coerced."""
+    img = np.random.default_rng(2).random((12, 12))
+    with pytest.raises(NonBinaryImageError):
+        filt(img, **kwargs)
 
 
 @pytest.mark.parametrize("periodic", [False, True])
@@ -39,7 +80,7 @@ def test_mean_filter_rejects_non_2d_or_3d():
 def test_make_orthogonal_tiles_and_flips():
     """Test that make_orthogonal correctly creates a larger image by tiling
     and flipping the input."""
-    img = np.array([[1, 2, 3], [4, 5, 6]])
+    img = np.array([[1, 1, 0], [0, 1, 0]], dtype=bool)  # asymmetric on both axes
     out = make_orthogonal(img)
 
     top = np.hstack([img, np.fliplr(img)])
@@ -113,3 +154,18 @@ def test_make_periodic_margins(margin):
     assert np.array_equal(out[:margin, :, :], out[-margin:, :, :])
     assert np.array_equal(out[:, :margin, :], out[:, -margin:, :])
     assert np.array_equal(out[:, :, :margin], out[:, :, -margin:])
+
+
+@pytest.mark.parametrize(
+    "filt,kwargs,img",
+    [
+        (mean_filter, {}, np.zeros((2, 2, 2, 2), dtype=bool)),
+        (make_periodic, {}, np.zeros(8, dtype=bool)),
+        (make_periodic, {"margin": 0}, np.zeros((8, 8), dtype=bool)),
+        (make_periodic, {"margin": 99}, np.zeros((8, 8), dtype=bool)),
+    ],
+)
+def test_deterministic_errors_are_filter_input_errors(filt, kwargs, img):
+    """Shape/param rejections share one type so the runner can abort on them."""
+    with pytest.raises(FilterInputError):
+        filt(img, **kwargs)
