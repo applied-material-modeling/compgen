@@ -32,7 +32,10 @@
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "6"
+        "ranks": "6",
+        "extra_args": ["--bind-to", "none"],
+	    "isolate_host": true,
+	    "host_command": "--host"
     },
     "storage": {
         "delete_temp_dir": true

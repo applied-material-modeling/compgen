@@ -3,6 +3,7 @@ import os
 import uuid
 import importlib
 import logging
+import time
 
 import numpy as np
 import multiprocess
@@ -142,9 +143,13 @@ def run_single(img, material_A, material_B, material_AB, config):
         material_AB (dict): Material interface properties
         config (dict): Problem configuration.
     """
+    # Start timing
+    start_time = time.time()
+    
     log = config.get("log_file", False) is not False
     if log:
-        logger.info("Starting a new computation on an image of shape %s", img.shape)
+        logger.info("Starting a new computation on an image of shape %s at %s", 
+                    img.shape, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time)))
 
     write_files = config.get("output", {}).get("write_files", True)
 
@@ -334,6 +339,10 @@ def run_single(img, material_A, material_B, material_AB, config):
     if log:
         logger.info("Problem %s: All output files written successfully", uid)
         logger.info("Problem %s: Completed computation successfully", uid)
+        
+        # End timing
+        elapsed_time = time.time() - start_time
+        logger.info("Problem %s: Runtime: %.2f seconds (%.2f minutes)", uid, elapsed_time, elapsed_time/60)
 
     return res
 

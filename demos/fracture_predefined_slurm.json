@@ -1,6 +1,6 @@
 {
-    "number": 1,
-    "nthreads": 1,
+    "number": 64,
+    "nthreads": 17,
     "mesh_file": "mesh.exo",
     "L": [
         1.0,
@@ -13,7 +13,7 @@
                 256,
                 256
             ],
-            "vf": 0.25,
+            "vf": 0.75,
             "l": 50.0,
             "bandwidth": 0.05
         }
@@ -79,7 +79,8 @@
     "output": {
         "write_files": true,
         "add_density": true,
-        "output_prefix": "slurm_result"
+        "output_prefix": "slurm_result", 
+        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0810_01"
     },
     "storage": {}
 }

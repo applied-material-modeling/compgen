@@ -2,15 +2,18 @@
 
 #PBS -A AISim4NS 
 #PBS -N compgen_raccoon
-#PBS -l select=1
-#PBS -l walltime=00:59:00
+#PBS -l select=4
+#PBS -l walltime=09:00:00
 #PBS -k doe
 #PBS -l place=scatter
-#PBS -q debug
+### #PBS -q debug-scaling
+#PBS -q capacity
 #PBS -l filesystems=home_fs
-#PBS -o JOB_${PBS_JOBID}.out
-#PBS -e JOB_${PBS_JOBID}.err
+#PBS -o JOB_%j.out
+#PBS -e JOB_%j.err
 #PBS -M bbrunsvik@lanl.gov
+
+# Note: this old file was replaced by aurora_run_pbs_dsh.sh. brb2026/08/11
 
 ### INFO
 # Submit this script with: qsub run_pbs.sh

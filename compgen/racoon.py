@@ -2,6 +2,9 @@ import os
 import shutil
 import subprocess
 import sys
+import socket
+import logging
+import shlex
 
 import numpy as np
 
@@ -133,6 +136,9 @@ def execute_racoon_simulations(
         shutil.copy(os.path.join(cwd, mesh), os.path.join(tmpdir, "mesh.exo"))
         shutil.copy(os.path.join(cwd, template_input), os.path.join(tmpdir, "input.i"))
         
+        logger = logging.getLogger(__name__)
+        logger.info("RACCOON temp directory: %s", tmpdir)
+
         physics_dir = os.path.dirname(template_input)
         
         aux_files = physics_settings.get("auxiliary_files", [])
@@ -205,12 +211,59 @@ def execute_racoon_simulations(
                 cmd = (
                     [settings["mpi"]["executable"]]
                     + [settings["mpi"]["rank_command"], str(settings["mpi"]["ranks"])]
+                    + ( # Option to isolate host to hostname. 
+                        [settings["mpi"].get("host_command", "--host"), socket.gethostname()]
+                        if settings["mpi"].get("isolate_host", False)
+                        else []
+                    ) # Option to isolate host
                     + settings["mpi"].get("extra_args", [])
                     + cmd
                 )
 
+            # Build environment with JIT compiler configuration
+            run_env = dict(os.environ)
+
+            # Add RACCOON-specific environment from config
+            run_env.update(settings.get("racoon", {}).get("environment", {}))
+
+            ### Logging
+            # Do a quick test to make sure we know what host we are running on. 
+            if "mpi" in settings:
+                mpi = settings["mpi"]
+                mpi_probe_cmd = (
+                    [
+                        mpi["executable"],
+                        mpi.get("host_command", "--host"),
+                        socket.gethostname(),
+                        mpi["rank_command"],
+                        "2",
+                    ]
+                    + mpi.get("extra_args", [])
+                    + [
+                        "sh",
+                        "-c",
+                        'echo "hostname is: $(hostname)"',
+                    ]
+                )
+
+                logger.info("MPI hostname probe command: %s", shlex.join(mpi_probe_cmd))
+                logger.info(
+                    "MPI hostname probe output:\n%s",
+                    subprocess.run(
+                        mpi_probe_cmd,
+                        env=run_env,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                    ).stdout.strip()
+                )
+
+            logger.info("Executing command: %s", shlex.join(cmd))
+
             # Debug: write the actual command to a file in shared storage
-            debug_file = "/lustre/roscratch1/rghill/AlSiC_2/compgen/demos/raccoon_debug_cmd.txt"
+            # debug_file = "/lustre/roscratch1/rghill/AlSiC_2/compgen/demos/raccoon_debug_cmd.txt"
+            debug_file = "./raccoon_debug_cmd.txt"
             with open(debug_file, "a") as f:
                 f.write(f"\n[DEBUG] Executing command: {' '.join(cmd)}\n")
                 f.write(f"[DEBUG] CWD: {os.getcwd()}\n")
@@ -218,12 +271,7 @@ def execute_racoon_simulations(
                 if "mpi" in settings:
                     f.write(f"[DEBUG] MPI config: {settings['mpi']}\n")
                 f.write("\n")
-
-            # Build environment with JIT compiler configuration
-            run_env = dict(os.environ)
-
-            # Add RACCOON-specific environment from config
-            run_env.update(settings.get("racoon", {}).get("environment", {}))
+            ### Done with extra logging. 
 
             # Ensure libMesh JIT compiler is configured for HPC systems
             # This fixes "cmath not found" errors when using cray-mpich
@@ -267,12 +315,18 @@ def execute_racoon_simulations(
             else:
                 print("[JIT Config] WARNING: CONDA_PREFIX not found in environment!")
 
-            subprocess.run(
-                cmd,
-                check=True,
-                env=run_env,
-                capture_output=False,
-            )
+            try:
+                subprocess.run(
+                    cmd,
+                    check=True,
+                    env=run_env,
+                    capture_output=False,
+                    timeout=36000,  # 10 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
+                )
+            except subprocess.TimeoutExpired:  
+                logger.error("Job exceeded 10 hours and was killed.")
+                logger.error("Command was: %s", ' '.join(cmd))
+                raise
 
             outputs.append(
                 process_output(
