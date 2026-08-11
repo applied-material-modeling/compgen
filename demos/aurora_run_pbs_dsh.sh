@@ -2,15 +2,16 @@
 
 #PBS -A AISim4NS 
 #PBS -N compgen_raccoon
-#PBS -l select=16
-#PBS -l walltime=13:00:00
+#PBS -l select=256
+#PBS -l walltime=12:00:00
 #PBS -k doe
 #PBS -l place=scatter
-#PBS -q debug-scaling
+#PBS -q prod
+# #PBS -q debug-scaling
 # #PBS -q capacity
 #PBS -l filesystems=home_fs:flare
-#PBS -o JOB_7.out
-#PBS -e JOB_7.err
+#PBS -o JOB_8.out
+#PBS -e JOB_8.err
 #PBS -M bbrunsvik@lanl.gov
 
 echo "PBS script started running. "

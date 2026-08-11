@@ -321,7 +321,7 @@ def execute_racoon_simulations(
                     check=True,
                     env=run_env,
                     capture_output=False,
-                    timeout=36000,  # 10 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
+                    timeout=86400,  # 10 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
                 )
             except subprocess.TimeoutExpired:  
                 logger.error("Job exceeded 10 hours and was killed.")

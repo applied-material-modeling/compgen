@@ -1,0 +1,10 @@
+- Fracture_predefined_slurm.json: 
+	- Set number, so you have the right total number of jobs and duration. 
+	- Set output_dir. 
+- Aurora_run_pbs_dsh.sh: 
+	- select=number of nodes
+	- walltime = proper time, 
+	- -q proper queue, 
+	- JOB_#.out and JOB_#.err specify job number. 
+- racoon.py
+	- Timeout for how long raccoon will run. In development. Currently at 24 hours. timeout=86400
