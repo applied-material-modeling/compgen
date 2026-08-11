@@ -80,7 +80,11 @@
         "write_files": true,
         "add_density": true,
         "output_prefix": "slurm_result", 
-        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0819_01"
+        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0819_01",
+        "frame_sampling": {
+            "max_frames": 400000000,
+            "write_full_result": true
+        }
     },
     "storage": {}
 }
