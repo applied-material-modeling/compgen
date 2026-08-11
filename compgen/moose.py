@@ -261,23 +261,23 @@ def _run_moose_command(cmd, env, capture, timeout_s):
         subprocess.CalledProcessError: The command exited with a non-zero code.
     """
     pipe = subprocess.PIPE if capture else None
-    proc = subprocess.Popen(
+    with subprocess.Popen(
         cmd, env=env, stdout=pipe, stderr=pipe, start_new_session=True
-    )
-    try:
-        out, err = proc.communicate(timeout=timeout_s)
-    except subprocess.TimeoutExpired:
-        # Kill the entire process group (mpirun + hydra_pmi_proxy + ranks).
+    ) as proc:
         try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        proc.communicate()  # reap the killed tree
-        raise
-    if proc.returncode != 0:
-        raise subprocess.CalledProcessError(
-            proc.returncode, cmd, output=out, stderr=err
-        )
+            out, err = proc.communicate(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            # Kill the entire process group (mpirun + hydra_pmi_proxy + ranks).
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.communicate()  # reap the killed tree
+            raise
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(
+                proc.returncode, cmd, output=out, stderr=err
+            )
 
 
 def execute_moose_simulations(

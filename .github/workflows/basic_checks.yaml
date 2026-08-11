@@ -18,7 +18,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .[dev,mcrpy]
-          pip install torch
+          # CPU-only wheel: the default Linux CUDA wheel bundles triton, whose
+          # native module segfaults on the GPU-less runner (imported lazily by
+          # torch.optim on the impenetrable-particle path). The CPU build has no
+          # triton dependency, so it avoids the crash and installs faster.
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Run tests
         run: pytest --ignore=tests/verification
   lint:
