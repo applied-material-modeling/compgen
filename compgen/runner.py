@@ -1,4 +1,3 @@
-import json
 import os
 import uuid
 import importlib
@@ -7,9 +6,56 @@ import logging
 import numpy as np
 import multiprocess
 
-from compgen import temp, hdfwriter, utils
+from compgen import frame_sampling, temp, hdfwriter, utils
 
 logger = logging.getLogger(__name__)
+
+
+def validate_frame_sampling_settings(output_settings):
+    """Validate and return the optional output frame-sampling settings."""
+    sampling_settings = output_settings.get("frame_sampling")
+    if sampling_settings is None:
+        return None
+
+    if not isinstance(sampling_settings, dict):
+        raise TypeError("output.frame_sampling must be a JSON object")
+    allowed_keys = {"max_frames", "write_full_result"}
+    unknown_keys = set(sampling_settings) - allowed_keys
+    if unknown_keys:
+        raise ValueError(
+            "Unknown output.frame_sampling setting(s): "
+            + ", ".join(sorted(unknown_keys))
+        )
+    if "max_frames" not in sampling_settings:
+        raise ValueError("output.frame_sampling.max_frames is required")
+    frame_sampling.validate_max_frames(sampling_settings["max_frames"])
+
+    write_full_result = sampling_settings.get("write_full_result", False)
+    if not isinstance(write_full_result, bool):
+        raise TypeError("output.frame_sampling.write_full_result must be a boolean")
+    return sampling_settings
+
+
+def write_result_files(filename, result, output_settings):
+    """Write the configured full and/or frame-sampled HDF5 result files."""
+    sampling_settings = validate_frame_sampling_settings(output_settings)
+    if sampling_settings is None:
+        hdfwriter.write_hdf5(filename, result)
+        return [filename]
+
+    written_files = []
+    if sampling_settings.get("write_full_result", False):
+        stem, extension = os.path.splitext(filename)
+        full_filename = f"{stem}_all_frames{extension}"
+        hdfwriter.write_hdf5(full_filename, result)
+        written_files.append(full_filename)
+
+    sampled_result = frame_sampling.sample_result_frames(
+        result, sampling_settings["max_frames"]
+    )
+    hdfwriter.write_hdf5(filename, sampled_result)
+    written_files.append(filename)
+    return written_files
 
 
 def get_object_from_module(name, prefix="compgen"):
@@ -52,6 +98,7 @@ def run(*config_files):
         config (str): Path to a configuration file.
     """
     config = utils.load_json(config_files)
+    validate_frame_sampling_settings(config.get("output", {}))
 
     log = False
     if "log_file" in config:
@@ -175,6 +222,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     str(e),
                 )
             import traceback
+
             traceback.print_exc()
             return -1
     if log:
@@ -188,7 +236,7 @@ def run_single(img, material_A, material_B, material_AB, config):
     # plt.close()
     # if log:
     #     logger.info("Saved spinodal debug image to %s_spinodal_debug.png", uid)
-    
+
     # # DEBUG: Stop prematurely so it doesn't run the expensive meshing/simulation
     # return 0
 
@@ -212,6 +260,7 @@ def run_single(img, material_A, material_B, material_AB, config):
             if log:
                 logger.error("Problem %s: Error generating mesh: %s", uid, str(e))
             import traceback
+
             traceback.print_exc()
             return -1
         if log:
@@ -237,6 +286,7 @@ def run_single(img, material_A, material_B, material_AB, config):
             if log:
                 logger.error("Problem %s: Error running executor: %s", uid, str(e))
             import traceback
+
             traceback.print_exc()
             return -1
         if log:
@@ -261,6 +311,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     str(e),
                 )
             import traceback
+
             traceback.print_exc()
             return -1
 
@@ -283,6 +334,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                         str(e),
                     )
                 import traceback
+
                 traceback.print_exc()
                 return -1
 
@@ -308,9 +360,12 @@ def run_single(img, material_A, material_B, material_AB, config):
                 )
             continue
 
+        output_filename = os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5")
         try:
-            hdfwriter.write_hdf5(
-                os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5"), result
+            written_files = write_result_files(
+                output_filename,
+                result,
+                config.get("output", {}),
             )
         except Exception as e:
             if log:
@@ -321,16 +376,18 @@ def run_single(img, material_A, material_B, material_AB, config):
                     str(e),
                 )
             import traceback
+
             traceback.print_exc()
             return -1
 
         if log:
-            logger.info(
-                "Problem %s: Wrote output file %s for subresult %i",
-                uid,
-                os.path.join(output_dir, f"{output_prefix}_{uid}_{i}.h5"),
-                i,
-            )
+            for written_file in written_files:
+                logger.info(
+                    "Problem %s: Wrote output file %s for subresult %i",
+                    uid,
+                    written_file,
+                    i,
+                )
     if log:
         logger.info("Problem %s: All output files written successfully", uid)
         logger.info("Problem %s: Completed computation successfully", uid)

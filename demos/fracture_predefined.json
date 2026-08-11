@@ -64,10 +64,10 @@
     "material_AB": {
         "type": "materials.FixedMaterialGenerator",
         "params": {
-            "GI_c": 0.0002008,
-            "GII_c": 0.0001101,
-            "normal_strength": 389.4,
-            "shear_strength": 127.5,
+            "GI_c": 0.00228,
+            "GII_c": 0.00097,
+            "normal_strength": 75.6,
+            "shear_strength": 19.4,
             "eta": 1.5
         }
     },
@@ -79,7 +79,11 @@
     "output": {
         "write_files": true,
         "add_density": true,
-        "output_prefix": "local_result"
+        "output_prefix": "local_result",
+        "frame_sampling": {
+            "max_frames": 20,
+            "write_full_result": true
+        }
     },
     "storage": {}
 }
