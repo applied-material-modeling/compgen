@@ -1236,7 +1236,7 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         N,
         grain_size,
         thickness,
-        lloyd_iter: int = 0,
+        lloyd_iter=0,
         invert: bool = True,
         random_seed=None,
     ):
@@ -1247,7 +1247,7 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             )
         self.grain_size_input = grain_size
         self.thickness_input = thickness
-        self.lloyd_iter = lloyd_iter
+        self.lloyd_iter_input = lloyd_iter
         self.invert = invert
 
     def sample(self):
@@ -1259,6 +1259,7 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         """
         grain_size = self._sample_value(self.grain_size_input)
         thickness = self._sample_value(self.thickness_input)
+        lloyd_iter = round(self._sample_value(self.lloyd_iter_input))
 
         n_grains = max(2, int(round((1.0 / grain_size) ** self.dim)))
 
@@ -1267,8 +1268,8 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         axes = [(np.arange(n) + 0.5) / n for n in self.N]
         grids = np.meshgrid(*axes, indexing="ij")
 
-        if self.lloyd_iter > 0:
-            seeds = self._relax_seeds(seeds, grids, self.lloyd_iter)
+        if lloyd_iter > 0:
+            seeds = self._relax_seeds(seeds, grids, lloyd_iter)
 
         d1, d2 = self._two_nearest(seeds, grids)
 

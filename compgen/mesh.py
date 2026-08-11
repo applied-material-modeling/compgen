@@ -1,6 +1,7 @@
 """Mesh generation and mesh-processing utilities for 2D and 3D binary structures."""
 
 import os
+import shutil
 import subprocess
 
 import exodusii
@@ -82,13 +83,15 @@ def generate_mesh_2d(
     with temp.TempDirectory(settings) as (cwd, _):
         if not run_sculpt:
             write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
-            os.rename("temp_mesh.e", os.path.join(cwd, fname))
+            shutil.move("temp_mesh.e", os.path.join(cwd, fname))
         elif factor == 1:
             write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
             extrude("temp_mesh.e", prefix="extruded_", lx=lx, ly=ly)
             sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
             slice_mesh("sculpted_extruded_temp_mesh.e", prefix="sliced_")
-            os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
+            shutil.move(
+                "sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname)
+            )
         else:
             assert all(
                 n % factor == 0 for n in img.shape
@@ -102,7 +105,7 @@ def generate_mesh_2d(
             # (this also puts the z-bottom at 0 so the unchanged slice works).
             normalize_mesh("sculpted_micro.e", (lx, ly, lx / phi.shape[0]))
             slice_mesh("sculpted_micro.e", prefix="sliced_")
-            os.rename("sliced_sculpted_micro.e", os.path.join(cwd, fname))
+            shutil.move("sliced_sculpted_micro.e", os.path.join(cwd, fname))
 
     if quality_check and not mesh_quality(fname):
         raise MeshQualityError("Generated mesh did not pass quality check.")
@@ -146,11 +149,11 @@ def generate_mesh_3d(
     with temp.TempDirectory(settings) as (cwd, _):
         if not run_sculpt:
             write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
-            os.rename("temp_mesh.e", os.path.join(cwd, fname))
+            shutil.move("temp_mesh.e", os.path.join(cwd, fname))
         elif factor == 1:
             write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
             sculpt("temp_mesh.e", prefix="sculpted_", settings=settings)
-            os.rename("sculpted_temp_mesh.e", os.path.join(cwd, fname))
+            shutil.move("sculpted_temp_mesh.e", os.path.join(cwd, fname))
         else:
             assert all(
                 n % factor == 0 for n in img.shape
@@ -161,7 +164,7 @@ def generate_mesh_3d(
                 "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
             )
             normalize_mesh("sculpted_micro.e", (lx, ly, lz))  # unit-cell -> domain
-            os.rename("sculpted_micro.e", os.path.join(cwd, fname))
+            shutil.move("sculpted_micro.e", os.path.join(cwd, fname))
 
     if quality_check and not mesh_quality(fname):
         raise MeshQualityError("Generated mesh did not pass quality check.")

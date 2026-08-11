@@ -93,18 +93,21 @@ class MCRpyInfoFilter(logging.Filter):
         return True
 
 
-def run(*config_files):
-    """Run a set of computations defined by input files
+def setup_logging(config):
+    """Initialize root logger from config if not already initialized.
 
     Args:
-        problem (str): Path to a problem definition file.
-        config (str): Path to a configuration file.
-    """
-    config = utils.load_json(config_files)
+        config (dict): Configuration dictionary, optionally containing 'log_file'
+            and 'log_level'.
 
-    log = False
-    if "log_file" in config:
-        log = True
+    Returns:
+        bool: True if logging is enabled (i.e. 'log_file' is present in config).
+    """
+    if "log_file" not in config:
+        return False
+
+    root = logging.getLogger()
+    if not root.handlers:
         logging.basicConfig(
             filename=config["log_file"],
             level=(
@@ -115,14 +118,27 @@ def run(*config_files):
             format="%(asctime)s %(levelname)s:%(message)s",
         )
 
-        # Apply filter for MCRpy
-        root = logging.getLogger()
-        if not any(
-            isinstance(f, MCRpyInfoFilter) for h in root.handlers for f in h.filters
-        ):
-            filt = MCRpyInfoFilter()
-            for h in root.handlers:
-                h.addFilter(filt)
+    # Apply filter for MCRpy
+    if not any(
+        isinstance(f, MCRpyInfoFilter) for h in root.handlers for f in h.filters
+    ):
+        filt = MCRpyInfoFilter()
+        for h in root.handlers:
+            h.addFilter(filt)
+
+    return True
+
+
+def run(*config_files):
+    """Run a set of computations defined by input files
+
+    Args:
+        problem (str): Path to a problem definition file.
+        config (str): Path to a configuration file.
+    """
+    config = utils.load_json(config_files)
+
+    log = setup_logging(config)
 
     if log:
         logger.info("")
@@ -339,7 +355,7 @@ def run_single(img, material_A, material_B, material_AB, config):
         material_AB (dict): Material interface properties
         config (dict): Problem configuration.
     """
-    log = config.get("log_file", False) is not False
+    log = setup_logging(config)
     if log:
         logger.info("Starting a new computation on an image of shape %s", img.shape)
 

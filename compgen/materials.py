@@ -4,7 +4,6 @@ import math
 import random
 from collections import namedtuple
 
-
 UNIFORM = "uniform"
 LOGUNIFORM = "loguniform"
 

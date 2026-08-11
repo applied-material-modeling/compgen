@@ -5,7 +5,6 @@ import pytest
 
 from compgen import runner
 
-
 NUMBER = 4
 FACTOR = 3  # cap = FACTOR * NUMBER draws
 
