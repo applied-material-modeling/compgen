@@ -1,0 +1,55 @@
+  Listed 1 directory (ctrl+o to expand)
+
+⏺ All outputs generated. Let me visually inspect the three PNGs to confirm they render
+  correctly:
+
+  Read 2 files (ctrl+o to expand)
+
+⏺ Both render correctly. The generalized plot shows exactly the expected physics:
+  linear stress-strain rise then softening as interface damage accumulates, max von
+  Mises peaking (~500 MPa) then dropping, monotonically growing interface damage, and
+  a small damaged-area fraction consistent with the reduced smoke-test resolution. The
+  material structure shows a clean spinodal Al/SiC pattern reading correctly from the
+  compressed file.
+
+⏺ The end-to-end verification is complete. Here's the full picture of what was
+  implemented and confirmed:
+
+  What changed
+
+  Core feature - post-processing baked into the write stage:
+  - compgen/generalized.py (new): computes the homogenized quantities in float64 -
+  area-weighted mean stress (overall/per-phase), max von Mises over undamaged
+  elements, mean interface damage, damaged-area fraction, mean nodal damage.
+  Auto-gated by has_fracture_fields().
+  - compgen/hdfwriter.py: opt-in compress= flag downcasts float64→float32 and
+  Blosc2/zstd-compresses large datasets, while preserve_prefixes=("generalized",)
+  keeps the homogenized subtree full-precision and uncompressed. Default
+  compress=False is byte-for-byte unchanged.
+  - compgen/runner.py::write_result_files: auto-detects fracture, injects generalized
+  quantities, enables compression. No config flag - works on all fracture runs (local
+  + HPC) with zero changes to slurm/aurora configs.
+  - requirements.txt: added hdf5plugin.
+
+  Tests: tests/test_generalized.py (new) passes; the pre-existing
+  test_moose_time/test_frame_sampling stay green because their mocks lack fracture
+  fields. The only failing tests are the 8 in test_verification.py that need a
+  LANL-cluster MOOSE binary - pre-existing and unrelated.
+
+  Smoke test: demos/run_fracture_verified.py + demos/fracture_verified.json (64×64, no
+  frame sampling) ran a real RACCOON simulation under the racoon conda env, producing
+  one full 4.5 MB file at demos/results_verified/verified_local_smoketest/. Verified:
+  generalized/* float64/uncompressed, mesh fields float32/Blosc2-compressed, single
+  file with no frame-sampling group.
+
+  Visualization: the 3 db38 scripts copied in plus the new plot_generalized.py. All 4
+  required import hdf5plugin to read the compressed datasets (added). All produce
+  correct output - the generalized 4-panel and material-structure PNGs both render the
+  expected physics.
+
+  One consequence worth flagging for downstream/HPC: any reader of these compressed
+  files must import hdf5plugin to register the Blosc2 filter, or HDF5 raises an
+  OSError about a missing plugin directory. That's inherent to the compression
+  feature.
+
+✻ Baked for 13m 56s
