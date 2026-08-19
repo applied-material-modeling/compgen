@@ -32,7 +32,7 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 DAMAGE_THRESHOLD = 0.5
 GENERALIZED_CHUNK_BYTES = 16 * 1024 * 1024
 
-COMPRESSION = hdf5plugin.Blosc2(cname="zstd", clevel=9, filters=hdf5plugin.Blosc2.SHUFFLE)
+COMPRESSION = hdf5plugin.Blosc2(cname="zstd", clevel=8, filters=hdf5plugin.Blosc2.SHUFFLE)
 REL_ERR_EPS = 1e-8  # ignore values below this magnitude when computing relative error
 COMPRESSION_CHUNK_BYTES = 16 * 1024 * 1024  # keep chunks small enough for Blosc2's internal buffer
 SMALL_DATASET_ELEMENTS = 1024  # below this, skip compression (Blosc2 errors on tiny chunks)

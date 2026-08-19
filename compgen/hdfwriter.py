@@ -34,7 +34,7 @@ def _write_dataset(group, key, value, compress, small_dataset_elements, chunk_by
             chunks = _pick_chunk_shape(data.shape, data.itemsize, chunk_bytes)
             if chunks is not None:
                 compression = hdf5plugin.Blosc2(
-                    cname="zstd", clevel=9, filters=hdf5plugin.Blosc2.SHUFFLE
+                    cname="zstd", clevel=8, filters=hdf5plugin.Blosc2.SHUFFLE
                 )
                 group.create_dataset(key, data=data, chunks=chunks, **compression)
                 return
