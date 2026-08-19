@@ -6,7 +6,7 @@ import logging
 import numpy as np
 import multiprocess
 
-from compgen import frame_sampling, temp, hdfwriter, utils
+from compgen import frame_sampling, generalized, temp, hdfwriter, utils
 
 logger = logging.getLogger(__name__)
 
@@ -38,22 +38,28 @@ def validate_frame_sampling_settings(output_settings):
 
 def write_result_files(filename, result, output_settings):
     """Write the configured full and/or frame-sampled HDF5 result files."""
+    # Fracture results carry the fields needed for homogenized quantities; when
+    # present, inject them and enable float32 downcast + compression on write.
+    compress = generalized.has_fracture_fields(result)
+    if compress:
+        generalized.inject_fracture_generalized(result)
+
     sampling_settings = validate_frame_sampling_settings(output_settings)
     if sampling_settings is None:
-        hdfwriter.write_hdf5(filename, result)
+        hdfwriter.write_hdf5(filename, result, compress=compress)
         return [filename]
 
     written_files = []
     if sampling_settings.get("write_full_result", False):
         stem, extension = os.path.splitext(filename)
         full_filename = f"{stem}_all_frames{extension}"
-        hdfwriter.write_hdf5(full_filename, result)
+        hdfwriter.write_hdf5(full_filename, result, compress=compress)
         written_files.append(full_filename)
 
     sampled_result = frame_sampling.sample_result_frames(
         result, sampling_settings["max_frames"]
     )
-    hdfwriter.write_hdf5(filename, sampled_result)
+    hdfwriter.write_hdf5(filename, sampled_result, compress=compress)
     written_files.append(filename)
     return written_files
 
