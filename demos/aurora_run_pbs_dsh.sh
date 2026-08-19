@@ -10,8 +10,8 @@
 # #PBS -q debug-scaling
 # #PBS -q capacity
 #PBS -l filesystems=home_fs:flare
-#PBS -o JOB_8.out
-#PBS -e JOB_8.err
+#PBS -o JOB_10.out
+#PBS -e JOB_10.err
 #PBS -M bbrunsvik@lanl.gov
 
 echo "PBS script started running. "

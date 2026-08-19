@@ -20,6 +20,7 @@ dependencies:
   - numpy
   - scipy
   - h5py
+  - hdf5plugin # Possibly relevant for compression and other hdf5 things. 
   - matplotlib
   - scikit-image
   - tqdm
