@@ -3,6 +3,8 @@ import uuid
 import importlib
 import logging
 import time
+import socket
+from pathlib import Path
 
 import numpy as np
 import multiprocess
@@ -110,8 +112,14 @@ def run(*config_files):
     log = False
     if "log_file" in config:
         log = True
+
+        # Add the hostname to the log file name so that multiple nodes don't conflict. 
+        p = Path(config["log_file"])
+        log_file = p.with_name(f"{p.stem}_{socket.gethostname()}{p.suffix}")
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+
         logging.basicConfig(
-            filename=config["log_file"],
+            filename=log_file,
             level=(
                 logging.DEBUG
                 if config.get("log_level", "DEBUG") == "DEBUG"

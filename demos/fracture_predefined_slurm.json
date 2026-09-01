@@ -1,5 +1,5 @@
 {
-    "number": 272,
+    "number": 408,
     "nthreads": 17,
     "mesh_file": "mesh.exo",
     "L": [
@@ -79,8 +79,8 @@
     "output": {
         "write_files": true,
         "add_density": true,
-        "output_prefix": "slurm_result", 
-        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0819_02"
+        "output_prefix": "fracture", 
+        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0901_01"
     },
     "storage": {}
 }

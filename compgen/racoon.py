@@ -137,7 +137,7 @@ def execute_racoon_simulations(
         shutil.copy(os.path.join(cwd, template_input), os.path.join(tmpdir, "input.i"))
         
         logger = logging.getLogger(__name__)
-        logger.info("RACCOON temp directory: %s", tmpdir)
+        logger.debug("RACCOON temp directory: %s", tmpdir)
 
         physics_dir = os.path.dirname(template_input)
         
@@ -246,8 +246,8 @@ def execute_racoon_simulations(
                     ]
                 )
 
-                logger.info("MPI hostname probe command: %s", shlex.join(mpi_probe_cmd))
-                logger.info(
+                logger.debug("MPI hostname probe command: %s", shlex.join(mpi_probe_cmd))
+                logger.debug(
                     "MPI hostname probe output:\n%s",
                     subprocess.run(
                         mpi_probe_cmd,
@@ -261,16 +261,16 @@ def execute_racoon_simulations(
 
             logger.info("Executing command: %s", shlex.join(cmd))
 
-            # Debug: write the actual command to a file in shared storage
-            # debug_file = "/lustre/roscratch1/rghill/AlSiC_2/compgen/demos/raccoon_debug_cmd.txt"
-            debug_file = "./raccoon_debug_cmd.txt"
-            with open(debug_file, "a") as f:
-                f.write(f"\n[DEBUG] Executing command: {' '.join(cmd)}\n")
-                f.write(f"[DEBUG] CWD: {os.getcwd()}\n")
-                f.write(f"[DEBUG] MPI in settings: {'mpi' in settings}\n")
-                if "mpi" in settings:
-                    f.write(f"[DEBUG] MPI config: {settings['mpi']}\n")
-                f.write("\n")
+            # # Debug: write the actual command to a file in shared storage
+            # # debug_file = "/lustre/roscratch1/rghill/AlSiC_2/compgen/demos/raccoon_debug_cmd.txt"
+            # debug_file = "./raccoon_debug_cmd.txt"
+            # with open(debug_file, "a") as f:
+            #     f.write(f"\n[DEBUG] Executing command: {' '.join(cmd)}\n")
+            #     f.write(f"[DEBUG] CWD: {os.getcwd()}\n")
+            #     f.write(f"[DEBUG] MPI in settings: {'mpi' in settings}\n")
+            #     if "mpi" in settings:
+            #         f.write(f"[DEBUG] MPI config: {settings['mpi']}\n")
+            #     f.write("\n")
             ### Done with extra logging. 
 
             # Ensure libMesh JIT compiler is configured for HPC systems
@@ -320,11 +320,12 @@ def execute_racoon_simulations(
                     cmd,
                     check=True,
                     env=run_env,
-                    capture_output=False,
-                    timeout=86400,  # 10 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
+                    stdout=subprocess.DEVNULL, # Put in null, because otherwise we will end up with insanely huge log files. 
+                    stderr=subprocess.DEVNULL, # Put in null, because otherwise we will end up with insanely huge log files. 
+                    timeout=86400,  # 24 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
                 )
             except subprocess.TimeoutExpired:  
-                logger.error("Job exceeded 10 hours and was killed.")
+                logger.error("Job exceeded 24 hours and was killed.")
                 logger.error("Command was: %s", ' '.join(cmd))
                 raise
 
