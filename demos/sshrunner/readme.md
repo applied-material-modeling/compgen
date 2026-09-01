@@ -1,0 +1,1 @@
+This was a very hasty approach to re-run jobs on all nodes, once they were allocated to us but had died. Maybe if you end up in a similar situation, you can salvage something from here. 
