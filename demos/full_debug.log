@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/rghill/Documents/projects/JAAI00_AINS_SCMP/compgen-fracture/compgen/demos/full_debug.py", line 3, in <module>
-    from compgen import runner
-ModuleNotFoundError: No module named 'compgen'
-ERROR conda.cli.main_run:execute(142): `conda run python full_debug.py` failed. (See above for error)
