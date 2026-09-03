@@ -1,12 +1,13 @@
 #!/bin/bash
 
-#PBS -A AISim4NS 
+#PBS -A TellusFM 
 #PBS -N compgen_raccoon
 #PBS -l select=256
 #PBS -l walltime=12:00:00
 #PBS -k doe
 #PBS -l place=scatter
 #PBS -q prod
+# #PBS -q debug
 # #PBS -q debug-scaling
 # #PBS -q capacity
 #PBS -l filesystems=home_fs:flare
