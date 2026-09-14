@@ -1,0 +1,196 @@
+================================================================================
+ FREE INPUT PARAMETERS - 2D FRACTURE (RACCOON / phase-field + cohesive interface)
+================================================================================
+
+Purpose
+-------
+This document lists every material-side parameter that can be varied when
+sampling random "material" configurations for the 2D fracture physics
+(compgen/physics/2d/fracture). Use it to define the sampling space for the
+three material blocks in the problem config:
+
+    material_A   -> bulk phase A   (matrix)
+    material_B   -> bulk phase B   (reinforcement)
+    material_AB  -> A/B interface  (cohesive zone)
+
+The parameter -> template-variable mapping below is taken directly from:
+    compgen/physics/2d/fracture/settings.json   (which config key feeds which .i variable)
+    compgen/physics/2d/fracture/template.i       (how each .i variable is used)
+    compgen/physics/2d/fracture/fracture.i       (phase-field subapp)
+
+Only the properties listed under "bulk_material_properties" and
+"interface_material_properties" in settings.json are actually substituted into
+the physics input. Anything else in a material block (e.g. density) is carried
+along but NOT injected into the solver (see NOTES).
+
+Units are CONSISTENT / non-dimensional in MOOSE - there is no unit system
+enforced. The example values shipped in the configs are consistent with:
+    stress / modulus  -> MPa
+    length            -> same length unit as the mesh domain L (here L = 1.0)
+    energy release    -> (stress unit) x (length unit)
+Interpret / rescale ranges accordingly. Ranges below are SUGGESTED starting
+envelopes - edit freely for your study.
+
+
+================================================================================
+ 1. BULK MATERIAL A  (material_A)  -  matrix phase
+================================================================================
+Config key         .i var    Meaning                                    Suggested range
+-----------------  --------  -----------------------------------------  ------------------
+youngs_modulus     E_A       Young's modulus (elastic stiffness)        1.0e3  .. 5.0e5
+poissons_ratio     nu_A      Poisson's ratio (must be in (-1, 0.5))     0.15   .. 0.45
+Gc                 Gc_A      Critical energy release rate (toughness)   1.0e-2 .. 5.0e4
+psic               psic_A    Critical fracture strength/energy          0.1    .. 2.0e2
+l                  l         Phase-field regularization length          SHARED - see NOTE A
+density            (none)    Mass density (output only, not solved)     1.0    .. 20.0
+
+Bulk moduli K_A and shear moduli G_A are DERIVED inside template.i from
+(E_A, nu_A):
+    K_A = E_A / (3 (1 - 2 nu_A))
+    G_A = E_A / (2 (1 + nu_A))
+Do not sample K/G directly; sample E and nu.
+
+
+================================================================================
+ 2. BULK MATERIAL B  (material_B)  -  reinforcement phase
+================================================================================
+Config key         .i var    Meaning                                    Suggested range
+-----------------  --------  -----------------------------------------  ------------------
+youngs_modulus     E_B       Young's modulus (elastic stiffness)        1.0e3  .. 5.0e5
+poissons_ratio     nu_B      Poisson's ratio (must be in (-1, 0.5))     0.15   .. 0.45
+Gc                 Gc_B      Critical energy release rate (toughness)   1.0e-2 .. 5.0e4
+psic               psic_B    Critical fracture strength/energy          0.1    .. 2.0e2
+l                  l         Phase-field regularization length          SHARED - see NOTE A
+density            (none)    Mass density (output only, not solved)     1.0    .. 20.0
+
+
+================================================================================
+ 3. PHASE-FIELD CHARACTERISTIC LENGTH  (shared)
+================================================================================
+Config key         .i var    Meaning                                    Suggested range
+-----------------  --------  -----------------------------------------  ------------------
+l                  l         Regularization / crack-width length scale  0.005  .. 0.05
+
+SEE NOTE A: this is a single global value, NOT independent per phase.
+It must be resolved by the mesh (a few elements across l) or the phase-field
+solve will be inaccurate. With domain L = 1.0 and a 256x256 grid, element size
+is ~0.0039, so keep l >= ~0.01 for a well-resolved crack.
+
+
+================================================================================
+ 4. INTERFACE / COHESIVE PROPERTIES  (material_AB)  -  A/B bond
+================================================================================
+Config key         .i var    Meaning                                       Suggested range
+-----------------  --------  --------------------------------------------  -----------------
+GI_c               GI_c      Mode I  critical energy release rate           1.0e-4 .. 1.0e-1
+GII_c              GII_c     Mode II critical energy release rate           1.0e-4 .. 1.0e-1
+normal_strength    N         Cohesive normal (tensile) strength             1.0    .. 5.0e2
+shear_strength     T         Cohesive shear strength                        1.0    .. 5.0e2
+eta                eta       Mixed-mode / viscous regularization exponent   0.5    .. 3.0
+
+These feed the interface cohesive model in template.i (GI_c, GII_c,
+normal_strength=N, shear_strength=T, eta). Physically the interface is usually
+WEAKER than the bulk phases - keep GI_c, GII_c below the bulk Gc values and
+N, T below the bulk psic values if you want interfacial (debonding) failure to
+be a competitive mechanism.
+
+
+================================================================================
+ NOTES / CONSTRAINTS  (important for a valid sampling space)
+================================================================================
+
+NOTE A - "l" is SHARED between phases.
+    In settings.json, material_A_substitutions and material_B_substitutions both
+    map their "l" entry to the SAME .i variable "l". Whichever is applied last
+    wins, so there is effectively ONE phase-field length for the whole domain.
+    Recommendation: define "l" once (identical value) in both material_A and
+    material_B, or treat it as a single global knob. Do not expect an
+    independent l_A vs l_B - the current template does not support it.
+
+NOTE B - "density" is not part of the physics.
+    density is NOT in bulk_material_properties, so it is never substituted into
+    template.i / fracture.i. It is only used in runner.py to compute a
+    volume-fraction-weighted density that gets written to the output/HDF5
+    (rho = vf*rho_A + (1-vf)*rho_B). Vary it only if you care about that
+    recorded output; it has no effect on the fracture solve.
+
+NOTE C - Poisson ratio bounds.
+    nu must satisfy nu < 0.5 (strictly) or K blows up (1 - 2 nu -> 0). Keep a
+    safety margin, e.g. nu <= 0.45. nu <= -1 is unphysical for the elastic model.
+
+NOTE D - Toughness scaling gotcha.
+    Note the shipped configs and the template defaults differ by ~1000x for Gc
+    (config Gc=20000 vs template Gc_A=20.0). The CONFIG value is what is
+    substituted at runtime. Pick a single consistent unit convention across all
+    of E, Gc, psic, GI_c, N, etc. before sampling, or comparisons across runs
+    will be meaningless.
+
+NOTE E - Physical contrast is the interesting axis.
+    For a two-phase composite study, the meaningful dimensionless groups are the
+    A/B contrasts, e.g.:
+        stiffness contrast   E_B / E_A
+        toughness contrast   Gc_B / Gc_A
+        strength contrast    psic_B / psic_A
+        interface vs bulk    GI_c / min(Gc_A, Gc_B),  N / min(psic_A, psic_B)
+    Consider sampling contrasts (and one reference scale) rather than 12
+    independent absolutes, if your advisor wants controlled parameter sweeps.
+
+
+================================================================================
+ QUICK REFERENCE - full free-parameter list (12 independent knobs)
+================================================================================
+    material_A:   youngs_modulus, poissons_ratio, Gc, psic        (+ density, output-only)
+    material_B:   youngs_modulus, poissons_ratio, Gc, psic        (+ density, output-only)
+    shared:       l
+    material_AB:  GI_c, GII_c, normal_strength, shear_strength, eta
+
+Independent physics knobs: E_A, nu_A, Gc_A, psic_A,
+                           E_B, nu_B, Gc_B, psic_B,
+                           l (shared),
+                           GI_c, GII_c, N, T, eta
+
+
+================================================================================
+ EXAMPLE - random sampling config block (RandomMaterialGenerator)
+================================================================================
+RandomMaterialGenerator draws each property uniformly from a (min, max) tuple
+(compgen/materials.py). A JSON problem-file snippet:
+
+    "material_A": {
+        "type": "materials.RandomMaterialGenerator",
+        "params": {
+            "youngs_modulus": [1.0e3, 5.0e5],
+            "poissons_ratio": [0.15, 0.45],
+            "Gc":             [1.0e-2, 5.0e4],
+            "psic":           [0.1, 2.0e2],
+            "l":              [0.01, 0.05],
+            "density":        [1.0, 20.0]
+        }
+    },
+    "material_B": {
+        "type": "materials.RandomMaterialGenerator",
+        "params": {
+            "youngs_modulus": [1.0e3, 5.0e5],
+            "poissons_ratio": [0.15, 0.45],
+            "Gc":             [1.0e-2, 5.0e4],
+            "psic":           [0.1, 2.0e2],
+            "l":              [0.01, 0.05],
+            "density":        [1.0, 20.0]
+        }
+    },
+    "material_AB": {
+        "type": "materials.RandomMaterialGenerator",
+        "params": {
+            "GI_c":            [1.0e-4, 1.0e-1],
+            "GII_c":           [1.0e-4, 1.0e-1],
+            "normal_strength": [1.0, 5.0e2],
+            "shear_strength":  [1.0, 5.0e2],
+            "eta":             [0.5, 3.0]
+        }
+    }
+
+REMINDER: because "l" is shared (NOTE A), if you sample it independently in A
+and B the B draw will overwrite A's at substitution time. To keep runs
+reproducible, either fix l to a constant in both blocks or sample it once and
+copy the value.
+================================================================================
