@@ -80,7 +80,7 @@
         "write_files": true,
         "add_density": true,
         "output_prefix": "fracture", 
-        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0902_01_brb"
+        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/0903_01_brb"
     },
     "storage": {}
 }
