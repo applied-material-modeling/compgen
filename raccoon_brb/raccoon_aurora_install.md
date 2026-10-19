@@ -26,6 +26,7 @@ git clone https://github.com/hugary1995/raccoon.git
 
 ## 6. Enter the cloned directory
 cd raccoon
+git checkout master
 
 ## 7. Download RACCOON and MOOSE submodules
 ## These commands download a copy of RACCOON and MOOSE (as a submodule) to your local projects directory, aparently among other things. 
