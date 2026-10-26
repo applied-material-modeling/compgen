@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-export TMPDIR="/home/bbrunsvik/projects/ai4ns/compgen/demos/3D_ES/simulations/tmp"
+export TMPDIR="$SCRIPT_DIR/simulations/tmp"
 mkdir -p "$TMPDIR"
 
 if [[ -z "${CONDA_PREFIX:-}" || "${CONDA_DEFAULT_ENV:-}" != "moose_genesis" ]]; then
@@ -22,9 +22,20 @@ fi
 
 cd "$SCRIPT_DIR"
 
-# The launcher is stored two levels below the repository root.  Make the
+# Use the conventional local RACCOON checkout when present. These defaults
+# can be overridden for another machine with RACCOON_DIR and
+# MOOSE_ADFPARSER_JIT_INCLUDE.
+RACCOON_DIR="${RACCOON_DIR:-$HOME/code/raccoon}"
+if [[ -x "$RACCOON_DIR/raccoon-opt" ]]; then
+    export PATH="$RACCOON_DIR:$PATH"
+fi
+if [[ -z "${MOOSE_ADFPARSER_JIT_INCLUDE:-}" && -f "$RACCOON_DIR/ADRealMonolithic.h" ]]; then
+    export MOOSE_ADFPARSER_JIT_INCLUDE="$RACCOON_DIR/ADRealMonolithic.h"
+fi
+
+# The launcher is stored four levels below the repository root.  Make the
 # repository package importable even when this script is started elsewhere.
-export PYTHONPATH="$(cd "$SCRIPT_DIR/../.." && pwd)${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$(cd "$SCRIPT_DIR/../../../.." && pwd)${PYTHONPATH:+:$PYTHONPATH}"
 
 if ! python -c 'import exodusii' >/dev/null 2>&1; then
     echo "Missing Python dependency: exodusii" >&2
@@ -33,26 +44,16 @@ if ! python -c 'import exodusii' >/dev/null 2>&1; then
     exit 1
 fi
 
-if [[ ! -x /home/bbrunsvik/code/raccoon/raccoon-opt ]]; then
-    echo "RACCOON executable is missing or not executable:" >&2
-    echo "  /home/bbrunsvik/code/raccoon/raccoon-opt" >&2
+if ! command -v raccoon-opt >/dev/null 2>&1; then
+    echo "RACCOON executable was not found on PATH: raccoon-opt" >&2
     exit 1
 fi
 
-RACCOON_JIT_HEADER="/home/bbrunsvik/code/raccoon/ADRealMonolithic.h"
-if [[ -n "${MOOSE_ADFPARSER_JIT_INCLUDE:-}" ]]; then
-    RACCOON_JIT_HEADER="$MOOSE_ADFPARSER_JIT_INCLUDE"
-fi
-
-if [[ ! -f "$RACCOON_JIT_HEADER" ]]; then
+if [[ -z "${MOOSE_ADFPARSER_JIT_INCLUDE:-}" || ! -f "$MOOSE_ADFPARSER_JIT_INCLUDE" ]]; then
     echo "RACCOON JIT support is not configured." >&2
     echo "The RACCOON executable requires MOOSE's generated ADRealMonolithic.h header." >&2
-    echo "Expected matching header: $RACCOON_JIT_HEADER" >&2
-    echo "Generate it from the embedded MOOSE checkout with:" >&2
-    echo "  cd /home/bbrunsvik/code/raccoon && make ADRealMonolithic.h" >&2
+    echo "Set MOOSE_ADFPARSER_JIT_INCLUDE to the matching ADRealMonolithic.h path." >&2
     exit 1
 fi
-
-export MOOSE_ADFPARSER_JIT_INCLUDE="$RACCOON_JIT_HEADER"
 
 exec python "$SCRIPT_DIR/run_fracture_predefined_local.py"

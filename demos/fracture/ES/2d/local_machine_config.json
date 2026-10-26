@@ -13,15 +13,15 @@
         }
     },
     "mpi": {
-        "executable": "mpirun",
+        "executable": "/home/bbrunsvik/.conda/envs/moose_genesis/bin/mpiexec.hydra",
         "rank_command": "-np",
         "ranks": "6"
     },
     "storage": {
-        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/3D_ES/simulations/tmp",
+        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d/simulations/tmp",
         "delete_temp_dir": true
     },
     "verbose": false,
-    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/3D_ES/simulations/logs/compgen_local.log",
+    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d/simulations/logs/compgen_local.log",
     "log_level": "INFO"
 }

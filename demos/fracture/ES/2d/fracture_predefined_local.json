@@ -80,7 +80,7 @@
         "write_files": true,
         "add_density": true,
         "output_prefix": "fracture",
-        "output_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/3D_ES/simulations/output"
+        "output_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d/simulations/output"
     },
     "storage": {}
 }
