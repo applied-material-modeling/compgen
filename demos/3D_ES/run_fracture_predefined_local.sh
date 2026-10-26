@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-export TMPDIR="/tmp/brb"
+export TMPDIR="/home/bbrunsvik/projects/ai4ns/compgen/demos/3D_ES/simulations/tmp"
 mkdir -p "$TMPDIR"
 
 if [[ -z "${CONDA_PREFIX:-}" || "${CONDA_DEFAULT_ENV:-}" != "moose_genesis" ]]; then
