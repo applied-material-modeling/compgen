@@ -13,7 +13,7 @@
         "ranks": "6"
     },
     "storage": {
-        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d/simulations/tmp",
+        "temp_dir": "/var/tmp/brb/compgen",
         "delete_temp_dir": true
     },
     "verbose": false,
