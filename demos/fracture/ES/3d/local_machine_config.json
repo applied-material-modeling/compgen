@@ -1,0 +1,22 @@
+{
+    "racoon": {
+        "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
+        "options": [],
+        "discard_raccoon_text": false,
+        "environment": {
+            "MOOSE_ADFPARSER_JIT_INCLUDE": "/home/bbrunsvik/code/raccoon/ADRealMonolithic.h"
+        }
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "60"
+    },
+    "storage": {
+        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/3d/simulations/tmp",
+        "delete_temp_dir": false
+    },
+    "verbose": false,
+    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/3d/simulations/logs/compgen_local.log",
+    "log_level": "INFO"
+}

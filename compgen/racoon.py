@@ -21,25 +21,42 @@ from compgen.moose import (
     process_output
 )
 
-def generate_cracks(ncrack, lb, ub, L_avg, L_cov):
+def generate_cracks(ncrack, lb, ub, L_avg, L_cov, dimensions=2):
+    """Generate periodic line cracks in a 2D or 3D box.
+
+    The 2D path retains the original in-plane angle generation. In 3D,
+    uniformly distributed directions on the sphere are used and the same
+    periodic clipping logic is applied in all coordinate directions.
+    """
     L = np.random.normal(L_avg, L_cov * L_avg, ncrack)
-    xc = np.random.uniform(lb, ub, (ncrack, 2))
-    q = np.random.uniform(0, 2 * np.pi, ncrack)
-    x1 = xc + 0.5 * L[:, np.newaxis] * np.column_stack((np.cos(q), np.sin(q)))
-    x2 = xc - 0.5 * L[:, np.newaxis] * np.column_stack((np.cos(q), np.sin(q)))
+    if dimensions not in (2, 3):
+        raise ValueError("Crack generation supports only 2D and 3D boxes.")
+    lower = np.broadcast_to(np.asarray(lb, dtype=float), (dimensions,))
+    upper = np.broadcast_to(np.asarray(ub, dtype=float), (dimensions,))
+    if np.any(upper <= lower):
+        raise ValueError("Crack-generation upper bounds must exceed lower bounds.")
+    xc = np.random.uniform(lower, upper, (ncrack, dimensions))
+    if dimensions == 2:
+        q = np.random.uniform(0, 2 * np.pi, ncrack)
+        directions = np.column_stack((np.cos(q), np.sin(q)))
+    else:
+        directions = np.random.normal(size=(ncrack, 3))
+        directions /= np.linalg.norm(directions, axis=1)[:, np.newaxis]
+    x1 = xc + 0.5 * L[:, np.newaxis] * directions
+    x2 = xc - 0.5 * L[:, np.newaxis] * directions
     
     def clip_segment_to_box(p0, p1, lb, ub, eps=1e-12):
         d = p1 - p0
         t0 = 0.0
         t1 = 1.0
-        for axis in range(2):
+        for axis in range(dimensions):
             if abs(d[axis]) < eps:
-                if p0[axis] < lb or p0[axis] > ub:
+                if p0[axis] < lower[axis] or p0[axis] > upper[axis]:
                     return None
                 continue
             inv_da = 1.0 / d[axis]
-            t_enter = (lb - p0[axis]) * inv_da
-            t_exit = (ub - p0[axis]) * inv_da
+            t_enter = (lower[axis] - p0[axis]) * inv_da
+            t_exit = (upper[axis] - p0[axis]) * inv_da
             if t_enter > t_exit:
                 t_enter, t_exit = t_exit, t_enter
             t0 = max(t0, t_enter)
@@ -51,26 +68,25 @@ def generate_cracks(ncrack, lb, ub, L_avg, L_cov):
         return q0, q1
 
     def periodic_split_segment(p0, p1, lb, ub, eps=1e-10):
-        w = ub - lb
-        seg_min_x = min(p0[0], p1[0])
-        seg_max_x = max(p0[0], p1[0])
-        seg_min_y = min(p0[1], p1[1])
-        seg_max_y = max(p0[1], p1[1])
-        kx_min = int(np.ceil((lb - seg_max_x) / w))
-        kx_max = int(np.floor((ub - seg_min_x) / w))
-        ky_min = int(np.ceil((lb - seg_max_y) / w))
-        ky_max = int(np.floor((ub - seg_min_y) / w))
+        widths = upper - lower
         pieces = []
-        for kx in range(kx_min, kx_max + 1):
-            for ky in range(ky_min, ky_max + 1):
-                shift = np.array([kx * w, ky * w])
-                clipped = clip_segment_to_box(p0 + shift, p1 + shift, lb, ub)
-                if clipped is None:
-                    continue
-                a, b = clipped
-                if np.linalg.norm(b - a) <= eps:
-                    continue
-                pieces.append((a, b))
+        ranges = [
+            range(
+                int(np.ceil((lower[i] - max(p0[i], p1[i])) / widths[i])),
+                int(np.floor((upper[i] - min(p0[i], p1[i])) / widths[i])) + 1,
+            )
+            for i in range(dimensions)
+        ]
+        for offsets in np.ndindex(*(len(r) for r in ranges)):
+            shifts = [ranges[i][offsets[i]] for i in range(dimensions)]
+            shift = np.asarray(shifts, dtype=float) * widths
+            clipped = clip_segment_to_box(p0 + shift, p1 + shift, lower, upper)
+            if clipped is None:
+                continue
+            a, b = clipped
+            if np.linalg.norm(b - a) <= eps:
+                continue
+            pieces.append((a, b))
         unique = []
         for a, b in pieces:
             found = False
@@ -90,15 +106,22 @@ def generate_cracks(ncrack, lb, ub, L_avg, L_cov):
     
     x1_periodic = np.array([s[0] for s in segments])
     x2_periodic = np.array([s[1] for s in segments])
-    z = np.zeros(len(segments))
+    if not segments:
+        empty = ""
+        return {key: empty for key in ("x1", "y1", "z1", "x2", "y2", "z2")}
+
+    values = {
+        "x1": x1_periodic[:, 0],
+        "y1": x1_periodic[:, 1],
+        "x2": x2_periodic[:, 0],
+        "y2": x2_periodic[:, 1],
+        "z1": x1_periodic[:, 2] if dimensions == 3 else np.zeros(len(segments)),
+        "z2": x2_periodic[:, 2] if dimensions == 3 else np.zeros(len(segments)),
+    }
     
     return {
-        "x1": " ".join(f"{v:.8f}" for v in x1_periodic[:, 0]),
-        "y1": " ".join(f"{v:.8f}" for v in x1_periodic[:, 1]),
-        "x2": " ".join(f"{v:.8f}" for v in x2_periodic[:, 0]),
-        "y2": " ".join(f"{v:.8f}" for v in x2_periodic[:, 1]),
-        "z1": " ".join(f"{v:.8f}" for v in z),
-        "z2": " ".join(f"{v:.8f}" for v in z)
+        key: " ".join(f"{v:.8f}" for v in component)
+        for key, component in values.items()
     }
 
 def inject_cracks(fracture_file_path, cracks_data):
@@ -150,8 +173,18 @@ def execute_racoon_simulations(
                 L_avg = settings.get("fracture", {}).get("L_avg", 0.1)
                 L_cov = settings.get("fracture", {}).get("L_cov", 0.3)
                 
-                L_val = settings.get("L", [1.0, 1.0])[0]
-                cracks_data = generate_cracks(ncrack, 0, L_val, L_avg, L_cov)
+                domain = settings.get("L", [1.0, 1.0])
+                dimensions = len(domain)
+                if dimensions not in (2, 3):
+                    raise ValueError("Fracture domain must have 2 or 3 dimensions.")
+                cracks_data = generate_cracks(
+                    ncrack,
+                    0,
+                    domain[0] if dimensions == 2 else np.asarray(domain),
+                    L_avg,
+                    L_cov,
+                    dimensions=dimensions,
+                )
                 inject_cracks(os.path.join(tmpdir, aux_file), cracks_data)
 
         mat_subs = material_property_substitutions(
