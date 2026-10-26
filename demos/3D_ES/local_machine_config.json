@@ -1,0 +1,26 @@
+{
+    "moose": {
+        "executable": "/home/bbrunsvik/code/MOOSE_genesis/moose/modules/solid_mechanics/solid_mechanics-opt",
+        "options": [],
+        "environment": {}
+    },
+    "racoon": {
+        "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
+        "options": [],
+        "environment": {
+            "MOOSE_ADFPARSER_JIT_INCLUDE": "/home/bbrunsvik/code/raccoon/ADRealMonolithic.h"
+        }
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "20"
+    },
+    "storage": {
+        "temp_dir": "/home/bbrunsvik/compgen_tmp",
+        "delete_temp_dir": true
+    },
+    "verbose": false,
+    "log_file": "/tmp/brb/compgen_local.log",
+    "log_level": "INFO"
+}

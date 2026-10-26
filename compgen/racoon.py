@@ -278,6 +278,29 @@ def execute_racoon_simulations(
             if "CONDA_PREFIX" in run_env:
                 conda_prefix = run_env["CONDA_PREFIX"]
 
+                # RACCOON's embedded FParser JIT compiler command is mpicxx.
+                # Ensure the matching conda MPI wrapper is discoverable even
+                # when the parent Python process was not started from an
+                # activated conda environment.
+                conda_bin = f"{conda_prefix}/bin"
+                existing_path = run_env.get("PATH")
+                run_env["PATH"] = (
+                    conda_bin
+                    if not existing_path
+                    else f"{conda_bin}:{existing_path}"
+                )
+
+                # The FParser JIT loader dlopens a temporary object at runtime.
+                # Keep the matching conda MOOSE/libMesh libraries discoverable by
+                # that loader, in addition to the executable's own RPATH.
+                conda_lib = f"{conda_prefix}/lib"
+                existing_ld_library_path = run_env.get("LD_LIBRARY_PATH")
+                run_env["LD_LIBRARY_PATH"] = (
+                    conda_lib
+                    if not existing_ld_library_path
+                    else f"{conda_lib}:{existing_ld_library_path}"
+                )
+
                 # Always set these, even if they exist (override)
                 run_env["LIBMESH_CXX"] = f"{conda_prefix}/bin/g++"
 
@@ -316,14 +339,30 @@ def execute_racoon_simulations(
                 print("[JIT Config] WARNING: CONDA_PREFIX not found in environment!")
 
             try:
-                subprocess.run(
+                completed = subprocess.run(
                     cmd,
                     check=True,
                     env=run_env,
-                    stdout=subprocess.DEVNULL, # Put in null, because otherwise we will end up with insanely huge log files. 
-                    stderr=subprocess.DEVNULL, # Put in null, because otherwise we will end up with insanely huge log files. 
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
                     timeout=86400,  # 24 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
                 )
+                if completed.stdout:
+                    logger.debug("RACCOON stdout:\n%s", completed.stdout.rstrip())
+                if completed.stderr:
+                    logger.debug("RACCOON stderr:\n%s", completed.stderr.rstrip())
+            except subprocess.CalledProcessError as error:
+                logger.error(
+                    "RACCOON command failed with exit code %s: %s",
+                    error.returncode,
+                    shlex.join(cmd),
+                )
+                if error.stdout:
+                    logger.error("RACCOON stdout:\n%s", error.stdout.rstrip())
+                if error.stderr:
+                    logger.error("RACCOON stderr:\n%s", error.stderr.rstrip())
+                raise
             except subprocess.TimeoutExpired:  
                 logger.error("Job exceeded 24 hours and was killed.")
                 logger.error("Command was: %s", ' '.join(cmd))
