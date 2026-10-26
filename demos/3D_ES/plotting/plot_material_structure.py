@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Plot the Al/SiC material structure from a CompGen HDF5 result."""
 
-import argparse
 from pathlib import Path
 
 import h5py
+import hdf5plugin  # Registers compression filters used by CompGen HDF5 output.
 import matplotlib
 
 matplotlib.use("Agg")
@@ -16,6 +16,10 @@ from matplotlib.collections import PatchCollection
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+H5_FILE = SCRIPT_DIR.parent / "simulations" / "output" / (
+    "fracture_bd6bdeaaf2bb4396a1df5937ddc09d7c_0.h5"
+)
+OUTPUT_FILE = H5_FILE.with_name(f"{H5_FILE.stem}_material_structure.png")
 
 
 def newest_h5_file(directory):
@@ -127,27 +131,7 @@ def plot_structure(h5_path, output_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Plot Aluminum and SiC material blocks from a CompGen HDF5 result."
-    )
-    parser.add_argument(
-        "h5_file",
-        nargs="?",
-        help="HDF5 result file. Defaults to the newest .h5 file in this directory.",
-    )
-    parser.add_argument(
-        "--output",
-        help="PNG output path. Defaults next to the HDF5 file.",
-    )
-    args = parser.parse_args()
-
-    h5_path = Path(args.h5_file).resolve() if args.h5_file else newest_h5_file(SCRIPT_DIR)
-    output_path = (
-        Path(args.output).resolve()
-        if args.output
-        else h5_path.with_name(f"{h5_path.stem}_material_structure.png")
-    )
-    plot_structure(h5_path, output_path)
+    plot_structure(H5_FILE, OUTPUT_FILE)
 
 
 if __name__ == "__main__":

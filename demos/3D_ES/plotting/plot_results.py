@@ -7,6 +7,13 @@ import matplotlib.pyplot as plt
 import imageio
 from scipy.interpolate import LinearNDInterpolator
 
+# User settings
+INPUT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "simulations", "output")
+)
+GRID_SIZES = [125]
+FPS = 5.0
+
 # Setup matplotlib styling
 plt.rcParams.update({
     'font.family': 'sans-serif',
@@ -260,22 +267,16 @@ def process_h5_file(h5_path, grid_sizes=[125, 512], fps=5):
 
 
 def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Interpolate H5 simulation results to regular grids and generate GIFs.")
-    parser.add_argument('--fps', type=float, default=5.0, help="Frames per second for GIFs.")
-    args = parser.parse_args()
-    
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    h5_files = sorted(glob.glob(os.path.join(current_dir, "*.h5")))
+    h5_files = sorted(glob.glob(os.path.join(INPUT_DIR, "*.h5")))
     # Exclude any interpolated files
     h5_files = [f for f in h5_files if not os.path.basename(f).startswith("interpolated_")]
     
     if not h5_files:
-        print(f"No H5 files found in {current_dir}")
+        print(f"No H5 files found in {INPUT_DIR}")
         return
         
     for h5_path in h5_files:
-        process_h5_file(h5_path, grid_sizes=[125], fps=args.fps) # grid_sizes=[125, 512]
+        process_h5_file(h5_path, grid_sizes=GRID_SIZES, fps=FPS)
         
     print("\nAll H5 files processed successfully!")
 
