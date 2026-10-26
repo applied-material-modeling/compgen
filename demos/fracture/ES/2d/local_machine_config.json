@@ -1,9 +1,4 @@
 {
-    "moose": {
-        "executable": "/home/bbrunsvik/code/MOOSE_genesis/moose/modules/solid_mechanics/solid_mechanics-opt",
-        "options": [],
-        "environment": {}
-    },
     "racoon": {
         "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
         "options": [],
@@ -13,7 +8,7 @@
         }
     },
     "mpi": {
-        "executable": "/home/bbrunsvik/.conda/envs/moose_genesis/bin/mpiexec.hydra",
+        "executable": "mpirun",
         "rank_command": "-np",
         "ranks": "6"
     },
