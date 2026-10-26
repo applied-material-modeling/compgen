@@ -19,7 +19,7 @@ if __name__ == "__main__":
     failed = sum(result == -1 for result in results)
     if failed:
         raise RuntimeError(
-            f"{failed} simulation group(s) failed. See the log under /tmp/brb "
+            f"{failed} simulation group(s) failed. See the configured log file "
             "for the detailed error."
         )
     print("Completed local fracture simulations successfully.")

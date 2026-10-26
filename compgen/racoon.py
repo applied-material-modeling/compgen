@@ -21,7 +21,6 @@ from compgen.moose import (
     process_output
 )
 
-
 def generate_cracks(ncrack, lb, ub, L_avg, L_cov):
     L = np.random.normal(L_avg, L_cov * L_avg, ncrack)
     xc = np.random.uniform(lb, ub, (ncrack, 2))
@@ -338,30 +337,31 @@ def execute_racoon_simulations(
             else:
                 print("[JIT Config] WARNING: CONDA_PREFIX not found in environment!")
 
+            discard_raccoon_text = settings.get("racoon", {}).get(
+                "discard_raccoon_text", False
+            )
+            if not isinstance(discard_raccoon_text, bool):
+                raise TypeError("racoon.discard_raccoon_text must be a boolean")
+            raccoon_output = (
+                subprocess.DEVNULL if discard_raccoon_text else None
+            )
+
             try:
-                completed = subprocess.run(
+                subprocess.run(
                     cmd,
                     check=True,
                     env=run_env,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stdout=raccoon_output,
+                    stderr=raccoon_output,
                     text=True,
                     timeout=86400,  # 24 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
                 )
-                if completed.stdout:
-                    logger.debug("RACCOON stdout:\n%s", completed.stdout.rstrip())
-                if completed.stderr:
-                    logger.debug("RACCOON stderr:\n%s", completed.stderr.rstrip())
             except subprocess.CalledProcessError as error:
                 logger.error(
                     "RACCOON command failed with exit code %s: %s",
                     error.returncode,
                     shlex.join(cmd),
                 )
-                if error.stdout:
-                    logger.error("RACCOON stdout:\n%s", error.stdout.rstrip())
-                if error.stderr:
-                    logger.error("RACCOON stderr:\n%s", error.stderr.rstrip())
                 raise
             except subprocess.TimeoutExpired:  
                 logger.error("Job exceeded 24 hours and was killed.")
