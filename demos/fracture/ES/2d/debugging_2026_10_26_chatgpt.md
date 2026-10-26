@@ -1,3 +1,5 @@
+# This approximately describes how to run the code after finishing getting it running on ES server, moved from Aurora. 
+
 # Local predefined fracture run
 
 This is the non-Slurm equivalent of the Aurora predefined fracture run.
@@ -8,13 +10,6 @@ From the repository root:
 
 ```bash
 ./demos/fracture/ES/2d/run_fracture_predefined_local.sh
-```
-
-Or, after activating the environment manually, from any directory:
-
-```bash
-conda activate moose_genesis
-python demos/fracture/ES/2d/run_fracture_predefined_local.py
 ```
 
 ## Local changes from Aurora
