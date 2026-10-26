@@ -47,4 +47,4 @@ python plotting/plot_material_structure.py
 
 - `/home/bbrunsvik/.conda/envs/moose_genesis`: shared Conda environment.
 - `/home/bbrunsvik/code/raccoon`: compiled RACCOON, including `raccoon-opt` and `ADRealMonolithic.h`.
-- `MOOSE`
+- `/home/bbrunsvik/code/MOOSE_genesis/moose`
