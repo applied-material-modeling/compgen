@@ -1,11 +1,8 @@
 {
     "racoon": {
-        "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
+        "executable": "/project/ai4ns_composites/fracture_code/raccoon/raccoon-opt",
         "options": [],
-        "discard_raccoon_text": false,
-        "environment": {
-            "MOOSE_ADFPARSER_JIT_INCLUDE": "/home/bbrunsvik/code/raccoon/ADRealMonolithic.h"
-        }
+        "discard_raccoon_text": false
     },
     "mpi": {
         "executable": "mpirun",

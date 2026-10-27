@@ -31,19 +31,11 @@ command -v raccoon-opt
 command -v mpirun
 ```
 
-The launcher automatically adds `$HOME/code/raccoon` to `PATH` when it finds
-`raccoon-opt` there. For a different RACCOON checkout, set `RACCOON_DIR`
-before running. The MOOSE `solid_mechanics-opt` executable must already be
-built and available on `PATH`.
+The launcher automatically activates
+`/project/ai4ns_composites/fracture_code/conda_envs/raccoon` and adds
+`/project/ai4ns_composites/fracture_code/raccoon` to `PATH`. For a different
+installation, set `RACCOON_ENV_PREFIX` and `RACCOON_DIR` before running.
 
-RACCOON also needs its matching MOOSE JIT header. The launcher automatically
-uses `$RACCOON_DIR/ADRealMonolithic.h` when present; otherwise set
-`MOOSE_ADFPARSER_JIT_INCLUDE` to an existing header before running:
-
-```bash
-test -f "$MOOSE_ADFPARSER_JIT_INCLUDE"
-```
-
-Generate the header using the MOOSE/RACCOON build instructions for your
-environment if it is missing. The launcher intentionally does not assume a
-machine-specific checkout location.
+The launcher does not require a pre-generated `ADRealMonolithic.h`. The
+CompGen RACCOON executor configures the matching conda compiler and library
+paths automatically if MOOSE's runtime JIT is requested by the input.
