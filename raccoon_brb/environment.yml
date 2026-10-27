@@ -14,7 +14,7 @@ channels:
 dependencies:
 
   # Install most Moose dependencies based on Raccoon installation instructions. 
-  - moose-dev=2026.06.16=mpich
+  - moose-dev=2026.10.19=mpich
 
   # Install things required for Compgen. These are taken from the requirements.txt file. 
   - numpy
