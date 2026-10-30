@@ -2,7 +2,7 @@
     "racoon": {
         "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
         "options": [],
-        "discard_raccoon_text": false,
+        "discard_raccoon_text": true,
         "environment": {
             "MOOSE_ADFPARSER_JIT_INCLUDE": "/home/bbrunsvik/code/raccoon/ADRealMonolithic.h"
         }
@@ -10,7 +10,7 @@
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "6"
+        "ranks": "30"
     },
     "storage": {
         "temp_dir": "/var/tmp/brb/compgen",

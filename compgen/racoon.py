@@ -5,6 +5,7 @@ import sys
 import socket
 import logging
 import shlex
+from pathlib import Path
 
 import numpy as np
 
@@ -375,20 +376,60 @@ def execute_racoon_simulations(
             )
             if not isinstance(discard_raccoon_text, bool):
                 raise TypeError("racoon.discard_raccoon_text must be a boolean")
-            raccoon_output = (
-                subprocess.DEVNULL if discard_raccoon_text else None
-            )
+
+            raccoon_log_file = None
+            if not discard_raccoon_text:
+                raccoon_log_path = settings.get("racoon", {}).get(
+                    "raccoon_log_file"
+                )
+                if raccoon_log_path is None and settings.get("log_file"):
+                    # Keep Raccoon output beside the Compgen log by default.
+                    # runner.py adds the hostname to the Python log filename;
+                    # do the same here so multiple hosts do not share a file.
+                    log_path = Path(settings["log_file"])
+                    raccoon_log_path = log_path.with_name(
+                        f"raccoon_{log_path.stem}_{socket.gethostname()}"
+                        f"{log_path.suffix}"
+                    )
+                elif raccoon_log_path is not None:
+                    log_path = Path(raccoon_log_path)
+                    raccoon_log_path = log_path.with_name(
+                        f"{log_path.stem}_{socket.gethostname()}"
+                        f"{log_path.suffix}"
+                    )
+
+                if raccoon_log_path is None:
+                    raise ValueError(
+                        "A log_file or racoon.raccoon_log_file is required "
+                        "when racoon.discard_raccoon_text is false"
+                    )
+
+                raccoon_log_path = Path(raccoon_log_path)
+                raccoon_log_path.parent.mkdir(parents=True, exist_ok=True)
+                raccoon_log_file = open(raccoon_log_path, "a", encoding="utf-8")
 
             try:
-                subprocess.run(
-                    cmd,
-                    check=True,
-                    env=run_env,
-                    stdout=raccoon_output,
-                    stderr=raccoon_output,
-                    text=True,
-                    timeout=86400,  # 24 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages. 
-                )
+                if discard_raccoon_text:
+                    subprocess.run(
+                        cmd,
+                        check=True,
+                        env=run_env,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                        timeout=86400,  # 24 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages.
+                    )
+                else:
+                    with raccoon_log_file:
+                        subprocess.run(
+                            cmd,
+                            check=True,
+                            env=run_env,
+                            stdout=raccoon_log_file,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            timeout=86400,  # 24 hours. TODO this is hard coded and mostly for testing. Kill job if it's going poorly and running for ages.
+                        )
             except subprocess.CalledProcessError as error:
                 logger.error(
                     "RACCOON command failed with exit code %s: %s",
