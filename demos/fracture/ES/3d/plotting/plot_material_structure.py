@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot the Al/SiC material structure from a CompGen HDF5 result."""
+"""Plot native x-y, x-z, and y-z slices of the Al/SiC structure."""
 
 from pathlib import Path
 
@@ -16,6 +16,9 @@ from matplotlib.collections import PatchCollection
 from scipy.spatial import ConvexHull
 
 from plotting_utils import get_plot_output_dir, parse_plot_args, resolve_h5_file
+
+
+NUMBER_OF_SLICES = 3
 
 
 def load_material_mesh(h5_path):
@@ -40,10 +43,33 @@ def load_material_mesh(h5_path):
     if coords.shape[1] < 3 and connectivity.shape[1] == 8:
         raise ValueError("Hexahedral meshes must contain three coordinate dimensions.")
 
-    # This plot is an explicit x-y projection of the 3D structure. The z
-    # coordinate is retained by the input validation but intentionally reduced
-    # only for this overview plot.
-    return coords[:, :2], connectivity, material
+    return coords, connectivity, material
+
+
+def select_native_slices(coords, connectivity, normal_axis):
+    """Select three native layers from a minimum-coordinate face to center."""
+    element_centers = coords[connectivity].mean(axis=1)
+    layers = np.unique(element_centers[:, normal_axis])
+    requested_z = np.linspace(
+        layers.min(), 0.5 * (layers.min() + layers.max()), NUMBER_OF_SLICES
+    )
+
+    slices = []
+    for requested in requested_z:
+        selected_layer = layers[np.argmin(np.abs(layers - requested))]
+        element_indices = np.flatnonzero(
+            np.isclose(
+                element_centers[:, normal_axis], selected_layer, rtol=0.0, atol=1e-12
+            )
+        )
+        if len(element_indices) == 0:
+            raise ValueError(f"No elements found at axis {normal_axis}={selected_layer}.")
+        slices.append({
+            "element_indices": element_indices,
+            "requested_z": requested,
+            "coordinate": selected_layer,
+        })
+    return slices
 
 
 def material_label_position(coords, connectivity, material, material_id):
@@ -70,67 +96,62 @@ def plot_structure(h5_path, output_path):
     coords, connectivity, material = load_material_mesh(h5_path)
     material_ids = np.rint(material).astype(int)
 
-    patches = [
-        Polygon(projected_polygon(coords[element]), closed=True)
-        for element in connectivity
-    ]
-    collection = PatchCollection(
-        patches,
-        cmap=ListedColormap(["#4C78A8", "#F2B134"]),
-        linewidth=0.0,
-        edgecolor="none",
+    # Each row is a plane orientation and each column is a native layer from
+    # that plane's minimum-coordinate face toward its center. The tuple is
+    # (displayed horizontal axis, displayed vertical axis, slice normal axis).
+    plane_specs = (
+        ((0, 1, 2), "x", "y", "z", "x-y"),
+        ((0, 2, 1), "x", "z", "y", "x-z"),
+        ((1, 2, 0), "y", "z", "x", "y-z"),
     )
-    collection.set_array(material_ids)
-    collection.set_clim(-0.5, 1.5)
-
-    figure, axis = plt.subplots(figsize=(9, 8), constrained_layout=True)
-    axis.add_collection(collection)
-    axis.set_xlim(coords[:, 0].min(), coords[:, 0].max())
-    axis.set_ylim(coords[:, 1].min(), coords[:, 1].max())
-    axis.set_aspect("equal")
-    axis.set_xlabel("x")
-    axis.set_ylabel("y")
-    axis.set_title(f"Material structure\n{h5_path.name}")
-
+    figure, axes = plt.subplots(3, 3, figsize=(14, 13), constrained_layout=True)
+    axes = axes.ravel()
     legend = [
         Patch(facecolor="#F2B134", edgecolor="none", label="Aluminum (Al)"),
         Patch(facecolor="#4C78A8", edgecolor="none", label="Silicon carbide (SiC)"),
     ]
-    axis.legend(handles=legend, loc="upper right", framealpha=0.95)
 
-    label_specs = (
-        (1, "Al", "#7A4B00", (28, -28)),
-        (0, "SiC", "#123B63", (-28, 28)),
-    )
-    for material_id, label, color, offset in label_specs:
-        position = material_label_position(
-            coords, connectivity, material_ids, material_id
-        )
-        if position is not None:
-            axis.annotate(
-                label,
-                xy=position,
-                xytext=offset,
-                textcoords="offset points",
-                color=color,
-                fontsize=13,
-                fontweight="bold",
-                ha="center",
-                va="center",
-                bbox={
-                    "boxstyle": "round,pad=0.25",
-                    "facecolor": "white",
-                    "edgecolor": color,
-                    "alpha": 0.9,
-                },
-                arrowprops={
-                    "arrowstyle": "->",
-                    "color": color,
-                    "linewidth": 1.2,
-                },
+    for row, (display_axes, xlabel, ylabel, normal_label, plane_label) in enumerate(
+        plane_specs
+    ):
+        slices = select_native_slices(coords, connectivity, display_axes[2])
+        for column, plane in enumerate(slices):
+            axis = axes[row * NUMBER_OF_SLICES + column]
+            element_indices = plane["element_indices"]
+            patches = [
+                Polygon(
+                    projected_polygon(element[:, list(display_axes[:2])]), closed=True
+                )
+                for element in coords[connectivity[element_indices]]
+            ]
+            collection = PatchCollection(
+                patches,
+                cmap=ListedColormap(["#4C78A8", "#F2B134"]),
+                linewidth=0.0,
+                edgecolor="none",
+            )
+            collection.set_array(material_ids[element_indices])
+            collection.set_clim(-0.5, 1.5)
+            axis.add_collection(collection)
+            axis.set_xlim(
+                coords[:, display_axes[0]].min(), coords[:, display_axes[0]].max()
+            )
+            axis.set_ylim(
+                coords[:, display_axes[1]].min(), coords[:, display_axes[1]].max()
+            )
+            axis.set_aspect("equal")
+            axis.set_xlabel(xlabel)
+            axis.set_ylabel(ylabel)
+            axis.set_title(
+                f"{plane_label}: {normal_label} = {plane['coordinate']:.4g}"
             )
 
-    axis.margins(x=0.02, y=0.02)
+    figure.legend(handles=legend, loc="upper center", ncol=2, framealpha=0.95)
+    figure.suptitle(
+        "Material structure on native slices\n"
+        "Columns: face, midway to center, center; rows: x-y, x-z, y-z",
+        fontsize=16,
+    )
     figure.savefig(output_path, dpi=250, bbox_inches="tight")
     plt.close(figure)
     print(f"Saved material plot to {output_path}")
@@ -139,8 +160,7 @@ def plot_structure(h5_path, output_path):
 def main():
     args = parse_plot_args(__doc__)
     h5_file = resolve_h5_file(args.h5_file)
-    output_file = h5_file.with_name(f"{h5_file.stem}_material_structure.png")
-    get_plot_output_dir(h5_file)
+    output_file = get_plot_output_dir(h5_file) / "material_structure.png"
     plot_structure(h5_file, output_file)
 
 

@@ -25,9 +25,11 @@ python plot_interface_damage_slices.py --h5-file /path/to/result.h5
 ```
 
 Plots are written in a directory beside the selected HDF5 file, named after
-the file without its `.h5` suffix. The material-structure PNG remains beside
-the HDF5 file as it did previously. The results plotter does not interpolate
-to a finer grid: node fields are plotted at their native node resolution and
+the file without its `.h5` suffix. The material plotter writes
+`material_structure.png` there and shows a 3x3 arrangement of native slices:
+the rows are x-y, x-z, and y-z, while the columns are the face, midpoint, and
+center layers along each row's normal axis. The results plotter does not
+interpolate to a finer grid: node fields are plotted at their native node resolution and
 element fields at their native element resolution. For a 64-element mesh,
 these are 65x65 and 64x64 x-y projections, respectively. It writes the
 native projections to `native_xy_projection.h5`.
