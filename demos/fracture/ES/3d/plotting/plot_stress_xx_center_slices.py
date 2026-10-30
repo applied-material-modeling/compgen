@@ -6,8 +6,8 @@ geometric center is used to define the three slice coordinates. For each plane,
 the nearest layer of element centers is plotted.
 """
 
-import glob
 import os
+from pathlib import Path
 
 import h5py
 import hdf5plugin  # Registers compression filters used by CompGen output.
@@ -19,22 +19,10 @@ from matplotlib.colors import Normalize
 from matplotlib.animation import FuncAnimation, PillowWriter
 import numpy as np
 
+from plotting_utils import get_plot_output_dir, parse_plot_args, resolve_h5_file
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "simulations", "output"))
 GRID_DPI = 140
 FPS = 5
-
-
-def newest_h5_file(directory):
-    files = [
-        path
-        for path in glob.glob(os.path.join(directory, "*.h5"))
-        if not os.path.basename(path).startswith("interpolated_")
-    ]
-    if not files:
-        raise FileNotFoundError(f"No source HDF5 files found in {directory}")
-    return max(files, key=os.path.getmtime)
 
 
 def load_data(h5_path):
@@ -90,9 +78,9 @@ def select_center_slices(coords, connectivity, stress_xx):
 
 
 def main():
-    h5_path = newest_h5_file(INPUT_DIR)
-    output_dir = os.path.splitext(h5_path)[0]
-    os.makedirs(output_dir, exist_ok=True)
+    args = parse_plot_args(__doc__)
+    h5_path = resolve_h5_file(args.h5_file)
+    output_dir = get_plot_output_dir(Path(h5_path))
     output_path = os.path.join(output_dir, "stress_xx_center_slices.gif")
 
     coords, connectivity, stress_xx, times = load_data(h5_path)

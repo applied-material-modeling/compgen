@@ -15,23 +15,7 @@ import numpy as np
 from matplotlib.collections import PatchCollection
 from scipy.spatial import ConvexHull
 
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = SCRIPT_DIR.parent / "simulations" / "output"
-
-
-def newest_h5_file(directory):
-    files = sorted(
-        (
-            path
-            for path in directory.glob("*.h5")
-            if not path.name.startswith("interpolated_")
-        ),
-        key=lambda path: path.stat().st_mtime,
-    )
-    if not files:
-        raise FileNotFoundError(f"No .h5 files found in {directory}")
-    return files[-1]
+from plotting_utils import get_plot_output_dir, parse_plot_args, resolve_h5_file
 
 
 def load_material_mesh(h5_path):
@@ -153,9 +137,11 @@ def plot_structure(h5_path, output_path):
 
 
 def main():
-    H5_FILE = newest_h5_file(OUTPUT_DIR)
-    OUTPUT_FILE = H5_FILE.with_name(f"{H5_FILE.stem}_material_structure.png")
-    plot_structure(H5_FILE, OUTPUT_FILE)
+    args = parse_plot_args(__doc__)
+    h5_file = resolve_h5_file(args.h5_file)
+    output_file = h5_file.with_name(f"{h5_file.stem}_material_structure.png")
+    get_plot_output_dir(h5_file)
+    plot_structure(h5_file, output_file)
 
 
 if __name__ == "__main__":

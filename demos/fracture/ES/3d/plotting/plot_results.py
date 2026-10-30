@@ -1,5 +1,7 @@
 import os
-import glob
+import argparse
+from pathlib import Path
+
 try:
     import h5py
     import hdf5plugin  # Registers compression filters used by CompGen output.
@@ -8,13 +10,10 @@ except ImportError:  # Plotting dependencies are only required when processing H
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
-from scipy.interpolate import LinearNDInterpolator
+
+from plotting_utils import add_h5_file_argument, get_plot_output_dir, resolve_h5_file
 
 # User settings
-INPUT_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "simulations", "output")
-)
-GRID_SIZES = [64]
 FPS = 5.0
 PLOT_STRESS_ONLY = False
 STRESS_COMPONENTS_TO_PLOT = ("xx",)
@@ -32,21 +31,14 @@ plt.rcParams.update({
 })
 
 
-def interpolate_field_to_grid(coords, connectivity, data, is_node, grid_size):
-    """
-    Interpolates a field (either node or element centered) onto a regular square grid of size grid_size x grid_size.
-    
-    Args:
-        coords: numpy array of shape (N_nodes, 2) or (N_nodes, 3)
-        connectivity: numpy array of shape (N_elements, 4) or (N_elements, 8)
-        data: numpy array of shape (N_steps, N_nodes) or (N_steps, N_elements)
-        is_node: True if data is node-centered, False if element-centered
-        grid_size: integer, target resolution (e.g. 125 or 512)
-        
-    Returns:
-        grid_x: 1D array of x coordinates, shape (grid_size,)
-        grid_y: 1D array of y coordinates, shape (grid_size,)
-        interpolated_data: numpy array of shape (N_steps, grid_size, grid_size)
+def project_field_to_native_xy(coords, connectivity, data, is_node):
+    """Project a native 3D field onto its native x-y locations.
+
+    This keeps the locations already present in the HDF5 file. Since this
+    plotter is an x-y overview of a 3D result, values at repeated x-y
+    locations are averaged through z; no interpolation or finer grid is
+    locations. Node fields therefore retain the 65 x 65 node grid for a
+    64-element mesh, while element fields retain the 64 x 64 element grid.
     """
     if coords.ndim != 2 or coords.shape[1] not in (2, 3):
         raise ValueError("Expected mesh coordinates with shape (nodes, 2) or (nodes, 3).")
@@ -55,38 +47,23 @@ def interpolate_field_to_grid(coords, connectivity, data, is_node, grid_size):
     if data.ndim != 2:
         raise ValueError("Expected field data with shape (time, locations).")
 
-    # This is an x-y projection of a 3D result. Values at different z
-    # locations that share an x-y location are averaged before interpolation;
-    # this avoids feeding duplicate points to Qhull and makes the reduction
-    # explicit instead of silently treating a volume as a 2D mesh.
     projected_coords = coords[:, :2]
-    min_x, max_x = coords[:, 0].min(), coords[:, 0].max()
-    min_y, max_y = coords[:, 1].min(), coords[:, 1].max()
-    
-    grid_x = np.linspace(min_x, max_x, grid_size)
-    grid_y = np.linspace(min_y, max_y, grid_size)
-    X, Y = np.meshgrid(grid_x, grid_y)
-    
     if is_node:
         points = projected_coords
     else:
         points = projected_coords[connectivity].mean(axis=1)
 
     points, data = aggregate_projected_values(points, data)
-        
-    num_steps = data.shape[0]
-    interpolated_data = np.zeros((num_steps, grid_size, grid_size))
-    
-    # Initialize the interpolator with the first step's data
-    interp = LinearNDInterpolator(points, data[0].astype(np.float64), fill_value=0.0)
-    interpolated_data[0] = interp(X, Y)
-    
-    for t in range(1, num_steps):
-        # Re-use Delaunay triangulation by assigning to interp.values
-        interp.values = data[t].astype(np.float64).reshape(-1, 1)
-        interpolated_data[t] = interp(X, Y)
-        
-    return grid_x, grid_y, interpolated_data
+    grid_x = np.unique(points[:, 0])
+    grid_y = np.unique(points[:, 1])
+    if len(points) != len(grid_x) * len(grid_y):
+        raise ValueError("Native x-y projection does not form a complete rectangular grid.")
+
+    x_indices = np.searchsorted(grid_x, points[:, 0])
+    y_indices = np.searchsorted(grid_y, points[:, 1])
+    native_data = np.empty((data.shape[0], len(grid_y), len(grid_x)), dtype=data.dtype)
+    native_data[:, y_indices, x_indices] = data
+    return grid_x, grid_y, native_data
 
 
 def aggregate_projected_values(points, data, decimals=12):
@@ -156,12 +133,9 @@ def generate_gif(grid_data, grid_x, grid_y, vmin, vmax, cmap, title, output_path
     imageio.mimsave(output_path, frames, duration=1.0/fps, loop=0)
 
 
-def process_h5_file(h5_path, grid_sizes=[125, 512], fps=5):
+def process_h5_file(h5_path, fps=5):
     h5_filename = os.path.basename(h5_path)
-    h5_stem = os.path.splitext(h5_filename)[0]
-    current_dir = os.path.dirname(os.path.abspath(h5_path))
-    output_dir = os.path.join(current_dir, h5_stem)
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = str(get_plot_output_dir(Path(h5_path)))
     
     print(f"\n==========================================")
     print(f"Processing H5 file: {h5_filename}")
@@ -249,58 +223,54 @@ def process_h5_file(h5_path, grid_sizes=[125, 512], fps=5):
                 'skip_gif': True
             }
 
-    for size in grid_sizes:
-        print(f"\n  Interpolating fields to {size}x{size} grid...")
-        interpolated_fields = {}
-        grid_x, grid_y = None, None
-        
-        for name, info in fields_info.items():
-            print(f"    Field: {name}")
-            grid_x, grid_y, grid_data = interpolate_field_to_grid(
-                coords, connectivity, info['data'], info['is_node'], size
+    native_fields = {}
+    native_coordinates = {}
+    for name, info in fields_info.items():
+        print(f"    Field: {name}")
+        grid_x, grid_y, native_data = project_field_to_native_xy(
+            coords, connectivity, info['data'], info['is_node']
+        )
+        native_fields[name] = native_data
+        native_coordinates[name] = (grid_x, grid_y)
+
+        if not info.get('skip_gif', False):
+            resolution = f"{len(grid_x)}x{len(grid_y)}"
+            gif_filename = f"{name}_{resolution}.gif"
+            gif_path = os.path.join(output_dir, gif_filename)
+            print(f"    Generating native-resolution GIF: {gif_filename}")
+            generate_gif(
+                grid_data=native_data,
+                grid_x=grid_x,
+                grid_y=grid_y,
+                vmin=info['vmin'],
+                vmax=info['vmax'],
+                cmap=info['cmap'],
+                title=info['title'],
+                output_path=gif_path,
+                symmetric=info['symmetric'],
+                fps=fps
             )
-            interpolated_fields[name] = grid_data
-            
-            if not info.get('skip_gif', False):
-                gif_filename = f"{name}_{size}x{size}.gif"
-                gif_path = os.path.join(output_dir, gif_filename)
-                print(f"    Generating GIF: {gif_filename}")
-                generate_gif(
-                    grid_data=grid_data,
-                    grid_x=grid_x,
-                    grid_y=grid_y,
-                    vmin=info['vmin'],
-                    vmax=info['vmax'],
-                    cmap=info['cmap'],
-                    title=info['title'],
-                    output_path=gif_path,
-                    symmetric=info['symmetric'],
-                    fps=fps
-                )
-                
-        # Save the interpolated arrays into an HDF5 file
-        h5_out_path = os.path.join(output_dir, f"interpolated_{size}x{size}.h5")
-        print(f"  Saving interpolated grid data to {os.path.basename(h5_out_path)}...")
-        with h5py.File(h5_out_path, 'w') as f_out:
-            f_out.create_dataset('x', data=grid_x)
-            f_out.create_dataset('y', data=grid_y)
-            for name, grid_data in interpolated_fields.items():
-                f_out.create_dataset(name, data=grid_data, compression="gzip", compression_opts=4)
+
+    # Store the native x-y projections for reproducibility. Fields retain
+    # their native node (65x65) or element (64x64) resolution.
+    h5_out_path = os.path.join(output_dir, "native_xy_projection.h5")
+    print(f"  Saving native projected data to {os.path.basename(h5_out_path)}...")
+    with h5py.File(h5_out_path, 'w') as f_out:
+        for name, native_data in native_fields.items():
+            group = f_out.create_group(name)
+            grid_x, grid_y = native_coordinates[name]
+            group.create_dataset('x', data=grid_x)
+            group.create_dataset('y', data=grid_y)
+            group.create_dataset('data', data=native_data, compression="gzip", compression_opts=4)
 
 
 def main():
-    h5_files = sorted(glob.glob(os.path.join(INPUT_DIR, "*.h5")))
-    # Exclude any interpolated files
-    h5_files = [f for f in h5_files if not os.path.basename(f).startswith("interpolated_")]
-    
-    if not h5_files:
-        print(f"No H5 files found in {INPUT_DIR}")
-        return
-        
-    for h5_path in h5_files:
-        process_h5_file(h5_path, grid_sizes=GRID_SIZES, fps=FPS)
-        
-    print("\nAll H5 files processed successfully!")
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_h5_file_argument(parser)
+    args = parser.parse_args()
+    h5_path = resolve_h5_file(args.h5_file)
+    process_h5_file(str(h5_path), fps=FPS)
+    print("\nH5 file processed successfully!")
 
 
 if __name__ == "__main__":
