@@ -7,15 +7,19 @@
         1.0
     ],
     "generator": {
-        "type": "gen.SpinodalGenerator",
+        "type": "gen.EllipseGenerator",
         "params": {
             "N": [
                 256,
                 256
             ],
             "vf": 0.75,
-            "l": 50.0,
-            "bandwidth": 0.05
+            "min_size": 26.0,
+            "max_size": 64.0,
+            "aspect_ratio": [1.0, 4.0],
+            "remove_edge_ellipses": true,
+            "remove_overlapping_ellipses": false,
+            "random_seed": null
         }
     },
     "filtering": [

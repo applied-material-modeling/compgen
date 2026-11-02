@@ -363,6 +363,115 @@ class SpinodalGenerator(GenerativeStructureGenerator):
         return img
 
 
+class EllipseGenerator(GenerativeStructureGenerator):
+    """Generate 2D structures from randomly placed ellipses.
+
+    This was produced by Brennon and ChatGPT before merging with Fabios new generators.
+    During merging with Fabios codes, it might need to be deleted or just renamed. 
+
+    Args:
+        N (list): Size of the generated structure. Must contain two dimensions.
+        vf (float or list): Approximate volume fraction of phase A.
+        min_size (float or list): Minimum full major-axis size in pixels.
+        max_size (float or list): Maximum full major-axis size in pixels.
+
+    Keyword Args:
+        aspect_ratio (float or list): Minimum and maximum major/minor-axis ratio.
+        remove_edge_ellipses (bool): Do not add ellipses touching the edge.
+        remove_overlapping_ellipses (bool): Do not add ellipses overlapping an
+            already added ellipse.
+        random_seed (int): Seed for the random number generator. Defaults to None.
+    """
+
+    def __init__(
+        self,
+        N,
+        vf,
+        min_size,
+        max_size,
+        aspect_ratio=1.0,
+        remove_edge_ellipses=True,
+        remove_overlapping_ellipses=False,
+        random_seed=None,
+    ):
+        super().__init__(N, random_seed=random_seed)
+        if self.dim != 2:
+            raise ValueError("EllipseGenerator only supports 2D structures.")
+        if min_size <= 0 or max_size < min_size:
+            raise ValueError("Require 0 < min_size <= max_size.")
+        if isinstance(aspect_ratio, list):
+            if len(aspect_ratio) != 2 or aspect_ratio[0] < 1 or aspect_ratio[1] < aspect_ratio[0]:
+                raise ValueError("aspect_ratio must be a range with values >= 1.")
+        elif aspect_ratio < 1:
+            raise ValueError("aspect_ratio must be at least 1.")
+
+        self.vf_input = vf
+        self.min_size = min_size
+        self.max_size = max_size
+        self.aspect_ratio = aspect_ratio
+        self.remove_edge_ellipses = remove_edge_ellipses
+        self.remove_overlapping_ellipses = remove_overlapping_ellipses
+
+    def sample(self):
+        """Generate a structure containing randomly placed ellipses."""
+        vf = self._sample_value(self.vf_input)
+        if not 0 <= vf <= 1:
+            raise ValueError("vf must be between 0 and 1.")
+
+        img = np.zeros(tuple(self.N), dtype=bool)
+        target_pixels = int(np.prod(self.N) * vf)
+        if target_pixels == 0:
+            return img
+
+        # Limit attempts so that very restrictive non-overlap settings terminate.
+        for _ in range(10000):
+            major = self._sample_value(self.min_size if self.min_size == self.max_size else [self.min_size, self.max_size])
+            ratio = self._sample_value(self.aspect_ratio)
+            minor = major / ratio
+            angle = self.rng.uniform(0.0, 2.0 * np.pi)
+
+            # A rotated ellipse fits inside its axis-aligned bounding box with
+            # these half-widths.  Use this for edge rejection and center sampling.
+            cos_angle = np.cos(angle)
+            sin_angle = np.sin(angle)
+            half_x = 0.5 * np.sqrt((major * cos_angle) ** 2 + (minor * sin_angle) ** 2)
+            half_y = 0.5 * np.sqrt((major * sin_angle) ** 2 + (minor * cos_angle) ** 2)
+            if self.remove_edge_ellipses and (
+                half_x >= self.nx / 2 or half_y >= self.ny / 2
+            ):
+                continue
+
+            if self.remove_edge_ellipses:
+                x_center = self.rng.uniform(half_x, self.nx - half_x)
+                y_center = self.rng.uniform(half_y, self.ny - half_y)
+            else:
+                x_center = self.rng.uniform(0.0, self.nx)
+                y_center = self.rng.uniform(0.0, self.ny)
+            x0 = max(0, int(np.floor(x_center - half_x)))
+            x1 = min(self.nx, int(np.ceil(x_center + half_x + 1)))
+            y0 = max(0, int(np.floor(y_center - half_y)))
+            y1 = min(self.ny, int(np.ceil(y_center + half_y + 1)))
+
+            x, y = np.meshgrid(np.arange(x0, x1), np.arange(y0, y1), indexing="ij")
+            dx = x - x_center
+            dy = y - y_center
+            ellipse = (
+                ((dx * cos_angle + dy * sin_angle) / (major / 2)) ** 2
+                + ((-dx * sin_angle + dy * cos_angle) / (minor / 2)) ** 2
+                <= 1
+            )
+            candidate = np.zeros_like(img)
+            candidate[x0:x1, y0:y1] = ellipse
+
+            if self.remove_overlapping_ellipses and np.any(img & candidate):
+                continue
+            img |= candidate
+            if np.count_nonzero(img) >= target_pixels:
+                break
+
+        return img
+
+
 class RandomGenerator(GenerativeStructureGenerator):
     """Generate random structures of a given shape.
 
