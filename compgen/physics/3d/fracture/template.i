@@ -378,7 +378,7 @@ eta = 1.5
   dtmin = 1e-8
   dtmax = 1e-2
   
-  end_time = 6e-4
+  end_time = 5e-2
   nl_abs_tol = 1e-08
   nl_rel_tol = 1e-04
   nl_max_its = 8

@@ -2,9 +2,6 @@
 
 Note that there seems to be some non-optimal environment stuff going on in the original (and these) instructions. A copy of Moose is taken from Conda, which contains things like libmesh. We install this into some Python environment (/home/bbrunsvik/environments/moose in this case). Then, we clone racoon, and we get another copy of Moose in that folder (/home/bbrunsvik/projects/raccoon/moose). We need to have the Conda version of Moose in our path so that libmesh and other things are available when we compile racoon. So, both folders of Moose are being used at the same time while compiling racoon. Confusing! 
 
-## 1. Load the miniforge3 module
-module load miniforge3
-
 ## 2. Navigate to your projects directory and place my environment.yml file there. 
 cd /home/bbrunsvik/projects
 
