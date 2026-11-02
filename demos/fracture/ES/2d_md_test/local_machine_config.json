@@ -1,0 +1,19 @@
+{
+    "racoon": {
+        "executable": "/project/ai4ns_composites/fracture_code/raccoon/raccoon-opt",
+        "options": [],
+        "discard_raccoon_text": false
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "6"
+    },
+    "storage": {
+        "temp_dir": "/var/tmp/brb/compgen",
+        "delete_temp_dir": true
+    },
+    "verbose": false,
+    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/logs/compgen_local.log",
+    "log_level": "INFO"
+}
