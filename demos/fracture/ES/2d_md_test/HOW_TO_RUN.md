@@ -17,7 +17,7 @@ Information provided like this:
     - `temp_dir`: `/var/tmp/brb/compgen` On ES server, I suggest `/var/tmp/USER_NAME/compgen`
     - `log_file`: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/logs/compgen_local.log` set this to your own compgen directory. 
 - `fracture_predefined_local.json`: 
-    -  `output_dir `: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/logs/compgen_local.log` set this to your own compgen directory. 
+    -  `output_dir`: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/output` set this to your own compgen directory. 
 - `run_fracture_predefined_local.sh`: 
     - `RACCOON_DIR`: defaults to `/project/ai4ns_composites/fracture_code/raccoon`; override it for another checkout.
 - `plotting/plot_material_structure.py`: 
