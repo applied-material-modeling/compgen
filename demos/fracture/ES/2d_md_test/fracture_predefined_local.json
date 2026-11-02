@@ -13,12 +13,12 @@
                 256,
                 256
             ],
-            "vf": 0.75,
+            "vf": 0.2,
             "min_size": 26.0,
             "max_size": 64.0,
             "aspect_ratio": [1.0, 4.0],
             "remove_edge_ellipses": true,
-            "remove_overlapping_ellipses": false,
+            "remove_overlapping_ellipses": true,
             "random_seed": null
         }
     },
