@@ -24,7 +24,7 @@ cd "$SCRIPT_DIR"
 module load frameworks
 conda activate /home/bbrunsvik/environments/moose
 
-echo "Starting pbsdsh from aurora_run_pbs_dsh.sh"
-pbsdsh /bin/bash "$SCRIPT_DIR/aurora_run_pbs_dsh_dummy.sh"
+echo "Starting pbsdsh from submit_job.sh"
+pbsdsh /bin/bash "$SCRIPT_DIR/dummy_dsh.sh"
 
 

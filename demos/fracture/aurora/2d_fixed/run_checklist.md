@@ -1,17 +1,17 @@
-- `fracture/aurora/2d_fixed/fracture_predefined_slurm.json`:
+- `fracture/aurora/2d_fixed/config_fracture.json`:
 	- Set number, so you have the right total number of jobs and duration. 
 	- Set output_dir. 
-- `fracture/aurora/2d_fixed/aurora_machine_config.json`:
+- `fracture/aurora/2d_fixed/config_machine.json`:
 	- Set log dir in the log_file entry. 
-- `fracture/aurora/2d_fixed/aurora_run_pbs_dsh.sh`:
+- `fracture/aurora/2d_fixed/submit_job.sh`:
 	- select=number of nodes
 	- walltime = proper time, 
 	- -q proper queue, 
 	- JOB_#.out and JOB_#.err specify job number. 
-- Before submitting the full run, try `fracture/aurora/2d_fixed/aurora_run_pbs_dsh_debug.sh`:
+- Before submitting the full run, try `fracture/aurora/2d_fixed/submit_job_debug.sh`:
 	- This requests one node for one hour on the `debug` queue.
 	- The run may stop when the one-hour walltime is reached; that is expected for this check.
-- `fracture/aurora/2d_fixed/aurora_run_pbs_dsh_dummy.sh`:
+- `fracture/aurora/2d_fixed/dummy_dsh.sh`:
 	- Change the log directory. 
 - racoon.py
 	- Timeout for how long raccoon will run. In development. Currently at 24 hours. timeout=86400

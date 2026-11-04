@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Debug version of aurora_run_pbs_dsh_random.sh. The job is intentionally
+# Debug version of submit_job.sh. The job is intentionally
 # limited to one Aurora node and one hour; the simulation sweep may be
 # truncated by the walltime limit.
 #PBS -A TellusFM
@@ -25,5 +25,5 @@ module load frameworks
 conda activate /home/bbrunsvik/environments/moose
 
 # The one allocated node runs the full random sweep independently.
-echo "Starting pbsdsh from aurora_run_pbs_dsh_random_debug.sh"
-pbsdsh /bin/bash "$SCRIPT_DIR/aurora_run_pbs_dsh_dummy_random.sh"
+echo "Starting pbsdsh from submit_job_debug.sh"
+pbsdsh /bin/bash "$SCRIPT_DIR/dummy_dsh.sh"

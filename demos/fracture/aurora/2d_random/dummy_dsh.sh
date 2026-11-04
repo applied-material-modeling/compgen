@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Random-material sweep variant of aurora_run_pbs_dsh_dummy.sh.
+# Random-material sweep variant of dummy_dsh.sh.
 # Trying this, following Mark's example. module was not available.
 source /etc/bash.bashrc
 
@@ -20,7 +20,7 @@ module load frameworks
 conda activate /home/bbrunsvik/environments/moose
 
 # The python script will use multiprocess internally to map jobs over the PBS environment
-echo "Executing aurora_run_fracture_random.py from dummy script"
-python "$SCRIPT_DIR/aurora_run_fracture_random.py"
+echo "Executing dummy_start_compgen.py from dummy script"
+python "$SCRIPT_DIR/dummy_start_compgen.py"
 
 ### Run Compgen end

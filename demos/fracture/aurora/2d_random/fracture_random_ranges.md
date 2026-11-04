@@ -1,6 +1,6 @@
 # Random material sampling ranges - 2D fracture sweep
 
-These are the sampling specs used in `fracture_random_slurm.json` via
+These are the sampling specs used in `config_fracture.json` via
 `materials.DistributionMaterialGenerator`. A fresh draw is taken for every
 simulation, and the drawn values are recorded in each output `.h5` (under the
 `material_properties` group), so the sweep is self-documenting.
