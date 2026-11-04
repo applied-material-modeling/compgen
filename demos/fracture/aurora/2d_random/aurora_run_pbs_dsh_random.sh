@@ -15,8 +15,10 @@
 
 echo "PBS script (random sweep) started running. "
 
-# Change to the directory from which the job was submitted
-cd $PBS_O_WORKDIR
+# Run the demo from the directory containing this launcher. This keeps all
+# relative demo inputs local even when PBS_O_WORKDIR is set differently.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Initialize the conda environment for python scripts
 module load frameworks
@@ -26,4 +28,4 @@ conda activate /home/bbrunsvik/environments/moose
 # full python script independently, drawing its own random samples, so the total
 # number of samples = (select nodes) x (number in fracture_random_slurm.json).
 echo "Starting pbsdsh from aurora_run_pbs_dsh_random.sh"
-pbsdsh /bin/bash "$PBS_O_WORKDIR/aurora_run_pbs_dsh_dummy_random.sh"
+pbsdsh /bin/bash "$SCRIPT_DIR/aurora_run_pbs_dsh_dummy_random.sh"

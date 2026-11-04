@@ -294,7 +294,7 @@ eta = 1.5
 [UserObjects]
   [stop]
     type = Terminator
-    expression = 'R_y < R_y_max * 0.8'
+    expression = 'R_y < R_y_max * 0.99'
     fail_mode = HARD
     message = 'onset of softening has begun'
   []

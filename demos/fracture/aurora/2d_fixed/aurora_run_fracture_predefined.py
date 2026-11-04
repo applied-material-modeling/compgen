@@ -1,6 +1,10 @@
+import os
 import sys
+from pathlib import Path
 
-sys.path.append("..")
+DEMO_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(DEMO_DIR.parents[4]))
+os.chdir(DEMO_DIR)
 
 from compgen import runner
 
@@ -9,6 +13,9 @@ if __name__ == "__main__":
     # distributed over a SLURM allocation.
     # units are mm-MPa-s
 
-    results = runner.run("fracture_predefined_slurm.json", "aurora_machine_config.json")
+    results = runner.run(
+        str(DEMO_DIR / "fracture_predefined_slurm.json"),
+        str(DEMO_DIR / "aurora_machine_config.json"),
+    )
 
     print("Completed parallel simulations successfully. Results available in result folder.")

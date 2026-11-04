@@ -1,6 +1,10 @@
+import os
 import sys
+from pathlib import Path
 
-sys.path.append("..")
+DEMO_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(DEMO_DIR.parents[4]))
+os.chdir(DEMO_DIR)
 
 from compgen import runner
 
@@ -13,7 +17,8 @@ if __name__ == "__main__":
     # units are mm-MPa-s
 
     results = runner.run(
-        "fracture_random_slurm.json", "aurora_machine_config_random.json"
+        str(DEMO_DIR / "fracture_random_slurm.json"),
+        str(DEMO_DIR / "aurora_machine_config_random.json"),
     )
 
     print("Completed parallel simulations successfully. Results available in result folder.")

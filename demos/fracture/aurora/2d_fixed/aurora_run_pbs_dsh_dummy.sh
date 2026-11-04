@@ -10,8 +10,9 @@ exec > "$logdir/$(hostname).out" 2> "$logdir/$(hostname).err"
 
 echo "Dummy script started running. Using version from 2026/09/01. "
 
-# Change to the directory from which the job was submitted
-cd $PBS_O_WORKDIR
+# Run the demo from the directory containing this launcher.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Initialize the conda environment for python scripts
 module load frameworks
@@ -19,6 +20,6 @@ conda activate /home/bbrunsvik/environments/moose
 
 # The python script will use multiprocess internally to map jobs over the PBS environment 
 echo "Executing aurora_run_fracture_predefined.py from dummy script"
-python aurora_run_fracture_predefined.py
+python "$SCRIPT_DIR/aurora_run_fracture_predefined.py"
 
 ### Run Compgen end
