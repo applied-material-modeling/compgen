@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
     os.chdir(DEMO_DIR)
     results = runner.run(
-        str(DEMO_DIR / "fracture_predefined_local.json"),
-        str(DEMO_DIR / "local_machine_config.json"),
+        str(DEMO_DIR / "config_fracture.json"),
+        str(DEMO_DIR / "config_machine.json"),
     )
     failed = sum(result == -1 for result in results)
     if failed:

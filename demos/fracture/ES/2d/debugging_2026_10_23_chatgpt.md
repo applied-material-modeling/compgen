@@ -27,5 +27,5 @@
 - Python/CompGen log: `simulations/logs/`
 - Launcher stdout/stderr: the terminal running the launcher
 - JIT temporary directory: `simulations/tmp/`
-- Local configuration: `demos/fracture/ES/2d/local_machine_config.json`
+- Local configuration: `demos/fracture/ES/2d/config_machine.json`
 - RACCOON environment handling: `compgen/racoon.py`

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEMO_DIR = SCRIPT_DIR.parent
 REPO_DIR = DEMO_DIR.parents[3]
-CONFIG_FILE = DEMO_DIR / "fracture_predefined_local.json"
+CONFIG_FILE = DEMO_DIR / "config_fracture.json"
 OUTPUT_DIR = DEMO_DIR / "visualizations"
 OUTPUT_FILE = OUTPUT_DIR / "ellipse_preview.png"
 NUMBER_OF_STRUCTURES = 10

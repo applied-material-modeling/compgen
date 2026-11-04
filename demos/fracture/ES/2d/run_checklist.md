@@ -12,11 +12,11 @@ Information provided like this:
 - `Filename`
     - `Variable`:`recommendation`
 
-- `local_machine_config.json`: 
+- `config_machine.json`: 
     - `racoon/executable`: `/project/ai4ns_composites/fracture_code/raccoon/raccoon-opt`.
     - `temp_dir`: `/var/tmp/brb/compgen` On ES server, I suggest `/var/tmp/USER_NAME/compgen`
     - `log_file`: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d/simulations/logs/compgen_local.log` set this to your own compgen directory. 
-- `fracture_predefined_local.json`: 
+- `config_fracture.json`: 
     -  `output_dir `: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d/simulations/logs/compgen_local.log` set this to your own compgen directory. 
 - `run_fracture_predefined_local.sh`: 
     - `RACCOON_DIR`: defaults to `/project/ai4ns_composites/fracture_code/raccoon`; override it for another checkout.
