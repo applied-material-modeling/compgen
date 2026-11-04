@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Trying this, following Mark's example. module was not available. 
+source /etc/bash.bashrc
+
+### Handle logging. Make sure each node gets its own log. 
+logdir=/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/logs/3d_fixed
+mkdir -p "$logdir"
+exec > "$logdir/$(hostname).out" 2> "$logdir/$(hostname).err"
+
+echo "Aurora 3D fixed dummy script started running. "
+
+# Run the demo from the directory containing this launcher.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Initialize the conda environment for python scripts
+module load frameworks
+conda activate /home/bbrunsvik/environments/moose
+
+# The python script will use multiprocess internally to map jobs over the PBS environment 
+echo "Executing dummy_start_compgen.py from dummy script"
+python "$SCRIPT_DIR/dummy_start_compgen.py"
+
+### Run Compgen end
