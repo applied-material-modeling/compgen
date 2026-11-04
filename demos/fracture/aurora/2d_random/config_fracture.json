@@ -80,7 +80,7 @@
         "write_files": true,
         "add_density": true,
         "output_prefix": "fracture_random",
-        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/random_debug"
+        "output_dir": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/2d_random"
     },
     "storage": {}
 }

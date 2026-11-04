@@ -25,6 +25,7 @@
     "racoon": {
         "executable": "/home/bbrunsvik/projects/raccoon/raccoon-opt",
         "options": [],
+        "discard_raccoon_text": true,
         "environment": {
             "FI_PROVIDER": "tcp"
         }
@@ -41,6 +42,6 @@
         "delete_temp_dir": true
     },
     "verbose": false,
-    "log_file": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/logs/demo_aurora.log",
+    "log_file": "/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/2d_fixed/log.log",
     "log_level": "INFO"
 }
