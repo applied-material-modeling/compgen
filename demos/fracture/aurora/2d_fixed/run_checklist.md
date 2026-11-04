@@ -12,6 +12,6 @@
 	- This requests one node for one hour on the `debug` queue.
 	- The run may stop when the one-hour walltime is reached; that is expected for this check.
 - `fracture/aurora/2d_fixed/dummy_dsh.sh`:
-	- Change the log directory. 
+	- Check the log file location.
 - racoon.py
 	- Timeout for how long raccoon will run. In development. Currently at 24 hours. timeout=86400

@@ -17,7 +17,7 @@
   - The current setup uses one node, two concurrent workers, and 50 RACOON
     MPI ranks per worker.
 - `dummy_dsh.sh`:
-  - Confirm the per-node stdout/stderr log directory.
+  - Check the log file location.
 - Before submitting the full run, use `submit_job_debug.sh`:
   - It requests one node for one hour on the `debug` queue.
   - The 3D setup-check may stop at the walltime limit; that is expected.
