@@ -25,5 +25,5 @@ conda activate /home/bbrunsvik/environments/moose
 # pbsdsh launches the dummy script on every allocated node. Each node runs the
 # full python script independently, drawing its own random samples, so the total
 # number of samples = (select nodes) x (number in config_fracture.json).
-echo "Starting pbsdsh from submit_job.sh"
+echo "Starting pbsdsh from submit_job_large.sh"
 pbsdsh /bin/bash "$PBS_O_WORKDIR/dummy_dsh.sh"

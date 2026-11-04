@@ -12,7 +12,7 @@
   - Confirm that 50 MPI ranks fit the allocated Aurora node/resource layout.
   - With `nthreads=2`, up to 100 MPI ranks may be active concurrently.
   - Confirm `log_file` before submitting.
-- `submit_job.sh`:
+- `submit_job_large.sh`:
   - Confirm the node count and walltime for the selected 3D resolution.
   - The current setup uses one node, two concurrent workers, and 50 RACOON
     MPI ranks per worker.

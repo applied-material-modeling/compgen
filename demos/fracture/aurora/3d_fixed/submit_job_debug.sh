@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Debug version of submit_job.sh. The job is intentionally limited to
+# Debug version of submit_job_large.sh. The job is intentionally limited to
 # one Aurora node and one hour; the 3D setup check may be truncated by the
 # walltime limit.
 #PBS -A TellusFM

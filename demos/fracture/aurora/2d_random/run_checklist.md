@@ -10,7 +10,7 @@ For the one-node debug run: select=1 x number=8 = 8 samples (subject to the one-
 	  Note: `l` is `{"fixed": ...}` and shared between A/B - keep it mesh-resolved.
 - `fracture/aurora/2d_random/config_machine.json`:
 	- Set log dir in the `log_file` entry (currently .../logs/random/).
-- `fracture/aurora/2d_random/submit_job.sh`:
+- `fracture/aurora/2d_random/submit_job_large.sh`:
 	- select = number of nodes.
 	- walltime = proper time.
 	- -q proper queue (debug for the small run; prod/capacity for larger).

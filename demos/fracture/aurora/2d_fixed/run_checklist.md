@@ -3,7 +3,7 @@
 	- Set output_dir. 
 - `fracture/aurora/2d_fixed/config_machine.json`:
 	- Set log dir in the log_file entry. 
-- `fracture/aurora/2d_fixed/submit_job.sh`:
+- `fracture/aurora/2d_fixed/submit_job_large.sh`:
 	- select=number of nodes
 	- walltime = proper time, 
 	- -q proper queue, 
