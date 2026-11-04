@@ -5,7 +5,7 @@
 source /etc/bash.bashrc
 
 ### Handle logging. Make sure each node gets its own log.
-logdir=/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/2d_random
+logdir=/lus/flare/projects/ai4ns-composites/brennan/fracture_simulations/2d_random/logs
 mkdir -p "$logdir"
 exec > "$logdir/$(hostname).out" 2> "$logdir/$(hostname).err"
 
