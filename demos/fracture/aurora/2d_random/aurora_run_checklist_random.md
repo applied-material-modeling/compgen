@@ -1,7 +1,7 @@
 # Aurora checklist - random-material sweep
 
 Total samples produced = (select nodes) x (number in fracture_random_slurm.json).
-For the tiny debug default: select=2 x number=8 = 16 samples.
+For the one-node debug run: select=1 x number=8 = 8 samples (subject to the one-hour walltime).
 
 - `fracture/aurora/2d_random/fracture_random_slurm.json`:
 	- Set `number` (samples PER NODE) for the total you want (total = select x number).
@@ -16,6 +16,9 @@ For the tiny debug default: select=2 x number=8 = 16 samples.
 	- -q proper queue (debug for the small run; prod/capacity for larger).
 	- -A proper project/allocation.
 	- JOB_#.out and JOB_#.err specify job number (if you add -o/-e).
+- Before submitting the full run, try `fracture/aurora/2d_random/aurora_run_pbs_dsh_random_debug.sh`:
+	- This requests one node for one hour on the `debug` queue.
+	- The run may stop when the one-hour walltime is reached; that is expected for this check.
 - `fracture/aurora/2d_random/aurora_run_pbs_dsh_dummy_random.sh`:
 	- Change the log directory (currently .../logs/random/).
 - racoon.py:

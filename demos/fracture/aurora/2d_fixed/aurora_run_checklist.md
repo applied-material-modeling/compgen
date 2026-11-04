@@ -8,6 +8,9 @@
 	- walltime = proper time, 
 	- -q proper queue, 
 	- JOB_#.out and JOB_#.err specify job number. 
+- Before submitting the full run, try `fracture/aurora/2d_fixed/aurora_run_pbs_dsh_debug.sh`:
+	- This requests one node for one hour on the `debug` queue.
+	- The run may stop when the one-hour walltime is reached; that is expected for this check.
 - `fracture/aurora/2d_fixed/aurora_run_pbs_dsh_dummy.sh`:
 	- Change the log directory. 
 - racoon.py
