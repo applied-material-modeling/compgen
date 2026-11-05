@@ -371,7 +371,7 @@ class EllipseGenerator(GenerativeStructureGenerator):
 
     Args:
         N (list): Size of the generated structure. Must contain two dimensions.
-        vf (float or list): Approximate volume fraction of phase A.
+        vf (float or list): Approximate volume fraction of material A.
         min_size (float or list): Minimum full major-axis size in pixels.
         max_size (float or list): Maximum full major-axis size in pixels.
 
@@ -380,6 +380,9 @@ class EllipseGenerator(GenerativeStructureGenerator):
         remove_edge_ellipses (bool): Do not add ellipses touching the edge.
         remove_overlapping_ellipses (bool): Do not add ellipses overlapping an
             already added ellipse.
+        inclusion_material (str): Material represented by the ellipses, either
+            ``"A"`` or ``"B"``. The other material is the matrix. Defaults to
+            ``"A"`` for backward compatibility.
         random_seed (int): Seed for the random number generator. Defaults to None.
     """
 
@@ -392,6 +395,7 @@ class EllipseGenerator(GenerativeStructureGenerator):
         aspect_ratio=1.0,
         remove_edge_ellipses=True,
         remove_overlapping_ellipses=False,
+        inclusion_material="A",
         random_seed=None,
     ):
         super().__init__(N, random_seed=random_seed)
@@ -411,6 +415,9 @@ class EllipseGenerator(GenerativeStructureGenerator):
         self.aspect_ratio = aspect_ratio
         self.remove_edge_ellipses = remove_edge_ellipses
         self.remove_overlapping_ellipses = remove_overlapping_ellipses
+        if inclusion_material not in {"A", "B"}:
+            raise ValueError("inclusion_material must be either 'A' or 'B'.")
+        self.inclusion_material = inclusion_material
 
     def sample(self):
         """Generate a structure containing randomly placed ellipses."""
@@ -419,9 +426,13 @@ class EllipseGenerator(GenerativeStructureGenerator):
             raise ValueError("vf must be between 0 and 1.")
 
         img = np.zeros(tuple(self.N), dtype=bool)
-        target_pixels = int(np.prod(self.N) * vf)
+        # ``vf`` retains its original meaning: the volume fraction of material
+        # A. When material B is selected as the inclusion phase, the ellipses
+        # therefore occupy the complementary fraction.
+        ellipse_vf = vf if self.inclusion_material == "A" else 1.0 - vf
+        target_pixels = int(np.prod(self.N) * ellipse_vf)
         if target_pixels == 0:
-            return img
+            return img if self.inclusion_material == "A" else ~img
 
         # Limit attempts so that very restrictive non-overlap settings terminate.
         for _ in range(10000):
@@ -469,7 +480,11 @@ class EllipseGenerator(GenerativeStructureGenerator):
             if np.count_nonzero(img) >= target_pixels:
                 break
 
-        return img
+        # The internal image convention is True = material A. Ellipses are
+        # generated as True first, then inverted when material B is selected
+        # as the inclusion phase. This keeps the mesh/material-A convention
+        # unchanged while making the phase assignment explicit in configs.
+        return img if self.inclusion_material == "A" else ~img
 
 
 class RandomGenerator(GenerativeStructureGenerator):
