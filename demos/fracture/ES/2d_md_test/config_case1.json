@@ -38,7 +38,7 @@
     },
     "executor": {
         "type": "racoon.execute_racoon_simulations",
-        "physics": "2d/fracture_md_test"
+        "physics": "2d/fracture"
     },
     "material_A": {
         "type": "materials.FixedMaterialGenerator",
