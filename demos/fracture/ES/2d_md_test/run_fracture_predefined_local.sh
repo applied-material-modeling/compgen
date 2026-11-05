@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # simulations/. The default preserves the original direct-run behavior.
 which_case="${1:-case2}"
 
-if [[ "$which_case" != "case1" && "$which_case" != "case2" ]]; then
-    echo "Invalid which_case='$which_case'; choose case1 or case2." >&2
+if [[ "$which_case" != "case0" && "$which_case" != "case1" && "$which_case" != "case2" ]]; then
+    echo "Invalid which_case='$which_case'; choose case0, case1, or case2." >&2
     exit 1
 fi
 
