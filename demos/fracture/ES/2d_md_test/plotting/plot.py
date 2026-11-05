@@ -3,6 +3,8 @@
 import glob
 import os
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor
+
 import h5py
 import hdf5plugin
 import numpy as np
@@ -24,6 +26,9 @@ PLOT_RESULTS = True
 PLOT_MATERIAL_STRUCTURE = True
 GRID_SIZES = [125]
 FPS = 5.0
+# Interpolate independent fields in separate processes.
+PARALLEL_FIELDS = True
+MAX_WORKERS = 10
 
 # Setup matplotlib styling
 plt.rcParams.update({
@@ -79,6 +84,15 @@ def interpolate_field_to_grid(coords, connectivity, data, is_node, grid_size):
         interpolated_data[t] = interp(X, Y)
         
     return grid_x, grid_y, interpolated_data
+
+
+def interpolate_field_job(job):
+    """Worker entry point for field-level multiprocessing."""
+    name, coords, connectivity, data, is_node, grid_size = job
+    grid_x, grid_y, grid_data = interpolate_field_to_grid(
+        coords, connectivity, data, is_node, grid_size
+    )
+    return name, grid_x, grid_y, grid_data
 
 
 def generate_gif(grid_data, grid_x, grid_y, vmin, vmax, cmap, title, output_path, symmetric=False, fps=5):
@@ -242,12 +256,23 @@ def process_h5_file(h5_path, grid_sizes=[125, 512], fps=5):
         print(f"\n  Interpolating fields to {size}x{size} grid...")
         interpolated_fields = {}
         grid_x, grid_y = None, None
-        
-        for name, info in fields_info.items():
+
+        jobs = [
+            (name, coords, connectivity, info["data"], info["is_node"], size)
+            for name, info in fields_info.items()
+        ]
+        if PARALLEL_FIELDS and len(jobs) > 1:
+            worker_count = min(MAX_WORKERS, len(jobs))
+            print(f"    Interpolating {len(jobs)} fields with {worker_count} workers")
+            with ProcessPoolExecutor(max_workers=worker_count) as executor:
+                field_results = executor.map(interpolate_field_job, jobs)
+                field_results = list(field_results)
+        else:
+            field_results = map(interpolate_field_job, jobs)
+
+        for name, grid_x, grid_y, grid_data in field_results:
+            info = fields_info[name]
             print(f"    Field: {name}")
-            grid_x, grid_y, grid_data = interpolate_field_to_grid(
-                coords, connectivity, info['data'], info['is_node'], size
-            )
             interpolated_fields[name] = grid_data
             
             if not info.get('skip_gif', False):
