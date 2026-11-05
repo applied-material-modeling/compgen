@@ -3,10 +3,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
+# Change this value to "case1" or "case2" before running. Do not pass a
+# command-line argument; the selected case determines separate outputs, logs,
+# and temporary files below simulations/.
+which_case="case2"
+
+if [[ "$which_case" != "case1" && "$which_case" != "case2" ]]; then
+    echo "Invalid which_case='$which_case'; choose case1 or case2." >&2
+    exit 1
+fi
+
 RACCOON_ENV_PREFIX="${RACCOON_ENV_PREFIX:-/project/ai4ns_composites/fracture_code/conda_envs/raccoon}"
 RACCOON_DIR="${RACCOON_DIR:-/project/ai4ns_composites/fracture_code/raccoon}"
 
-export TMPDIR="$SCRIPT_DIR/simulations/tmp"
+export TMPDIR="$SCRIPT_DIR/simulations/$which_case/tmp"
 mkdir -p "$TMPDIR"
 
 if [[ "${CONDA_PREFIX:-}" != "$RACCOON_ENV_PREFIX" ]]; then
@@ -47,4 +57,5 @@ if ! command -v raccoon-opt >/dev/null 2>&1; then
     exit 1
 fi
 
+export COMPGEN_FRACTURE_CASE="$which_case"
 exec python "$SCRIPT_DIR/run_fracture_predefined_local.py"

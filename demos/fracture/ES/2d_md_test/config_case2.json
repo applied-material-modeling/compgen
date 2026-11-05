@@ -68,10 +68,10 @@
     "material_AB": {
         "type": "materials.FixedMaterialGenerator",
         "params": {
-            "GI_c": 0.00228,
-            "GII_c": 0.00097,
-            "normal_strength": 75.6,
-            "shear_strength": 19.4,
+            "GI_c": 0.00011590813072581091,
+            "GII_c": 0.000011400565515488077,
+            "normal_strength": 76.09901,
+            "shear_strength": 33.99394,
             "eta": 1.5
         }
     },
@@ -83,8 +83,12 @@
     "output": {
         "write_files": true,
         "add_density": true,
-        "output_prefix": "fracture",
-        "output_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/output"
+        "output_prefix": "alan_case2",
+        "output_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/case2/output"
     },
-    "storage": {}
+    "storage": {
+        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/case2/tmp",
+        "delete_temp_dir": false
+    },
+    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/case2/logs/compgen.log"
 }

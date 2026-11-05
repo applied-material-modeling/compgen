@@ -9,11 +9,7 @@
         "rank_command": "-np",
         "ranks": "6"
     },
-    "storage": {
-        "temp_dir": "/var/tmp/brb/compgen",
-        "delete_temp_dir": true
-    },
+    "storage": {},
     "verbose": false,
-    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/logs/compgen_local.log",
     "log_level": "INFO"
 }

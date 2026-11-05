@@ -12,14 +12,15 @@ Information provided like this:
 - `Filename`
     - `Variable`:`recommendation`
 
-- `config_machine.json`: 
+- `config_machine.json`:
     - `racoon/executable`: `/project/ai4ns_composites/fracture_code/raccoon/raccoon-opt`.
-    - `temp_dir`: `/var/tmp/brb/compgen` On ES server, I suggest `/var/tmp/USER_NAME/compgen`
-    - `log_file`: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/logs/compgen_local.log` set this to your own compgen directory. 
-- `config_fracture.json`: 
-    -  `output_dir`: `/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/output` set this to your own compgen directory. 
+    - `storage` and `log_file` are selected per case in `config_case1.json` or `config_case2.json`.
+- `config_case1.json` and `config_case2.json`:
+    - Store the independent material/interface parameter sets.
+    - Store separate output, log, and temporary paths under `simulations/case1` or `simulations/case2`.
 - `run_fracture_predefined_local.sh`: 
     - `RACCOON_DIR`: defaults to `/project/ai4ns_composites/fracture_code/raccoon`; override it for another checkout.
+    - Change `which_case` at the top to `case1` or `case2` before each run.
 - `plotting/plot_material_structure.py`: 
     - `H5_FILE`: set this to the result `.h5` file to plot.
 - `plotting/plot_results.py`: 
@@ -31,6 +32,15 @@ From this directory, run:
 
 ```bash
 ./run_fracture_predefined_local.sh
+```
+
+The launcher does not take a case argument. Edit `which_case` in the shell
+script, run it, wait for that case to finish, then change `which_case` and run
+again. Case 1 and Case 2 write to separate directories:
+
+```text
+simulations/case1/{output,logs,tmp}
+simulations/case2/{output,logs,tmp}
 ```
 
 ## Plot
