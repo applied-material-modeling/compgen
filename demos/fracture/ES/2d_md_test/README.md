@@ -1,12 +1,22 @@
 # 2D MD fracture cases
 
-This demo runs Alan's two interface-parameter sets from one folder. Set
-`which_case` to `case1` or `case2` near the top of
-`run_fracture_predefined_local.sh`, then run:
+This demo runs Alan's two interface-parameter sets from one folder. To run one
+case directly, pass its case name to the launcher:
 
 ```bash
-./run_fracture_predefined_local.sh
+./run_fracture_predefined_local.sh case1
 ```
+
+To start one detached tmux session for every `config_case*.json` file, run:
+
+```bash
+./run_fracture_tmux.sh
+```
+
+The sessions are named `fracture-case1`, `fracture-case2`, and so on. Monitor
+one with `tmux attach -t fracture-case1`, list them with `tmux ls`, and cancel
+one with `tmux kill-session -t fracture-case1`. Each session ends when its
+launcher finishes.
 
 The selected values are read from `config_case1.json` or `config_case2.json`;
 the shared physics template is unchanged. Each case keeps its generated output,

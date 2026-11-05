@@ -18,9 +18,12 @@ Information provided like this:
 - `config_case1.json` and `config_case2.json`:
     - Store the independent material/interface parameter sets.
     - Store separate output, log, and temporary paths under `simulations/case1` or `simulations/case2`.
-- `run_fracture_predefined_local.sh`: 
+- `run_fracture_predefined_local.sh`:
     - `RACCOON_DIR`: defaults to `/project/ai4ns_composites/fracture_code/raccoon`; override it for another checkout.
-    - Change `which_case` at the top to `case1` or `case2` before each run.
+    - Pass `case1` or `case2` as the first argument when running one case directly.
+- `run_fracture_tmux.sh`:
+    - Starts one detached tmux session for every `config_case*.json` file.
+    - Use `tmux ls` to list sessions and `tmux kill-session -t fracture-case1` to cancel a case.
 - `plotting/plot.py`:
     - Set `CASES_TO_PLOT` to `("case1",)`, `("case2",)`, or both cases.
     - Set `PLOT_RESULTS` and `PLOT_MATERIAL_STRUCTURE` to enable or disable
@@ -29,15 +32,19 @@ Information provided like this:
 
 ## Run
 
-From this directory, run:
+From this directory, run one case directly with:
 
 ```bash
-./run_fracture_predefined_local.sh
+./run_fracture_predefined_local.sh case1
 ```
 
-The launcher does not take a case argument. Edit `which_case` in the shell
-script, run it, wait for that case to finish, then change `which_case` and run
-again. Case 1 and Case 2 write to separate directories:
+To start all cases in separate background tmux sessions, run:
+
+```bash
+./run_fracture_tmux.sh
+```
+
+Each case writes to a separate directory:
 
 ```text
 simulations/case1/{output,logs,tmp}
