@@ -1,16 +1,27 @@
-import os
+#!/home/bbrunsvik/.conda/envs/moose_genesis/bin/python
+
 import glob
+import os
+from pathlib import Path
 import h5py
 import hdf5plugin
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import Patch, Polygon
+from matplotlib.collections import PatchCollection
 from scipy.interpolate import LinearNDInterpolator
 
 # User settings
-INPUT_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "simulations", "output")
-)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SIMULATIONS_DIR = os.path.join(SCRIPT_DIR, "..", "simulations")
+CASES = ("case1", "case2")
+# Select one case, or both, by changing this variable.
+CASES_TO_PLOT = ("case1", "case2")
+# Enable or disable each type of plot here.
+PLOT_RESULTS = True
+PLOT_MATERIAL_STRUCTURE = True
 GRID_SIZES = [125]
 FPS = 5.0
 
@@ -266,17 +277,124 @@ def process_h5_file(h5_path, grid_sizes=[125, 512], fps=5):
                 f_out.create_dataset(name, data=grid_data, compression="gzip", compression_opts=4)
 
 
+def load_material_mesh(h5_path):
+    with h5py.File(h5_path, "r") as h5:
+        mesh = h5["unstructured_mesh"]
+        coords = np.asarray(mesh["coords"])
+        connectivity = np.asarray(mesh["connectivity"], dtype=np.int64)
+        material = np.asarray(mesh["element_fields"]["material"]["data"])[0]
+
+    if coords.shape[1] < 2:
+        raise ValueError("The mesh must have at least two coordinate dimensions.")
+    if connectivity.ndim != 2 or connectivity.shape[1] not in (3, 4):
+        raise ValueError("This plotter supports triangular or quadrilateral elements.")
+    if material.shape[0] != connectivity.shape[0]:
+        raise ValueError("Material data and connectivity have different sizes.")
+
+    return coords[:, :2], connectivity, material
+
+
+def material_label_position(coords, connectivity, material, material_id):
+    centers = coords[connectivity].mean(axis=1)
+    selected = centers[np.isclose(material, material_id)]
+    if selected.size == 0:
+        return None
+    mean_position = selected.mean(axis=0)
+    nearest = np.argmin(np.linalg.norm(selected - mean_position, axis=1))
+    return selected[nearest]
+
+
+def plot_material_structure(h5_path, output_path):
+    coords, connectivity, material = load_material_mesh(h5_path)
+    material_ids = np.rint(material).astype(int)
+    patches = [Polygon(coords[element], closed=True) for element in connectivity]
+    collection = PatchCollection(
+        patches,
+        cmap=ListedColormap(["#4C78A8", "#F2B134"]),
+        linewidth=0.0,
+        edgecolor="none",
+    )
+    collection.set_array(material_ids)
+    collection.set_clim(-0.5, 1.5)
+
+    figure, axis = plt.subplots(figsize=(9, 8), constrained_layout=True)
+    axis.add_collection(collection)
+    axis.set_xlim(coords[:, 0].min(), coords[:, 0].max())
+    axis.set_ylim(coords[:, 1].min(), coords[:, 1].max())
+    axis.set_aspect("equal")
+    axis.set_xlabel("x")
+    axis.set_ylabel("y")
+    axis.set_title(f"Material structure\n{h5_path.name}")
+    axis.legend(
+        handles=[
+            Patch(facecolor="#F2B134", edgecolor="none", label="Aluminum (Al)"),
+            Patch(facecolor="#4C78A8", edgecolor="none", label="Silicon carbide (SiC)"),
+        ],
+        loc="upper right",
+        framealpha=0.95,
+    )
+
+    for material_id, label, color, offset in (
+        (1, "Al", "#7A4B00", (28, -28)),
+        (0, "SiC", "#123B63", (-28, 28)),
+    ):
+        position = material_label_position(
+            coords, connectivity, material_ids, material_id
+        )
+        if position is not None:
+            axis.annotate(
+                label,
+                xy=position,
+                xytext=offset,
+                textcoords="offset points",
+                color=color,
+                fontsize=13,
+                fontweight="bold",
+                ha="center",
+                va="center",
+                bbox={
+                    "boxstyle": "round,pad=0.25",
+                    "facecolor": "white",
+                    "edgecolor": color,
+                    "alpha": 0.9,
+                },
+                arrowprops={"arrowstyle": "->", "color": color, "linewidth": 1.2},
+            )
+
+    axis.margins(x=0.02, y=0.02)
+    figure.savefig(output_path, dpi=250, bbox_inches="tight")
+    plt.close(figure)
+    print(f"Saved material plot to {output_path}")
+
+
+def h5_files_for_case(case):
+    input_dir = os.path.join(SIMULATIONS_DIR, case, "output")
+    return [
+        path for path in sorted(glob.glob(os.path.join(input_dir, "*.h5")))
+        if not os.path.basename(path).startswith("interpolated_")
+    ]
+
+
 def main():
-    h5_files = sorted(glob.glob(os.path.join(INPUT_DIR, "*.h5")))
-    # Exclude any interpolated files
-    h5_files = [f for f in h5_files if not os.path.basename(f).startswith("interpolated_")]
+    h5_files = []
+    for case in CASES_TO_PLOT:
+        h5_files.extend(h5_files_for_case(case))
     
     if not h5_files:
-        print(f"No H5 files found in {INPUT_DIR}")
+        searched = ", ".join(
+            os.path.join(SIMULATIONS_DIR, case, "output") for case in CASES_TO_PLOT
+        )
+        print(f"No H5 files found in: {searched}")
         return
         
     for h5_path in h5_files:
-        process_h5_file(h5_path, grid_sizes=GRID_SIZES, fps=FPS)
+        if PLOT_RESULTS:
+            process_h5_file(h5_path, grid_sizes=GRID_SIZES, fps=FPS)
+        if PLOT_MATERIAL_STRUCTURE:
+            path = Path(h5_path)
+            plot_material_structure(
+                path, path.with_name(f"{path.stem}_material_structure.png")
+            )
         
     print("\nAll H5 files processed successfully!")
 

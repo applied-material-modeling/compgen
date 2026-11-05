@@ -21,10 +21,11 @@ Information provided like this:
 - `run_fracture_predefined_local.sh`: 
     - `RACCOON_DIR`: defaults to `/project/ai4ns_composites/fracture_code/raccoon`; override it for another checkout.
     - Change `which_case` at the top to `case1` or `case2` before each run.
-- `plotting/plot_material_structure.py`: 
-    - `H5_FILE`: set this to the result `.h5` file to plot.
-- `plotting/plot_results.py`: 
-    - `GRID_SIZES` and `FPS`: optionally change plot resolution and animation speed.
+- `plotting/plot.py`:
+    - Set `CASES_TO_PLOT` to `("case1",)`, `("case2",)`, or both cases.
+    - Set `PLOT_RESULTS` and `PLOT_MATERIAL_STRUCTURE` to enable or disable
+      each type of plot.
+    - `GRID_SIZES` and `FPS` optionally control plot resolution and animation speed.
 
 ## Run
 
@@ -48,8 +49,7 @@ simulations/case2/{output,logs,tmp}
 After a successful run, from this directory:
 
 ```bash
-python plotting/plot_results.py
-python plotting/plot_material_structure.py
+python plotting/plot.py
 ```
 
 ## Access to grant on this machine
