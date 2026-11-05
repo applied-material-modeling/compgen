@@ -28,9 +28,6 @@
             "params": {
                 "radius": 3
             }
-        },
-        {
-            "type": "gen.make_orthogonal"
         }
     ],
     "mesh": {
