@@ -20,7 +20,7 @@
             "inclusion_material": "B",
             "remove_edge_ellipses": true,
             "remove_overlapping_ellipses": true,
-            "random_seed": null
+            "random_seed": 0
         }
     },
     "filtering": [
