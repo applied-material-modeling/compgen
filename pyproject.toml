@@ -7,7 +7,7 @@ name = "compgen"
 version = "0.1.0"
 description = "Python toolkit for generating simulation data for two phase composite materials."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "scipy",
@@ -18,7 +18,7 @@ dependencies = [
     "gstools",
     "multiprocess",
     "pyvista",
-    "exodusii @ git+https://github.com/sandialabs/exodusii.git@main",
+    "exodusii @ git+https://github.com/sandialabs/exodusii.git@a835945e7ab8f3f20eaf6a0b95114a3385d82946",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +27,7 @@ dev = [
     "black==26.3.0",
     "pytest==9.0.2",
     "pylint==4.0.5",
+    "pre-commit==4.6.2",
 ]
 
 [tool.setuptools.packages.find]

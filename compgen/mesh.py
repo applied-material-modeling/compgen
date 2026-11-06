@@ -1,3 +1,27 @@
+# Copyright 2026, UChicago Argonne, LLC
+# All Rights Reserved
+# Software Name: compgen
+# By: Argonne National Laboratory
+# OPEN SOURCE LICENSE (MIT)
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 """Mesh generation and mesh-processing utilities for 2D and 3D binary structures."""
 
 import os
@@ -213,13 +237,13 @@ def extrude(mesh, lx=1.0, ly=1.0, prefix="extruded_", lz=0.01, tol=1e-6):
         exo.put_element_conn(2, conn_b)
 
         exo.put_node_set_param(1, len(node_nums[left]))
-        exo.put_node_set(1, node_nums[left])
+        exo.put_node_set_nodes(1, node_nums[left])
         exo.put_node_set_param(2, len(node_nums[right]))
-        exo.put_node_set(2, node_nums[right])
+        exo.put_node_set_nodes(2, node_nums[right])
         exo.put_node_set_param(3, len(node_nums[bottom]))
-        exo.put_node_set(3, node_nums[bottom])
+        exo.put_node_set_nodes(3, node_nums[bottom])
         exo.put_node_set_param(4, len(node_nums[top]))
-        exo.put_node_set(4, node_nums[top])
+        exo.put_node_set_nodes(4, node_nums[top])
 
 
 def slice_mesh(mesh, prefix="sliced_", eps=1e-4):

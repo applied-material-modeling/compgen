@@ -40,3 +40,20 @@ Run the tests with `pytest`.  The general tests in the `tests` directory do not 
 
 There are complete demos that generate random structures, call MOOSE to solve for some material properties, and store the results.  These demos live in `demos/complete`.  The subdirectories first split
 the problems into different physics/types of material properties and then into 2D and 3D examples.
+## License headers
+
+Every source file (`*.py` and the MOOSE `*.i` templates) must start with the contents of `LICENSE` as a comment header.  CI enforces this.
+
+- `python scripts/add_license.py` adds the header to any tracked source file that is missing it (or pass specific files as arguments).
+- `python scripts/check_license.py` reports files missing the header and exits non-zero if there are any.
+
+## Pre-commit hooks
+
+The license check, black, and pylint run as [pre-commit](https://pre-commit.com) hooks on the files staged for each commit.  To enable them, install the dev dependencies and then install the hooks once per clone:
+
+```
+pip install -e .[dev]
+pre-commit install
+```
+
+To run the hooks by hand against every file, use `pre-commit run --all-files`.

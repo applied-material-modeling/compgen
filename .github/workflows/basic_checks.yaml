@@ -3,6 +3,15 @@ name: Enforce code style, linting, and run basic tests
 on: [push, pull_request]
 
 jobs:
+  license:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Check license headers
+        run: python scripts/check_license.py
   format:
     runs-on: ubuntu-latest
     steps:
@@ -26,4 +35,4 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[dev]
       - name: Run pylint on module and tests
-        run: pylint compgen tests
+        run: pylint compgen tests scripts
