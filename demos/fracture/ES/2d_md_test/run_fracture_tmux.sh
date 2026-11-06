@@ -2,20 +2,27 @@
 
 # tmux cheat sheet:
 #   List sessions:                 tmux ls
-#   Attach to a session:           tmux attach -t fracture-case1
+#   Attach to a session:           tmux attach -t fracture-case0
 #   Detach without stopping it:    Ctrl-b, then d
-#   Kill without attaching:        tmux kill-session -t fracture-case1
+#   Kill without attaching:        tmux kill-session -t fracture-case0
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 shopt -s nullglob
 
-config_files=("$SCRIPT_DIR"/config_case*.json)
+config_files=("$SCRIPT_DIR"/config_case[0-9]*.json)
 if ((${#config_files[@]} == 0)); then
-    echo "No config_case*.json files found in $SCRIPT_DIR" >&2
+    echo "No numeric config_caseN.json files found in $SCRIPT_DIR" >&2
     exit 1
 fi
+
+# Bash's glob order is lexical, which would place case10 before case2.
+# Sort by the numeric suffix so launch messages and tmux creation are ordered.
+mapfile -t config_files < <(
+    printf '%s\n' "${config_files[@]}" |
+        sort -V
+)
 
 for config_file in "${config_files[@]}"; do
     filename="$(basename "$config_file")"

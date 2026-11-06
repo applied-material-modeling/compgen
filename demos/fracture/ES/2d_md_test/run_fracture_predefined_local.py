@@ -15,12 +15,15 @@ from compgen import runner
 if __name__ == "__main__":
     os.chdir(DEMO_DIR)
     which_case = os.environ.get("COMPGEN_FRACTURE_CASE", "case1")
-    if which_case not in {"case0", "case1", "case2"}:
+    if not which_case.startswith("case") or not which_case[4:].isdigit():
         raise ValueError(
-            f"Invalid COMPGEN_FRACTURE_CASE={which_case!r}; choose case0, case1, or case2."
+            f"Invalid COMPGEN_FRACTURE_CASE={which_case!r}; expected a case name such as case0 or case10."
         )
 
     fracture_config = DEMO_DIR / f"config_{which_case}.json"
+    if not fracture_config.is_file():
+        raise FileNotFoundError(f"Fracture configuration not found: {fracture_config}")
+
     results = runner.run(
         str(fracture_config),
         str(DEMO_DIR / "config_machine.json"),

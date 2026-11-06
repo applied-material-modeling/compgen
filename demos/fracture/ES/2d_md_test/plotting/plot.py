@@ -2,6 +2,7 @@
 
 import glob
 import os
+import argparse
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 
@@ -18,9 +19,9 @@ from scipy.interpolate import LinearNDInterpolator
 # User settings
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SIMULATIONS_DIR = os.path.join(SCRIPT_DIR, "..", "simulations")
-CASES = ("case1", "case2")
-# Select one case, or both, by changing this variable.
-CASES_TO_PLOT = ("case1", "case2")
+# Available generated cases. Select a subset in CASES_TO_PLOT if needed.
+CASES = tuple(f"case{i}" for i in range(11))
+CASES_TO_PLOT = CASES
 # Enable or disable each type of plot here.
 PLOT_RESULTS = True
 PLOT_MATERIAL_STRUCTURE = True
@@ -400,14 +401,38 @@ def h5_files_for_case(case):
     ]
 
 
-def main():
+def main(argv=None):
+    global MAX_WORKERS
+
+    parser = argparse.ArgumentParser(description="Plot fracture simulation H5 output.")
+    parser.add_argument(
+        "--case",
+        nargs="+",
+        choices=CASES,
+        metavar="CASE",
+        help="Only plot the specified case(s), for example: --case case3 case10.",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=MAX_WORKERS,
+        metavar="N",
+        help=f"Maximum field-interpolation workers (default: {MAX_WORKERS}).",
+    )
+    args = parser.parse_args(argv)
+    if args.workers < 1:
+        parser.error("--workers must be at least 1")
+
+    MAX_WORKERS = args.workers
+    cases_to_plot = tuple(args.case) if args.case else CASES_TO_PLOT
+
     h5_files = []
-    for case in CASES_TO_PLOT:
+    for case in cases_to_plot:
         h5_files.extend(h5_files_for_case(case))
     
     if not h5_files:
         searched = ", ".join(
-            os.path.join(SIMULATIONS_DIR, case, "output") for case in CASES_TO_PLOT
+            os.path.join(SIMULATIONS_DIR, case, "output") for case in cases_to_plot
         )
         print(f"No H5 files found in: {searched}")
         return
