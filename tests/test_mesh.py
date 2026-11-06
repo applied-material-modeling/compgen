@@ -28,7 +28,7 @@ import exodusii
 import numpy as np
 import pytest
 
-from compgen.mesh import extrude, write_mesh_2d
+from compgen.mesh import extrude, write_mesh_2d, write_mesh_3d
 
 LX, LY, LZ = 2.0, 1.0, 0.1
 N = 3  # elements per side of the (square) test image
@@ -85,3 +85,49 @@ def test_extrude_periodic_node_sets(extruded, set_id, axis, value):
     expected = np.flatnonzero(np.isclose(coords[:, axis], value)) + 1
     assert len(expected) == 2 * (N + 1)
     np.testing.assert_array_equal(np.sort(nodes), expected)
+
+
+def check_elements_match_image(fname, img, lengths):
+    """Check each element is one grid cell, in the block given by that pixel of img."""
+    spacing = np.array(lengths) / np.array(img.shape)
+
+    with exodusii.File(fname, mode="r") as exo:
+        coords = exo.get_coords()
+        conn = {block: exo.get_element_conn(block) for block in (1, 2)}
+
+    assert len(coords) == np.prod(np.array(img.shape) + 1)
+
+    cells = {}
+    for block, elements in conn.items():
+        corners = coords[elements - 1]  # (element, node, dimension)
+        low = corners.min(axis=1)
+        # Exodus stores the coordinates in single precision
+        np.testing.assert_allclose(
+            corners.max(axis=1) - low, np.tile(spacing, (len(low), 1)), rtol=1e-5
+        )
+        cells[block] = {tuple(c) for c in np.rint(low / spacing).astype(int).tolist()}
+
+    assert cells[1] == {tuple(c) for c in np.argwhere(img).tolist()}
+    assert cells[2] == {tuple(c) for c in np.argwhere(~img).tolist()}
+
+
+@pytest.mark.parametrize("shape", [(3, 3), (2, 4), (4, 2), (3, 7)])
+def test_write_mesh_2d_maps_pixels_to_elements(tmp_path, shape):
+    """Elements land on the right pixels, including for non-square images."""
+    img = np.random.default_rng(0).random(shape) < 0.5
+    fname = str(tmp_path / "mesh.e")
+
+    write_mesh_2d(img, fname, lx=LX, ly=LY)
+
+    check_elements_match_image(fname, img, (LX, LY))
+
+
+@pytest.mark.parametrize("shape", [(3, 3, 3), (2, 3, 4), (4, 3, 2), (2, 2, 5)])
+def test_write_mesh_3d_maps_voxels_to_elements(tmp_path, shape):
+    """Elements land on the right voxels, including for non-cubic images."""
+    img = np.random.default_rng(0).random(shape) < 0.5
+    fname = str(tmp_path / "mesh.e")
+
+    write_mesh_3d(img, fname, lx=LX, ly=LY, lz=LZ)
+
+    check_elements_match_image(fname, img, (LX, LY, LZ))

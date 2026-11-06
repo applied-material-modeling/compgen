@@ -23,3 +23,7 @@
 # THE SOFTWARE.
 
 """Top-level package for composite structure generation and simulation workflows."""
+
+from importlib.metadata import version
+
+__version__ = version("compgen")

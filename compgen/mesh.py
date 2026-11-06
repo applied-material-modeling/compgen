@@ -334,10 +334,10 @@ def write_mesh_2d(img, fname, lx=1.0, ly=1.0):
     for je in range(ny):
         for ie in range(nx):
             cell = [
-                ie * (nx + 1) + je + 1,
-                ie * (nx + 1) + je + 1 + 1,
-                (ie + 1) * (nx + 1) + je + 1 + 1,
-                (ie + 1) * (nx + 1) + je + 1,
+                ie * (ny + 1) + je + 1,
+                ie * (ny + 1) + je + 1 + 1,
+                (ie + 1) * (ny + 1) + je + 1 + 1,
+                (ie + 1) * (ny + 1) + je + 1,
             ]
             if img[ie, je]:
                 mat_a.append(cell)
@@ -376,20 +376,24 @@ def write_mesh_3d(img, fname, lx=1.0, ly=1.0, lz=1.0):
     X, Y, Z = np.meshgrid(x_vals, y_vals, z_vals, indexing="ij")
     points = np.vstack([X.flatten(), Y.flatten(), Z.flatten()]).T
 
+    def node(i, j, k):
+        """1-based id of grid point (i, j, k), matching the ordering of points."""
+        return (i * (ny + 1) + j) * (nz + 1) + k + 1
+
     mat_a = []
     mat_b = []
     for ke in range(nz):
         for je in range(ny):
             for ie in range(nx):
                 cell = [
-                    ie * (nx + 1) * (ny + 1) + je * (nx + 1) + ke + 1,
-                    (ie + 1) * (nx + 1) * (ny + 1) + je * (nx + 1) + ke + 1,
-                    (ie + 1) * (nx + 1) * (ny + 1) + (je + 1) * (nx + 1) + ke + 1,
-                    ie * (nx + 1) * (ny + 1) + (je + 1) * (nx + 1) + ke + 1,
-                    ie * (nx + 1) * (ny + 1) + je * (nx + 1) + (ke + 1) + 1,
-                    (ie + 1) * (nx + 1) * (ny + 1) + je * (nx + 1) + (ke + 1) + 1,
-                    (ie + 1) * (nx + 1) * (ny + 1) + (je + 1) * (nx + 1) + (ke + 1) + 1,
-                    ie * (nx + 1) * (ny + 1) + (je + 1) * (nx + 1) + (ke + 1) + 1,
+                    node(ie, je, ke),
+                    node(ie + 1, je, ke),
+                    node(ie + 1, je + 1, ke),
+                    node(ie, je + 1, ke),
+                    node(ie, je, ke + 1),
+                    node(ie + 1, je, ke + 1),
+                    node(ie + 1, je + 1, ke + 1),
+                    node(ie, je + 1, ke + 1),
                 ]
                 if img[ie, je, ke]:
                     mat_a.append(cell)
