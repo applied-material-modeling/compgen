@@ -1,6 +1,6 @@
 {
     "number": 400,
-    "nthreads": 2,
+    "nthreads": 1,
     "mesh_file": "mesh.exo",
     "L": [
         1.0,
@@ -11,9 +11,9 @@
         "type": "gen.SpinodalGenerator",
         "params": {
             "N": [
-                32,
-                32,
-                32
+                64,
+                64,
+                64
             ],
             "vf": 0.75,
             "l": 50.0,

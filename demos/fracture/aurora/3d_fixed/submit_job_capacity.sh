@@ -5,8 +5,8 @@
 # walltime limit.
 #PBS -A TellusFM
 #PBS -N compgen_raccoon_3d_fixed_debug
-#PBS -l select=1
-#PBS -l walltime=24:00:00
+#PBS -l select=2
+#PBS -l walltime=48:00:00
 #PBS -k doe
 #PBS -l place=scatter
 #PBS -q capacity
