@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,26 +7,57 @@ name = "compgen"
 version = "0.1.0"
 description = "Python toolkit for generating simulation data for two phase composite materials."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Mark Messner" },
+    { name = "Tianchen Hu" },
+    { name = "Fabio Sozio" },
+]
+keywords = [
+    "composite materials",
+    "microstructure",
+    "finite element",
+    "homogenization",
+    "MOOSE",
+    "dataset generation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "numpy",
     "scipy",
     "h5py",
-    "matplotlib",
     "scikit-image",
-    "tqdm",
     "gstools",
     "multiprocess",
     "pyvista",
-    "exodusii @ git+https://github.com/sandialabs/exodusii.git@main",
+    "exodusii==26.10.29",
 ]
+
+[project.urls]
+Homepage = "https://github.com/applied-material-modeling/compgen"
+Repository = "https://github.com/applied-material-modeling/compgen"
+Issues = "https://github.com/applied-material-modeling/compgen/issues"
 
 [project.optional-dependencies]
 mcrpy = ["mcrpy"]
+demos = ["matplotlib"]
 dev = [
     "black==26.3.0",
     "pytest==9.0.2",
     "pylint==4.0.5",
+    "pre-commit==4.7.0",
 ]
 
 [tool.setuptools.packages.find]

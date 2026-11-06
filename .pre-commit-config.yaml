@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-license
+        name: Check license headers
+        entry: python scripts/check_license.py
+        language: python
+        files: \.(py|i)$
+
+  # Keep rev in sync with the black pin in pyproject.toml.
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 26.3.0
+    hooks:
+      - id: black
+
+  # pylint must import the package's dependencies, so it runs from the active
+  # development environment (pip install -e .[dev]) rather than an isolated one.
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        args: [--score=n]
+        language: system
+        types: [python]
+        files: ^(compgen|tests|scripts)/
