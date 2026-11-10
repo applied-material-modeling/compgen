@@ -2,6 +2,9 @@ name: Enforce code style, linting, and run basic tests
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   license:
     runs-on: ubuntu-latest
