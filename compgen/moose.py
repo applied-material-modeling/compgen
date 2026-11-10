@@ -406,31 +406,31 @@ def execute_moose_simulations(
                     capture=(not settings.get("verbose", False)),
                     timeout_s=timeout_s,
                 )
-            except subprocess.TimeoutExpired:
-                # The solve exceeded the configured wall-clock limit (typically a
-                # solve stuck in time-step cutback).  The whole process tree has
-                # been killed; skip this load case and continue with the next.
-                logger.warning(
-                    "Problem %s: Load case %d of physics '%s' exceeded the "
-                    "%g-minute timeout; killed it and skipping this load and "
-                    "continuing.",
-                    problem_id,
-                    target,
-                    physics,
-                    timeout_min,
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                # A timeout means the solve exceeded the configured wall-clock
+                # limit (typically stuck in time-step cutback) and the whole
+                # process tree has been killed; a non-zero exit code means a
+                # non-converged (or otherwise failed) solve.  With
+                # moose.allow_partial_loads, skip just this load case and keep the
+                # loads that already succeeded.
+                reason = (
+                    f"exceeded the {timeout_min:g}-minute timeout"
+                    if isinstance(e, subprocess.TimeoutExpired)
+                    else f"did not converge (exit code {e.returncode})"
                 )
-                continue
-            except subprocess.CalledProcessError as e:
-                # A non-converged (or otherwise failed) MOOSE solve aborts with a
-                # non-zero exit code.  Skip just this load case and continue with
-                # the next one, keeping the loads that already succeeded.
+                # By default a failed load case fails the whole structure (main's
+                # behavior), so every written result has all N load cases.
+                if not settings["moose"].get("allow_partial_loads", False):
+                    raise RuntimeError(
+                        f"Load case {target} of physics '{physics}' {reason}."
+                    ) from e
                 logger.warning(
-                    "Problem %s: Load case %d of physics '%s' did not converge "
-                    "(exit code %s); skipping this load and continuing.",
+                    "Problem %s: Load case %d of physics '%s' %s; skipping this "
+                    "load and continuing.",
                     problem_id,
                     target,
                     physics,
-                    e.returncode,
+                    reason,
                 )
                 continue
 

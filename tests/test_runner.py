@@ -109,3 +109,36 @@ def test_deterministic_filter_errors_abort_without_retrying(
     # At most one draw per worker may already be in flight; the point is that the
     # runner does not keep redrawing up to FACTOR * NUMBER.
     assert gen.draws <= nthreads
+
+
+class _PredefinedGenerator(_CountingGenerator):
+    """NUMBER fixed structures that wrap around, like FromNumpyGenerator.
+
+    Each structure is filled with its index so the stub below can identify it.
+    """
+
+    predefined = True
+
+    def __next__(self):
+        self.draws += 1
+        return np.full((2, 2), (self.draws - 1) % NUMBER)
+
+
+@pytest.mark.parametrize("nthreads", [1, 2])
+def test_predefined_structures_are_not_backfilled(monkeypatch, nthreads):
+    """A mesh failure on a predefined structure stays in place as -1 instead of
+    being backfilled with a wrapped-around duplicate of structure 0."""
+    gen = _PredefinedGenerator()
+    config = _config({"type": "filters.mean_filter", "params": {}}, nthreads)
+
+    def fake_run_single(img, *_args):
+        idx = int(img[0, 0])
+        return runner.MESH_FAILED if idx == 1 else idx
+
+    monkeypatch.setattr(runner.utils, "load_json", lambda _files: config)
+    monkeypatch.setattr(runner, "setup_generator", lambda _c: gen)
+    monkeypatch.setattr(runner, "setup_material", lambda _c: iter(lambda: {}, object()))
+    monkeypatch.setattr(runner, "run_single", fake_run_single)
+
+    assert runner.run("unused.json") == [0, -1, 2, 3]
+    assert gen.draws == NUMBER

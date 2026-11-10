@@ -370,7 +370,6 @@ class SpinodalGenerator(GenerativeStructureGenerator):
         h_hat = g_hat * amp_filter
 
         h = np.fft.ifftn(h_hat).real
-        # h = (h - np.mean(h)) / np.std(h)
         std = np.std(h)
         h = (h - np.mean(h)) / max(std, 1e-12)
 
@@ -426,6 +425,10 @@ class FromNumpyGenerator(StructureGenerator):
     Args:
         filename (str): Path to the .npy file containing the structures.
     """
+
+    # A fixed list rather than a stream: the runner draws each structure once
+    # and does not backfill failures (see runner.run).
+    predefined = True
 
     def __init__(self, filename, random_seed=None):
         super().__init__(random_seed=random_seed)
