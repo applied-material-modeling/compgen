@@ -427,6 +427,10 @@ class FromNumpyGenerator(StructureGenerator):
         filename (str): Path to the .npy file containing the structures.
     """
 
+    # A fixed list rather than a stream: the runner draws each structure once
+    # and does not backfill failures (see runner.run).
+    predefined = True
+
     def __init__(self, filename, random_seed=None):
         super().__init__(random_seed=random_seed)
         self.data = np.load(filename)

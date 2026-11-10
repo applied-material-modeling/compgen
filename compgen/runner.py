@@ -217,7 +217,11 @@ def run(*config_files):
 
     number = config["number"]
     nthreads = config.get("nthreads", 1)
-    cap = config.get("max_attempts_factor", 3) * number
+    # Predefined structures (e.g. FromNumpyGenerator) are a fixed list, not a
+    # stream: redrawing after a mesh failure would wrap around and duplicate an
+    # earlier structure. Draw each one exactly once instead.
+    predefined = getattr(generator, "predefined", False)
+    cap = number if predefined else config.get("max_attempts_factor", 3) * number
     if log:
         logger.info("Using %d threads for computation", nthreads)
 
@@ -359,6 +363,16 @@ def run(*config_files):
                 cap,
             )
         return collected
+
+    # Predefined: results stay positional (one per input structure, -1 for a
+    # failure), as on main and as documented in demos/run_predefined_structures.py.
+    if predefined:
+        if nthreads == 1:
+            collected = [_run_single_star(t) for t in tasks()]
+        else:
+            with multiprocess.Pool(nthreads) as pool:
+                collected = pool.map(_run_single_star, list(tasks()))
+        return [-1 if isinstance(r, _Failure) else r for r in collected]
 
     if nthreads == 1:
         collected = consume(_run_single_star(t) for t in tasks())
