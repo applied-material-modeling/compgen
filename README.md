@@ -4,9 +4,13 @@
 compgen is a Python toolkit for generating simulation data for two phase composite materials.  It will generate structures, invoke physics codes to simulate the response for a variety of material properties, and write summaries of the results.
 
 ## Install
+compgen requires Python 3.13 or newer.
+
 1. (Optional) Create and activate a virtual environment.
 2. Install the package:
-   - `pip install -e .`
+   - `pip install compgen`
+   - To use the reconstruction generator, `pip install compgen[mcrpy]`.  mcrpy depends on TensorFlow, which currently supports Python up to 3.13, so use Python 3.13 for this option.
+   - To develop compgen, or to run the tests and demos, clone this repository and run `pip install -e .[dev,demos]` from its root.
 3. Install the mesher and physics codes you want to use:
     1. [MOOSE](https://mooseframework.inl.gov/)
     2. [SCULPT](https://www.sandia.gov/files/cubit/documents/SculptSANDReport.pdf)
@@ -18,7 +22,7 @@ compgen pipes together several steps to generate results:
 2. Make an unstructured finite element mesh of the fixed grid representation, smoothing interfaces.  This might involve first filtering the fixed grid representation, then calling a mesh generator.
 3. Setup input files for the physics codes describing the problem physics and boundary conditions.
 4. Actually run the physics code.  This might require multiple calls, for example if we're interested in properties in different loading directions.
-5. Post process the output from the physics code into a common format.  We use an [HDF5 format](doc/data.md).
+5. Post process the output from the physics code into a common format.  We use an [HDF5 format](https://github.com/applied-material-modeling/compgen/blob/main/doc/data.md).
 
 compgen provides a simple API (`runner.run`) for doing all of this based on json input files.  You need two input files to invoke the runner:
 1. A problem file defining the steps outlined above -- which structure generator, mesh, physics, solver, etc.
@@ -34,9 +38,27 @@ First set environment variables:
 
 ## Run the tests
 
-Run the tests with `pytest`.  The general tests in the `tests` directory do not require MOOSE and will quick/cheap to run.  The verification tests in `tests/verification` are more expensive and require MOOSE.
+Run the tests with `pytest`.  The general tests in the `tests` directory do not require MOOSE and are quick and cheap to run.  The verification tests in `tests/verification` are more expensive and require MOOSE.
 
 ## Run the demos
 
 There are complete demos that generate random structures, call MOOSE to solve for some material properties, and store the results.  These demos live in `demos/complete`.  The subdirectories first split
 the problems into different physics/types of material properties and then into 2D and 3D examples.
+
+## License headers
+
+Every source file (`*.py` and the MOOSE `*.i` templates) must start with the contents of `LICENSE` as a comment header.  CI enforces this.
+
+- `python scripts/add_license.py` adds the header to any tracked source file that is missing it (or pass specific files as arguments).
+- `python scripts/check_license.py` reports files missing the header and exits non-zero if there are any.
+
+## Pre-commit hooks
+
+The license check, black, and pylint run as [pre-commit](https://pre-commit.com) hooks on the files staged for each commit.  To enable them, install the dev dependencies and then install the hooks once per clone:
+
+```
+pip install -e .[dev]
+pre-commit install
+```
+
+To run the hooks by hand against every file, use `pre-commit run --all-files`.
