@@ -364,10 +364,6 @@ def execute_moose_simulations(
         # absent value or any value <= 0 means no timeout.
         timeout_min = settings.get("moose", {}).get("timeout")
         timeout_s = timeout_min * 60 if timeout_min and timeout_min > 0 else None
-        # By default a failed load case fails the whole structure (main's
-        # behavior), so every written result has all N load cases. Set
-        # moose.allow_partial_loads to keep the load cases that did succeed.
-        allow_partial = settings.get("moose", {}).get("allow_partial_loads", False)
 
         for target in range(N):
             if sub_type == "dictlist":
@@ -414,15 +410,17 @@ def execute_moose_simulations(
                 # A timeout means the solve exceeded the configured wall-clock
                 # limit (typically stuck in time-step cutback) and the whole
                 # process tree has been killed; a non-zero exit code means a
-                # non-converged (or otherwise failed) solve.  If partial results
-                # are allowed, skip just this load case and keep the loads that
-                # already succeeded.
+                # non-converged (or otherwise failed) solve.  With
+                # moose.allow_partial_loads, skip just this load case and keep the
+                # loads that already succeeded.
                 reason = (
                     f"exceeded the {timeout_min:g}-minute timeout"
                     if isinstance(e, subprocess.TimeoutExpired)
                     else f"did not converge (exit code {e.returncode})"
                 )
-                if not allow_partial:
+                # By default a failed load case fails the whole structure (main's
+                # behavior), so every written result has all N load cases.
+                if not settings["moose"].get("allow_partial_loads", False):
                     raise RuntimeError(
                         f"Load case {target} of physics '{physics}' {reason}."
                     ) from e
