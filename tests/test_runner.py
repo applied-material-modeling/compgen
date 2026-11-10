@@ -111,7 +111,6 @@ def test_deterministic_filter_errors_abort_without_retrying(
     assert gen.draws <= nthreads
 
 
-
 class _PredefinedGenerator(_CountingGenerator):
     """NUMBER fixed structures that wrap around, like FromNumpyGenerator.
 

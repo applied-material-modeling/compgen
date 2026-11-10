@@ -31,12 +31,12 @@ import pytest
 from compgen import moose
 
 
-@pytest.fixture
-def fail_second_load(monkeypatch, tmp_path):
+@pytest.fixture(name="fail_second_load")
+def _fail_second_load(monkeypatch, tmp_path):
     """Stub the solver so load case 1 fails and the others succeed."""
     calls = []
 
-    def run(cmd, env, capture, timeout_s):
+    def run(cmd, **_kwargs):
         calls.append(cmd)
         if len(calls) == 2:
             raise subprocess.CalledProcessError(1, cmd)
