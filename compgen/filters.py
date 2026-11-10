@@ -128,13 +128,15 @@ def make_orthogonal(img):
     return arr
 
 
-def make_periodic(img: np.ndarray, margin: int = 2, shift: bool = True) -> np.ndarray:
+def make_periodic(img: np.ndarray, margin: int = 2, shift: bool = False) -> np.ndarray:
     """
     Make periodic for Sculpt/MOOSE workflow.
 
     Overwrite the first and last `margin` layers of each axis with the layer at
     index `margin`, for 2D or 3D arrays.
-    If shift is True, check the circular shift that minimizes the overwrite cost.
+    If shift is True, first circular-shift each axis to minimize the overwrite
+    cost. This is opt-in: the default (False) keeps main's behavior, so existing
+    configs produce the same structures.
 
     A value `margin = 2` seems to work consistently with Sculpt/MOOSE.
 
