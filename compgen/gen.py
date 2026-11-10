@@ -370,7 +370,6 @@ class SpinodalGenerator(GenerativeStructureGenerator):
         h_hat = g_hat * amp_filter
 
         h = np.fft.ifftn(h_hat).real
-        # h = (h - np.mean(h)) / np.std(h)
         std = np.std(h)
         h = (h - np.mean(h)) / max(std, 1e-12)
 
