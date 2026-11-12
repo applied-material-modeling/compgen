@@ -137,6 +137,22 @@ def test_random_material_generator_degenerate_loguniform_interval_is_exact():
         assert gen.next()["youngs_modulus"] == 3.7
 
 
+def test_random_material_generator_degenerate_interval_keeps_random_stream():
+    """Test that a zero-width interval still consumes one draw, so the properties
+    sampled after it match plain `random.uniform` draws, as on main."""
+    random.seed(11)
+    props = RandomMaterialGenerator(
+        poissons_ratio=[0.3, 0.3], youngs_modulus=[1.0, 50.0]
+    ).next()
+
+    random.seed(11)
+    random.uniform(0.3, 0.3)
+    expected = random.uniform(1.0, 50.0)
+
+    assert props["poissons_ratio"] == 0.3
+    assert props["youngs_modulus"] == expected
+
+
 def test_random_material_generator_rejects_nonpositive_loguniform_interval():
     """Test that a loguniform interval reaching zero or below is rejected."""
     with pytest.raises(ValueError, match="poissons_ratio.*strictly positive"):

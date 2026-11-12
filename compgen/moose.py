@@ -402,7 +402,7 @@ def execute_moose_simulations(
             try:
                 _run_moose_command(
                     cmd,
-                    env=settings["moose"].get("environment", {}) | os.environ,
+                    env=dict(os.environ) | settings["moose"].get("environment", {}),
                     capture=(not settings.get("verbose", False)),
                     timeout_s=timeout_s,
                 )
@@ -434,9 +434,10 @@ def execute_moose_simulations(
                 )
                 continue
 
+            # Open the copy in the temp dir; `mesh` is relative to the original cwd.
             result = process_output(
                 physics,
-                mesh,
+                "mesh.exo",
                 material_properties,
                 f"{output_name}_{target}.e",
                 f"{output_name}_{target}.csv",

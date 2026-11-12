@@ -160,6 +160,28 @@ def test_particle_generator_shape_and_vf(N, vf, kind, shape_params, buffer):
     assert np.isclose(frac, vf, atol=0.1) or np.isclose(frac, 1.0 - vf, atol=0.1)
 
 
+def test_particle_generator_accepts_none_shape_params():
+    """A `None` shape parameter means "omitted" (e.g. random orientation), as the
+    docstring says, instead of failing validation."""
+    gen = ParticleGenerator(
+        [32, 32],
+        0.2,
+        "ellipses",
+        {"size_m": 0.2, "ratio_m": 2.0, "theta_m": None},
+        random_seed=0,
+    )
+    img = gen.sample()
+    assert img.shape == (32, 32)
+    assert img.any() and not img.all()
+
+
+@pytest.mark.parametrize("bad", [-0.1, [0.1], [0.1, -0.2], "0.2"])
+def test_particle_generator_rejects_invalid_shape_params(bad):
+    """Negative values, wrong-length lists and non-numbers are still rejected."""
+    with pytest.raises(ValueError):
+        ParticleGenerator([32, 32], 0.2, "disks", {"size_m": bad})
+
+
 @pytest.mark.parametrize(
     "N,grain_size,thickness,lloyd_iter",
     [

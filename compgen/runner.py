@@ -80,7 +80,9 @@ def get_object_from_module(name, prefix="compgen"):
     """Dynamically import an object from a module.
 
     Args:
-        name (str): Full path to the object in the format 'module.submodule:object'.
+        name (str): Object name in the format 'module.object', where `module` is a
+            module of the `prefix` package (e.g. 'gen.SpinodalGenerator').
+        prefix (str): Package the module is imported from. Defaults to 'compgen'.
 
     Returns:
         object: The imported object.
@@ -157,8 +159,13 @@ def run(*config_files):
     """Run a set of computations defined by input files
 
     Args:
-        problem (str): Path to a problem definition file.
-        config (str): Path to a configuration file.
+        *config_files (str): Paths to JSON configuration files, merged in order
+            (later files override earlier ones), e.g. a problem definition file
+            followed by machine and solver configuration files.
+
+    Returns:
+        list: One entry per structure: the list of load-case results, or a negative
+            failure code.
     """
     config = utils.load_json(config_files)
 
@@ -194,7 +201,14 @@ def run(*config_files):
     try:
         material_a = setup_material(config["material_A"])
         material_b = setup_material(config["material_B"])
-        material_ab = setup_material(config.get("material_AB", {}))
+        # The interface material is only used by interface physics; default to an
+        # empty one so other configs can omit it.
+        material_ab = setup_material(
+            config.get(
+                "material_AB",
+                {"type": "materials.FixedMaterialGenerator", "params": {}},
+            )
+        )
     except Exception as e:
         if log:
             logger.error("Error setting up materials: %s", str(e))
@@ -626,7 +640,14 @@ def setup_generator(config_input):
     # mesher can coarsen it back to N as fractional volume fractions (-ims).
     refinement = params.pop("refinement", 0)
     base_N = params.get("N")
-    if base_N is not None and refinement:
+    if refinement and base_N is None:
+        # The mesher would still coarsen by 2**refinement, silently shrinking a
+        # structure the generator did not upscale (e.g. FromNumpyGenerator).
+        raise ValueError(
+            "generator `refinement` requires an `N` parameter to upscale; "
+            f"{config_input.get('type')} has none"
+        )
+    if refinement:
         params["N"] = [int(n * 2**refinement) for n in base_N]
     gen = gen_cls(**params)
     gen.refinement = refinement

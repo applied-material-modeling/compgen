@@ -150,15 +150,18 @@ def _sample(spec):
     Returns:
         float: The sampled value.
     """
-    if spec.low == spec.high:
-        # Degenerate interval; short-circuit so log-uniform returns the bound exactly
-        # rather than an exp(log(x)) round-trip that can land one ulp away.
-        return spec.low
-
+    # Always consume exactly one draw, as main did for every property, so the
+    # random stream (and every later property) is unchanged by a degenerate range.
     if spec.distribution == LOGUNIFORM:
-        return math.exp(random.uniform(math.log(spec.low), math.log(spec.high)))
+        value = math.exp(random.uniform(math.log(spec.low), math.log(spec.high)))
+    else:
+        value = random.uniform(spec.low, spec.high)
 
-    return random.uniform(spec.low, spec.high)
+    if spec.low == spec.high:
+        # Return the bound exactly rather than an exp(log(x)) round-trip that can
+        # land one ulp away.
+        return spec.low
+    return value
 
 
 class MaterialGenerator:

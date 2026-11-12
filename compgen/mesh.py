@@ -195,10 +195,11 @@ def generate_mesh_3d(
 
 
 def mesh_quality(exofile, min_qual=0.1):
-    """Compute basic mesh quality metrics for a 2D exodus mesh.
+    """Check the minimum scaled Jacobian of a 2D or 3D exodus mesh.
 
     Args:
-        exofile (str): Input 2D mesh filename.
+        exofile (str): Input mesh filename.
+        min_qual (float): Smallest acceptable scaled Jacobian. Defaults to 0.1.
     Returns:
         bool: True if mesh quality is acceptable, False otherwise.
     """
@@ -228,7 +229,8 @@ def sculpt(mesh, prefix="sculpted_", settings=None, sculpt_input="ice"):
 
     flag = {"ice": "-ice", "ims": "-ims"}[sculpt_input]
     outfile = os.path.splitext(f"{prefix}{mesh}")[0]
-    env = settings["sculpt"].get("environment", {}) | os.environ
+    # Config values win over the shell, e.g. CUBIT's bundled MPI over a conda one.
+    env = dict(os.environ) | settings["sculpt"].get("environment", {})
     capture = not settings.get("verbose", False)
     ranks = int(settings["mpi"]["ranks"])
 

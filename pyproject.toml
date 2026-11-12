@@ -52,6 +52,7 @@ Issues = "https://github.com/applied-material-modeling/compgen/issues"
 
 [project.optional-dependencies]
 mcrpy = ["mcrpy"]
+particles = ["torch"]
 demos = ["matplotlib"]
 dev = [
     "black==26.3.0",

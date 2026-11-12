@@ -277,7 +277,7 @@ class TwoPointGenerator(GenerativeStructureGenerator):
         return np.arange(r.max() + 1), variogram
 
     def fit_model(self, r, c, radial_mask=None):
-        """Fit a Gaussian model to the radial average.
+        """Fit a damped-oscillation covariance model to the radial average.
 
         Args:
             r (np.ndarray): Radii.
@@ -640,7 +640,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         2D (use with `N` of length 2): "laminae2", "disks", "ellipses"
         3D (use with `N` of length 3): "laminae3", "fibers", "spheres", "spheroids"
 
-    `args` parameter conventions:
+    `shape_params` conventions:
         each value is a `float` (fixed) or a `[min, max]` list (sampled uniformly each
             :meth:`sample` call):
         `*_m` / `*_s` suffixes denote mean and spread (half-width) of the uniform distribution
@@ -664,7 +664,8 @@ class ParticleGenerator(GenerativeStructureGenerator):
         vf (float or list[float, float]): Target volume fraction, or `[min, max]`
             range sampled on each call.
         kind (str): Particle shape identifier — see the table above.
-        args (dict[str, float | list]): Shape parameters — see conventions above.
+        shape_params (dict[str, float | list | None]): Shape parameters — see
+            conventions above.
 
     Keyword Args:
         buffer (float | None): Minimum surface-to-surface clearance in normalised units.
@@ -698,7 +699,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         except ImportError as e:
             raise RuntimeError(
                 "ParticleGenerator requires PyTorch. "
-                "Install it with: pip install torch"
+                "Install it with: pip install compgen[particles] (or pip install torch)"
             ) from e
 
         self.torch_rng = torch.Generator(device="cpu")
@@ -753,6 +754,8 @@ class ParticleGenerator(GenerativeStructureGenerator):
             )
 
         for val in self.shape_params.values():
+            if val is None:
+                continue
             if isinstance(val, (int, float)) and val >= 0:
                 continue
             if (
@@ -762,7 +765,8 @@ class ParticleGenerator(GenerativeStructureGenerator):
             ):
                 continue
             raise ValueError(
-                "`shape_params` values must be positive floats or lists of 2 floats"
+                "`shape_params` values must be positive floats, lists of 2 floats, "
+                "or None"
             )
 
         dim, pdim, opt_i, keys = specs[self.kind]
@@ -871,7 +875,7 @@ class ParticleGenerator(GenerativeStructureGenerator):
         if shape_params["size_m"] is not None:
             size_m = shape_params["size_m"] / 2.0
         else:
-            raise ValueError("args must include size_m")
+            raise ValueError("shape_params must include size_m")
 
         size_s = (shape_params.get("size_s") or 0.0) * size_m
         ratio_m = shape_params.get("ratio_m") or 1.0
@@ -1141,7 +1145,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
         converged = energy_value < tol
         return p.detach(), converged
 
-    @staticmethod
     @staticmethod
     def _rasterize_particles(dim, pdim, particles, res, dtype=bool):
         particles = np.asarray(particles, dtype=float)

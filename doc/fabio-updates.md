@@ -28,17 +28,20 @@ usable results unattended. Five themes:
    of the solver: (a) *better meshing* — the smooth-interface path produces
    fewer staircase artifacts at phase boundaries, which matters most for
    plasticity, where jagged interfaces create spurious stress concentrations;
-   and (b) *corrected mechanics constraints* — the elastic templates dropped
-   redundant rigid-rotation pins that were over-constraining the problem
-   (rotation is already fixed by periodicity plus the off-diagonal strain
-   constraint).
+   and (b) *corrected mechanics constraints* — the templates dropped extra
+   pinned nodes that over-constrained the periodic fluctuation field, and 2D
+   plasticity now applies a load whose Cauchy stress is diagonal in the load
+   axes (as 3D already did), with the out-of-plane stress σ_zz recorded.
 
 3. **It doesn't fall over anymore.** A generated structure that fails to mesh is
    automatically *replaced* (draw another) instead of silently dropping a result;
    a solve that hangs is killed on a timeout; mesh quality is checked before
    wasting a solve on it. You ask for 10 results, you get 10 (or a clear report
    of why not). *(Auto-replacement covers generator and mesher failures; retrying
-   a failed **executor** run is left for future work.)*
+   a failed **executor** run is left for future work. Predefined structures, e.g.
+   from `FromNumpyGenerator`, are never replaced: a failure stays in place as `-1`
+   so results line up with the input file. A structure with any failed load case
+   counts as failed, unless `moose.allow_partial_loads` is set.)*
 
 4. **Richer randomization.** Material properties can be drawn from configurable
    per-property distributions instead of single fixed values.
@@ -65,6 +68,7 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
 
 - **`ParticleGenerator(N, vf, kind, shape_params, buffer=None, dt=0.001,
   max_iter=1000, tol=1e-9)`** — places (and optionally rearranges) particles.
+  Requires PyTorch: `pip install compgen[particles]`.
   - `N` — grid resolution; must be equal in every dimension.
   - `vf` — target volume fraction. Particles are added until their *analytic*
     areas/volumes sum to `vf`, so it is the realized fraction **only for
@@ -146,15 +150,41 @@ mesher the factor). Example from `../compgen-tests/elasticity/config.json` — a
 At refinement 2 the generator rasterizes at 512² (128·2²) and `downsample_vfrac`
 coarsens it to 128 fractional volume fractions for Sculpt's `-ims` path.
 
+> **Known limitation.** `refinement` scales `N` only. Parameters measured in
+> pixels are not scaled: `SpinodalGenerator.l`, `mean_filter.radius` and
+> `make_periodic.margin`. With the same config, features come out `2**refinement`
+> times smaller relative to the domain, so refinement changes the microstructure,
+> not just the interface smoothness. Until this is fixed, multiply those
+> parameters by `2**refinement` by hand when you turn refinement on. A future
+> version will scale them automatically. `refinement` also requires a generator
+> with an `N` parameter; using it with e.g. `FromNumpyGenerator` now raises an
+> error.
+
 **(b) Corrected mechanics constraints** (`compgen/physics/**/template.i`):
 
-- **Removed the redundant rigid-rotation pins.** 2D dropped the `up` nodeset and
-  its `apply_up_x` Dirichlet BC; 3D dropped the `up`/`forward` nodesets and their
+- **Removed the rigid-rotation pins.** 2D dropped the `up` nodeset and its
+  `apply_up_x` Dirichlet BC; 3D dropped the `up`/`forward` nodesets and their
   `apply_up_*` BCs. Rigid *translation* is still removed by pinning the `center`
-  node; rigid *rotation* is already excluded by periodicity plus the off-diagonal
-  `strain` constraint on the `yx` gradient component, so the extra displacement
-  pins were redundant (and fought the periodic fluctuation field). A header
-  comment now documents why the constraint set is complete without them.
+  node. The displacement variables hold the periodic fluctuation, which cannot
+  contain a rigid rotation, so the pins did not remove rotation; they only forced
+  the fluctuation to match at two nodes, which applies spurious point forces in a
+  two-phase cell.
+- **2D plastic: macroscopic constraint changed so the Cauchy stress is diagonal.**
+  `constraint_types` (read column-major: `xx yx zx xy yy zy xz yz zz`) went from
+  `stress stress none stress stress ...` to `stress stress none strain stress ...`:
+  F_xy = 0 replaces P_xy = 0. With all four entries stress-controlled, P was
+  diagonal but the cell could rotate, giving Cauchy shear stress of up to ~3 % of
+  the load on anisotropic cells. With F lower triangular and P_yx = 0, the Cauchy
+  stress J⁻¹ P Fᵀ is diagonal and rigid rotation is fixed. The 3D plastic template
+  uses the mirror choice (F_yx = F_zx = F_zy = 0), which also gives a diagonal
+  Cauchy stress.
+- **2D plastic: out-of-plane stress now recorded.** The 2D model is plane strain
+  (no stretching along z), so a reaction stress σ_zz builds up: roughly 40–80 %
+  of σ_xx + σ_yy, and it affects yielding. It is now stored as an extra stimulus,
+  `cauchy_stress_zz` (generalized value and full field). The existing
+  `cauchy_stress` stimulus keeps its three in-plane components, so existing
+  readers are unaffected. σ_zz cannot be reconstructed reliably from the stored
+  in-plane fields in plasticity, so older 2D plastic datasets do not contain it.
 - Plastic and thermal-expansion templates: dead-block removal and whitespace
   consistency.
 
@@ -210,8 +240,9 @@ The reliability rework, spread across three modules.
   interval gets equal weight, so `[1, 1000]` spends as many draws in `[1, 10]` as
   in `[100, 1000]` — the right choice for properties that span decades (stiffness
   or conductivity *contrast* between phases). Requires a **strictly positive**
-  interval (`log` of `≤ 0` is undefined); a degenerate `low == high` short-circuits
-  to that value.
+  interval (`log` of `≤ 0` is undefined); a degenerate `low == high` returns
+  exactly that value. Every property consumes one random draw, degenerate or
+  not, so seeded runs reproduce the same material streams as before.
 
 A property is written either as a bare `[low, high]` (uniform) or as an object
 with an explicit `distribution`:
@@ -241,8 +272,10 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   it (different filters would reduce it differently). Backed by two new
   exceptions: **`FilterInputError`** and **`NonBinaryImageError`**.
 - **`make_orthogonal`** and **`make_periodic`** — moved here from `gen.py`.
-  `make_periodic` gained a `shift=True` default that circular-shifts each axis to
-  minimize the seam-overwrite cost before enforcing periodicity.
+  `make_periodic` gained an opt-in `shift=True` option that circular-shifts each
+  axis to minimize the seam-overwrite cost before enforcing periodicity. The
+  default is `shift=False`, so existing configs produce the same structures as
+  before.
 - **`defeature`** — removes connected islands below a size threshold (both
   phases), with periodic (toroidal) connected-component labeling so a feature
   that wraps the domain edge counts as one.

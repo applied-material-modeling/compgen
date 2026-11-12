@@ -25,6 +25,13 @@
 # 2D plastic solid under periodic boundary conditions
 # loaded in a direction indicated by theta
 # The model is a unit square with two materials
+#
+# Macroscopic constraints (constraint_types is read column-major:
+# xx yx zx xy yy zy xz yz zz). F_xy = 0 (strain) with P_yx = 0 (stress)
+# makes F lower triangular and P upper triangular, so the Cauchy stress
+# J^-1 P F^T is diagonal in the load axes, and rigid rotation is fixed.
+# The 3D plastic template uses the mirror choice (F_yx = F_zx = F_zy = 0),
+# which also gives a diagonal Cauchy stress.
 
 theta = 0.0
 
@@ -492,6 +499,12 @@ eq_strain_max = 0.02 # Should cause termination
   [stress_yy]
     type = ElementAverageValue
     variable = cauchy_stress_yy
+  []
+  # Out-of-plane stress: the 2D model is plane strain (F_zz = 1), so stress_zz
+  # is a reaction, recorded because yielding depends on it.
+  [stress_zz]
+    type = ElementAverageValue
+    variable = cauchy_stress_zz
   []
   [equivalent_strain]
     type = ElementAverageValue

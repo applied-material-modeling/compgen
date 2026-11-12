@@ -142,3 +142,30 @@ def test_predefined_structures_are_not_backfilled(monkeypatch, nthreads):
 
     assert runner.run("unused.json") == [0, -1, 2, 3]
     assert gen.draws == NUMBER
+
+
+def test_setup_generator_refinement_upscales_n():
+    """With `refinement`, the generator is built at N * 2**refinement."""
+    gen = runner.setup_generator(
+        {
+            "type": "gen.RandomGenerator",
+            "params": {"N": [8, 8], "vf": 0.5, "refinement": 2},
+        }
+    )
+    assert list(gen.N) == [32, 32]
+    assert gen.base_N == [8, 8]
+    assert gen.refinement == 2
+
+
+def test_setup_generator_refinement_without_n_raises(tmp_path):
+    """A generator with no `N` cannot be upscaled, so `refinement` must fail
+    instead of letting the mesher silently coarsen the structure."""
+    path = tmp_path / "structures.npy"
+    np.save(path, np.zeros((1, 8, 8), dtype=bool))
+    with pytest.raises(ValueError, match="refinement"):
+        runner.setup_generator(
+            {
+                "type": "gen.FromNumpyGenerator",
+                "params": {"filename": str(path), "refinement": 1},
+            }
+        )
