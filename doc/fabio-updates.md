@@ -175,9 +175,14 @@ coarsens it to 128 fractional volume fractions for Sculpt's `-ims` path.
   F_xy = 0 replaces P_xy = 0. With all four entries stress-controlled, P was
   diagonal but the cell could rotate, giving Cauchy shear stress of up to ~3 % of
   the load on anisotropic cells. With F lower triangular and P_yx = 0, the Cauchy
-  stress J⁻¹ P Fᵀ is diagonal and rigid rotation is fixed. The 3D plastic template
-  uses the mirror choice (F_yx = F_zx = F_zy = 0), which also gives a diagonal
-  Cauchy stress.
+  stress J⁻¹ P Fᵀ is diagonal and rigid rotation is fixed.
+- **3D plastic: same constraint convention as 2D.** 3D used the mirror choice
+  (F_yx = F_zx = F_zy = 0). It now fixes F_xy = F_xz = F_yz = 0 with
+  P_yx = P_zx = P_zy = 0, matching 2D. Both choices give a diagonal Cauchy
+  stress, but they leave the cell with a slightly different rigid rotation
+  (about 0.01 rad), which on strongly anisotropic structures changes strains by
+  up to ~17 %. Using one convention keeps 2D and 3D results comparable. No 3D
+  plastic data had been generated with the old convention.
 - **2D plastic: out-of-plane stress now recorded.** The 2D model is plane strain
   (no stretching along z), so a reaction stress σ_zz builds up: roughly 40–80 %
   of σ_xx + σ_yy, and it affects yielding. It is now stored as an extra stimulus,

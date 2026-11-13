@@ -30,8 +30,7 @@
 # xx yx zx xy yy zy xz yz zz). F_xy = 0 (strain) with P_yx = 0 (stress)
 # makes F lower triangular and P upper triangular, so the Cauchy stress
 # J^-1 P F^T is diagonal in the load axes, and rigid rotation is fixed.
-# The 3D plastic template uses the mirror choice (F_yx = F_zx = F_zy = 0),
-# which also gives a diagonal Cauchy stress.
+# The 3D plastic template uses the same convention (F_xy = F_xz = F_yz = 0).
 
 theta = 0.0
 
