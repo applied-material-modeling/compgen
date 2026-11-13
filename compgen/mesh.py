@@ -25,6 +25,7 @@
 """Mesh generation and mesh-processing utilities for 2D and 3D binary structures."""
 
 import os
+import shutil
 import subprocess
 
 import exodusii
@@ -33,6 +34,14 @@ import pyvista
 import scipy.spatial as sp
 
 from compgen import temp
+
+
+class SculptError(RuntimeError):
+    """Raised when the Sculpt (psculpt/epu) subprocess fails."""
+
+
+class MeshQualityError(RuntimeError):
+    """Raised when a generated mesh fails the quality check."""
 
 
 def generate_mesh(img, fname, **kwargs):
@@ -59,7 +68,13 @@ def generate_mesh(img, fname, **kwargs):
 
 
 def generate_mesh_2d(
-    img, fname, L=(1.0, 1.0), settings=None, run_sculpt=True, quality_check=True
+    img,
+    fname,
+    L=(1.0, 1.0),
+    settings=None,
+    refinement=0,
+    run_sculpt=True,
+    quality_check=True,
 ):
     """Run the entire process of generating a 2D mesh for an image and write it to an exodus file.
 
@@ -67,37 +82,67 @@ def generate_mesh_2d(
     mesh to the cwd.
 
     Args:
-        img (2D array): Binary image where 1 indicates material A
+        img (2D array): Binary image where 1 indicates material A. When
+            ``refinement > 0`` it is the fine image at resolution ``N * 2**refinement``.
         fname (str): Output filename for the mesh.
 
     Keyword Args:
         L (tuple): Lengths of the domain in each direction.
         settings (dict): Global settings dict
+        refinement (int): If 0 (default), mesh the binary image directly with the
+            ``-ice`` path (extrude -> sculpt -> slice). If > 0, coarsen the image
+            by ``2**refinement`` into fractional volume fractions and mesh those
+            with Sculpt's ``-ims`` input (smooth interface), giving a mesh at
+            ``img.shape / 2**refinement``.
         run_sculpt (bool): Whether to sculpt the mesh
+        quality_check (bool): Whether to run a mesh quality check
     """
     assert len(img.shape) == 2, "Input image must be 2D."
     if settings is None:
         settings = {}
 
     lx, ly = L
+    factor = 2**refinement
 
     with temp.TempDirectory(settings) as (cwd, _):
-        write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
-        if run_sculpt:
+        if not run_sculpt:
+            write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
+            shutil.move("temp_mesh.e", os.path.join(cwd, fname))
+        elif factor == 1:
+            write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
             extrude("temp_mesh.e", prefix="extruded_", lx=lx, ly=ly)
             sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
             slice_mesh("sculpted_extruded_temp_mesh.e", prefix="sliced_")
-            os.rename("sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname))
+            shutil.move(
+                "sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname)
+            )
         else:
-            os.rename("temp_mesh.e", os.path.join(cwd, fname))
+            assert all(
+                n % factor == 0 for n in img.shape
+            ), f"image {img.shape} not divisible by 2**refinement={factor}"
+            phi = downsample_vfrac(img, factor)
+            _write_micro(phi, "micro.tec")
+            sculpt(
+                "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
+            )
+            # -ims output is a unit-cell, origin-centred 3D slab; map to the domain
+            # (this also puts the z-bottom at 0 so the unchanged slice works).
+            normalize_mesh("sculpted_micro.e", (lx, ly, lx / phi.shape[0]))
+            slice_mesh("sculpted_micro.e", prefix="sliced_")
+            shutil.move("sliced_sculpted_micro.e", os.path.join(cwd, fname))
 
-    if quality_check:
-        if not mesh_quality(fname):
-            raise ValueError("Generated mesh did not pass quality check.")
+    if quality_check and not mesh_quality(fname):
+        raise MeshQualityError("Generated mesh did not pass quality check.")
 
 
 def generate_mesh_3d(
-    img, fname, L=(1.0, 1.0, 1.0), settings=None, run_sculpt=True, quality_check=True
+    img,
+    fname,
+    L=(1.0, 1.0, 1.0),
+    settings=None,
+    refinement=0,
+    run_sculpt=True,
+    quality_check=True,
 ):
     """Run the entire process of generating a 3D mesh for an image and write it to an exodus file.
 
@@ -105,38 +150,56 @@ def generate_mesh_3d(
     mesh to the cwd.
 
     Args:
-        img (3D array): Binary image where 1 indicates material A
+        img (3D array): Binary image where 1 indicates material A. When
+            ``refinement > 0`` it is the fine image at resolution ``N * 2**refinement``.
         fname (str): Output filename for the mesh.
 
     Keyword Args:
         L (tuple): Lengths of the domain in each direction.
         settings (dict): Global settings dict
+        refinement (int): If 0 (default), mesh the binary image directly with the
+            ``-ice`` path. If > 0, coarsen by ``2**refinement`` into fractional
+            volume fractions and mesh with Sculpt's ``-ims`` input. No slice in 3D.
         run_sculpt (bool): Whether to sculpt the mesh
+        quality_check (bool): Whether to run a mesh quality check
     """
     assert len(img.shape) == 3, "Input image must be 3D."
     if settings is None:
         settings = {}
 
     lx, ly, lz = L
+    factor = 2**refinement
 
     with temp.TempDirectory(settings) as (cwd, _):
-        write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
-        if run_sculpt:
+        if not run_sculpt:
+            write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
+            shutil.move("temp_mesh.e", os.path.join(cwd, fname))
+        elif factor == 1:
+            write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
             sculpt("temp_mesh.e", prefix="sculpted_", settings=settings)
-            os.rename("sculpted_temp_mesh.e", os.path.join(cwd, fname))
+            shutil.move("sculpted_temp_mesh.e", os.path.join(cwd, fname))
         else:
-            os.rename("temp_mesh.e", os.path.join(cwd, fname))
+            assert all(
+                n % factor == 0 for n in img.shape
+            ), f"image {img.shape} not divisible by 2**refinement={factor}"
+            phi = downsample_vfrac(img, factor)
+            _write_micro(phi, "micro.tec")
+            sculpt(
+                "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
+            )
+            normalize_mesh("sculpted_micro.e", (lx, ly, lz))  # unit-cell -> domain
+            shutil.move("sculpted_micro.e", os.path.join(cwd, fname))
 
-    if quality_check:
-        if not mesh_quality(fname):
-            raise ValueError("Generated mesh did not pass quality check.")
+    if quality_check and not mesh_quality(fname):
+        raise MeshQualityError("Generated mesh did not pass quality check.")
 
 
-def mesh_quality(exofile, min_qual=0.025):
-    """Compute basic mesh quality metrics for a 2D exodus mesh.
+def mesh_quality(exofile, min_qual=0.1):
+    """Check the minimum scaled Jacobian of a 2D or 3D exodus mesh.
 
     Args:
-        exofile (str): Input 2D mesh filename.
+        exofile (str): Input mesh filename.
+        min_qual (float): Smallest acceptable scaled Jacobian. Defaults to 0.1.
     Returns:
         bool: True if mesh quality is acceptable, False otherwise.
     """
@@ -145,49 +208,115 @@ def mesh_quality(exofile, min_qual=0.025):
     return qual.get_data_range("scaled_jacobian")[0] > min_qual
 
 
-def sculpt(mesh, prefix="sculpted_", settings=None):
-    """Call sculpt on an extruded mesh.
+def sculpt(mesh, prefix="sculpted_", settings=None, sculpt_input="ice"):
+    """Call Sculpt on a mesh, then combine the parallel output with epu.
 
     Args:
-        mesh (str): Input 3D mesh filename.
+        mesh (str): Input filename. For ``sculpt_input="ice"`` a Cartesian-exodus
+            mesh; for ``sculpt_input="ims"`` a microstructure (volume-fraction) file.
 
     Keyword Args:
         prefix (str): Prefix for the output sculpted mesh filename.
         settings (dict): Global settings dict
+        sculpt_input (str): Sculpt input mode, ``"ice"`` (Cartesian exodus) or
+            ``"ims"`` (microstructure volume fractions).
+
+    Raises:
+        SculptError: if psculpt or epu exits with a non-zero status.
     """
     if settings is None:
         settings = {}
 
+    flag = {"ice": "-ice", "ims": "-ims"}[sculpt_input]
     outfile = os.path.splitext(f"{prefix}{mesh}")[0]
+    # Config values win over the shell, e.g. CUBIT's bundled MPI over a conda one.
+    env = dict(os.environ) | settings["sculpt"].get("environment", {})
+    capture = not settings.get("verbose", False)
+    ranks = int(settings["mpi"]["ranks"])
+
     cmd = (
         [
             settings["sculpt"]["mpi"],
             settings["sculpt"]["rank_command"],
-            str(settings["mpi"]["ranks"]),
+            str(ranks),
         ]
         + [settings["sculpt"]["executable"]]
         + settings["sculpt"]["options"]
-        + ["-ice", mesh, "--exodus_file", outfile]
+        + [flag, mesh, "--exodus_file", outfile]
     )
-    subprocess.run(
-        cmd,
-        check=True,
-        env=settings["sculpt"].get("environment", {}) | os.environ,
-        capture_output=(not settings.get("verbose", False)),
-    )
+    epu_cmd = [settings["sculpt"]["epu"], "-auto", outfile + ".e" + f".{ranks}.0"]
 
-    ranks = int(settings["mpi"]["ranks"])
-    epu_cmd = [
-        settings["sculpt"]["epu"],
-        "-auto",
-        outfile + ".e" + f".{ranks}.0",
-    ]
-    subprocess.run(
-        epu_cmd,
-        check=True,
-        env=settings["sculpt"].get("environment", {}) | os.environ,
-        capture_output=(not settings.get("verbose", False)),
-    )
+    try:
+        subprocess.run(cmd, check=True, env=env, capture_output=capture)
+        subprocess.run(epu_cmd, check=True, env=env, capture_output=capture)
+    except subprocess.CalledProcessError as e:
+        raise SculptError(f"sculpt ({sculpt_input}) failed: {e}") from e
+
+
+def downsample_vfrac(img, factor):
+    """Block-mean downsample a binary image to grayscale area/volume fractions.
+
+    Unlike a binary (majority-vote) downsample this keeps the sub-cell fraction,
+    which lets Sculpt place a smooth interface inside a coarse cell via ``-ims``.
+    Works for 2D and 3D. ``factor <= 1`` returns a float copy.
+    """
+    arr = np.asarray(img, float)
+    if factor <= 1:
+        return arr
+    crop = tuple(slice(0, (s // factor) * factor) for s in arr.shape)
+    arr = arr[crop]
+    new_shape = []
+    for s in arr.shape:
+        new_shape += [s // factor, factor]
+    return arr.reshape(new_shape).mean(axis=tuple(range(1, 2 * arr.ndim, 2)))
+
+
+def _write_micro(phi, fname):
+    """Write a 2-material Sculpt microstructure (.tec) for a 2D/3D fraction field.
+
+    ``phi`` is the material-A fraction; ``phi_2 = 1 - phi``. Cells are 1x1x1 with
+    ``k=1`` (2D) or ``k=Nz`` (3D); body order is i fastest, then j, then k.
+    """
+    a = np.clip(np.asarray(phi, float), 0.0, 1.0)
+    grids = [g.T.ravel() for g in np.indices(a.shape)]  # i fastest, then j, (then k)
+    x = grids[0]
+    y = grids[1]
+    z = grids[2] if a.ndim == 3 else np.zeros(x.size, dtype=int)
+    av = a.T.ravel()
+    data = np.column_stack([x, y, z, av, 1.0 - av])
+    nz = a.shape[2] if a.ndim == 3 else 1
+    with open(fname, "w", encoding="utf-8") as f:
+        f.write("TITLE = vfrac\nVARIABLES = x y z phi_1 phi_2\n")
+        f.write(f"ZONE i = {a.shape[0]} , j = {a.shape[1]} , k = {nz}\n")
+        np.savetxt(f, data, fmt=["%d", "%d", "%d", "%.6f", "%.6f"])
+
+
+def normalize_mesh(exofile, L):
+    """Rescale an exodus hex mesh's coords so each axis spans ``[0, L[axis]]``.
+
+    Used on Sculpt's ``-ims`` output, which is on a unit-cell, origin-centred grid.
+    Mapping ``[min, max] -> [0, L]`` per axis also puts the z-bottom at 0, so the
+    unchanged ``slice_mesh`` works for the 2D path. Coords only; blocks unchanged.
+    """
+    with exodusii.File(exofile, mode="r") as exo:
+        coords = np.asarray(exo.get_coords())
+        block_ids = [int(b) for b in exo.get_element_block_ids()]
+        conns = {b: np.asarray(exo.get_element_conn(b)) for b in block_ids}
+
+    mn = coords.min(axis=0)
+    span = coords.max(axis=0) - mn
+    span[span == 0] = 1.0
+    coords = (coords - mn) / span * np.asarray(L, float)
+
+    names = {1: "mat_a", 2: "mat_b"}
+    nelem = sum(len(c) for c in conns.values())
+    with exodusii.File(exofile, mode="w") as exo:
+        exo.put_init("normalized", 3, coords.shape[0], nelem, len(block_ids), 0, 0)
+        exo.put_coord(coords[:, 0], coords[:, 1], coords[:, 2])
+        for b in block_ids:
+            exo.put_element_block(b, "HEX", len(conns[b]), 8)
+            exo.put_element_block_name(b, names.get(b, f"mat_{b}"))
+            exo.put_element_conn(b, conns[b])
 
 
 def extrude(mesh, lx=1.0, ly=1.0, prefix="extruded_", lz=0.01, tol=1e-6):

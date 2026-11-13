@@ -24,6 +24,8 @@
 
 """End-to-end verification tests comparing solver outputs to reference physics responses."""
 
+import json
+
 import numpy as np
 import pytest
 
@@ -390,3 +392,79 @@ def test_verification(input_info, solution):
                     rtol=1e-5,
                     atol=1e-1,
                 )
+
+
+def _plastic_problem(tmp_path):
+    """A 2D plastic problem on inclined lamellae of two different materials.
+
+    The lamellae make the cell anisotropic, so the macroscopic constraints matter:
+    with all four in-plane entries stress-controlled the cell rotates and the
+    Cauchy stress picks up shear (up to about 0.7 % of its norm here); with the
+    triangular F/P constraints it stays diagonal.
+    """
+    i, j = np.meshgrid(np.arange(32), np.arange(32), indexing="ij")
+    lamellae = ((i + 2 * j) % 16) < 8  # periodic on the 32 x 32 grid, vf = 0.5
+    np.save(tmp_path / "lamellae.npy", lamellae[np.newaxis])
+
+    def plastic(young, poisson, yield_strength, hardening):
+        return {
+            "type": "materials.FixedMaterialGenerator",
+            "params": {
+                "youngs_modulus": young,
+                "poissons_ratio": poisson,
+                "yield_strength": yield_strength,
+                "hardening_modulus": hardening,
+            },
+        }
+
+    problem = {
+        "number": 1,
+        "nthreads": 1,
+        "mesh_file": "mesh.exo",
+        "L": [1.0, 1.0],
+        "generator": {
+            "type": "gen.FromNumpyGenerator",
+            "params": {"filename": str(tmp_path / "lamellae.npy")},
+        },
+        "mesh": {"type": "mesh.generate_mesh_2d", "params": {"run_sculpt": False}},
+        "executor": {
+            "type": "moose.execute_moose_simulations",
+            "physics": "2d/plastic",
+        },
+        "material_A": plastic(70000.0, 0.3, 100.0, 1000.0),
+        "material_B": plastic(410000.0, 0.14, 500.0, 100.0),
+        "material_AB": {"type": "materials.FixedMaterialGenerator", "params": {}},
+        "output": {"write_files": False},
+    }
+    problem_file = tmp_path / "plasticity.json"
+    problem_file.write_text(json.dumps(problem), encoding="utf-8")
+    return str(problem_file)
+
+
+def test_plastic_2d_cauchy_stress_is_diagonal(tmp_path):
+    """In every load direction the averaged Cauchy stress stays diagonal in the
+    load axes, and the plane-strain out-of-plane stress is recorded."""
+    result = run(
+        _plastic_problem(tmp_path),
+        config_file,
+        "tests/verification/elastic_moose.json",
+    )
+    load_cases = result[0]
+    assert len(load_cases) == 12
+
+    for case in load_cases:
+        stimuli = case["generalized"]["stimuli"]
+        sigma = stimuli["cauchy_stress"]["data"]  # (ntime, 3): xx, yy, xy
+        norm = np.sqrt(sigma[:, 0] ** 2 + sigma[:, 1] ** 2 + 2 * sigma[:, 2] ** 2)
+        loaded = norm > 0.05 * norm.max()
+        assert np.all(np.abs(sigma[loaded, 2]) < 1e-3 * norm[loaded])
+
+        sigma_zz = stimuli["cauchy_stress_zz"]["data"]
+        assert sigma_zz.shape == sigma.shape[:1]
+        assert np.all(np.isfinite(sigma_zz))
+
+    # Plane strain: under the uniaxial load along x (theta = 0), sigma_zz is a
+    # sizeable reaction, a large fraction of sigma_xx.
+    uniaxial = load_cases[0]["generalized"]["stimuli"]
+    sigma_xx = uniaxial["cauchy_stress"]["data"][-1, 0]
+    assert uniaxial["cauchy_stress_zz"]["data"][-1] > 0.2 * sigma_xx > 0

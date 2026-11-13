@@ -32,6 +32,9 @@ from compgen.gen import (
     SpinodalGenerator,
     TwoPointGenerator,
     Reconstruction2D,
+    ParticleGenerator,
+    VoronoiGenerator,
+    FromNumpyGenerator,
 )
 
 
@@ -119,3 +122,130 @@ def test_reconstruction_generator_shape_and_vf(path, descriptors):
 
     assert img.shape == final_shape
     assert np.isclose(img.mean(), gen.target_vf, atol=0.25)
+
+
+@pytest.mark.parametrize(
+    "N,vf,kind,shape_params,buffer",
+    [
+        ([64, 64], 0.3, "disks", {"size_m": 0.1}, 1.0),
+        (
+            [64, 64],
+            0.3,
+            "ellipses",
+            {"size_m": 0.1, "ratio_m": 2.0, "theta_m": 45.0},
+            0.5,
+        ),
+        ([64, 64], 0.3, "ellipses", {"size_m": 0.05, "ratio_m": 10.0}, None),
+        ([64, 64], 0.6, "laminae2", {"size_m": 0.1, "size_s": 0.05}, 0.4),
+        ([32, 32, 32], 0.2, "spheres", {"size_m": 0.4}, 0.7),
+        ([32, 32, 32], 0.1, "spheroids", {"size_m": 0.3, "ratio_m": 2.0}, 0.7),
+        ([32, 32, 32], 0.4, "fibers", {"size_m": 0.2}, 0.6),
+        ([32, 32, 32], 0.5, "laminae3", {"size_m": 0.1, "size_s": 0.05}, 1.0),
+    ],
+)
+def test_particle_generator_shape_and_vf(N, vf, kind, shape_params, buffer):
+    """Test that the ParticleGenerator produces images of the correct shape and
+    approximate volume fraction."""
+    gen = ParticleGenerator(
+        N=N,
+        vf=vf,
+        kind=kind,
+        shape_params=shape_params,
+        buffer=buffer,
+        random_seed=42,
+    )
+    img = gen.sample()
+    assert img.shape == tuple(N)
+    frac = img.mean()
+    assert np.isclose(frac, vf, atol=0.1) or np.isclose(frac, 1.0 - vf, atol=0.1)
+
+
+def test_particle_generator_accepts_none_shape_params():
+    """A `None` shape parameter means "omitted" (e.g. random orientation), as the
+    docstring says, instead of failing validation."""
+    gen = ParticleGenerator(
+        [32, 32],
+        0.2,
+        "ellipses",
+        {"size_m": 0.2, "ratio_m": 2.0, "theta_m": None},
+        random_seed=0,
+    )
+    img = gen.sample()
+    assert img.shape == (32, 32)
+    assert img.any() and not img.all()
+
+
+@pytest.mark.parametrize("bad", [-0.1, [0.1], [0.1, -0.2], "0.2"])
+def test_particle_generator_rejects_invalid_shape_params(bad):
+    """Negative values, wrong-length lists and non-numbers are still rejected."""
+    with pytest.raises(ValueError):
+        ParticleGenerator([32, 32], 0.2, "disks", {"size_m": bad})
+
+
+@pytest.mark.parametrize(
+    "N,grain_size,thickness,lloyd_iter",
+    [
+        ([64, 64], 0.25, 0.03, 0),
+        ([64, 64], [0.15, 0.25], 0.05, 0),
+        ([64, 64], 0.2, 0.04, 5),
+        ([32, 32, 32], 0.35, 0.05, 0),
+        ([32, 32, 32], 0.4, 0.06, 3),
+    ],
+)
+def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter):
+    """Test that the VoronoiGenerator produces bool images of the correct shape,
+    containing both phases."""
+    gen = VoronoiGenerator(
+        N=N,
+        grain_size=grain_size,
+        thickness=thickness,
+        lloyd_iter=lloyd_iter,
+        random_seed=42,
+    )
+    img = gen.sample()
+    assert img.shape == tuple(N)
+    assert img.dtype == bool
+    # Both grains and boundaries should be present for these parameters.
+    assert img.any() and not img.all()
+
+
+@pytest.mark.parametrize("dtype", [bool, np.uint8, np.int64, np.float32])
+def test_from_numpy_generator_normalizes_dtype(tmp_path, dtype):
+    """Whatever the file's dtype, the generator yields bool with content intact."""
+    ref = np.random.default_rng(3).random((4, 16, 16)) > 0.5
+    path = tmp_path / "structures.npy"
+    np.save(path, ref.astype(dtype))
+
+    gen = FromNumpyGenerator(str(path))
+    for expected in ref:
+        img = gen.sample()
+        assert img.dtype == bool
+        assert np.array_equal(img, expected)
+
+
+def test_from_numpy_generator_binarizes_grayscale(tmp_path):
+    """A grayscale file is thresholded at 0.5 rather than passed through."""
+    data = np.random.default_rng(4).random((2, 16, 16))
+    path = tmp_path / "grayscale.npy"
+    np.save(path, data)
+
+    img = FromNumpyGenerator(str(path)).sample()
+    assert img.dtype == bool
+    assert np.array_equal(img, data[0] > 0.5)
+
+
+def test_all_generators_return_bool():
+    """Every generator honours the bool contract in the base-class docstring."""
+    rng = np.random.default_rng(5)
+    generators = [
+        RandomGenerator([32, 32], 0.4, random_seed=0),
+        SpinodalGenerator([32, 32], 0.4, 8.0, 0.2, random_seed=0),
+        TwoPointGenerator([32, 32], rng.random((32, 32)) > 0.6, random_seed=0),
+        VoronoiGenerator([32, 32], 0.25, 0.2, random_seed=0),
+        ParticleGenerator([32, 32], 0.3, "disks", {"size_m": 0.2}, random_seed=0),
+        RandomGenerator([16, 16, 16], 0.4, random_seed=0),
+        VoronoiGenerator([16, 16, 16], 0.4, 0.2, random_seed=0),
+        ParticleGenerator([16, 16, 16], 0.3, "spheres", {"size_m": 0.3}, random_seed=0),
+    ]
+    for gen in generators:
+        assert gen.sample().dtype == bool, type(gen).__name__

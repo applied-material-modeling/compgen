@@ -24,9 +24,10 @@ If the data is constant over time (like the distribution of material A and B) th
 
 The rest of this document is hierarchical, just like the HDF5 files.  Each subsection is a group name, with the subsequent text describing what that group stores.
 
-### Density
+### Top-level attributes
 
-I couldn't think of a good place to put this, so the density is recorded as an attribute at the top scope of the model.
+- "index": the load-case index of this file (an integer). Each structure produces one file per load case, and the index matches the `_<index>.h5` suffix of the file name.
+- "density": the volume-averaged density of the composite. Only present when `output.add_density` is set in the configuration.
 
 ### Generalized
 
@@ -42,15 +43,17 @@ Each generalized stimuli, stored in the tensor format described above.
 
 ### Grid
 
-The problem setup and field variable solutions projected onto a fixed grid.  This subgroup has two (2D) or three (3D) attributes called `lx`, `ly`, and (for 3D) `lz` giving the physics size of the problem domain.
+The problem setup and field variable solutions projected onto a fixed grid.
 
 #### Cell fields
 
 The full-field data from the simulations.  The intermediate, spatial dimensions of the tensor will have shape `(nx,ny)` in 2D or `(nx,ny,nz)` in 3D, with the dimensions indicating the number of grid cells in each dimension.
 
+This subgroup has two (2D) or three (3D) attributes called `lx`, `ly`, and (for 3D) `lz` giving the physical size of the problem domain.
+
 ##### Material
 
-A boolean tensor giving the distribution of material A (value `True`/`1`) and B (value `False`/`0`).  As the material distribution remains constant with time, the length of the first (time) dimension will be `1`.
+A boolean tensor giving the distribution of material A (value `True`/`1`) and B (value `False`/`0`).  Unlike the other fields, it has no time dimension: its shape is `(nx,ny)` in 2D or `(nx,ny,nz)` in 3D.
 
 ##### Material reprojected
 
@@ -63,6 +66,14 @@ The full field response fields, projected onto the fixed grid, using the format 
 ##### Stimuli
 
 The full field stimuli fields, projected onto the fixed grid, using the format for tensor data described above.
+
+### Loads
+
+The load parameters of this file's load case, given as float attributes of this group.  Only present for physics that step through a list of load parameters, currently the plastic physics:
+- 2D plastic: "theta", the in-plane load direction in radians.
+- 3D plastic: "theta" and "phi", the load direction in spherical angles, in radians.
+
+For the other physics the load case is identified by the top-level "index" attribute alone.
 
 ### Material properties
 
@@ -87,10 +98,12 @@ This section is a copy of the input data structured used to drive the physics to
 
 However, this group has a few key attributes that might be useful in training:
 - "dimension": The problem dimension as an integer
-- "name": A text description of the type of physics described by these results.  Options include:
+- "name": The name of the physics template that produced these results.  Options are:
     * elastic: Simulations probing the composite's effective elastic tensor
-    * thermal: Simulations probing the composite's effective thermal conductivity
-    * cte: Simulations probing the composite's Coefficient of Thermal Expansion
+    * plastic: Simulations of the composite's elastic-plastic response under a stress ramp along a load direction
+    * thermal_conductivity: Simulations probing the composite's effective thermal conductivity
+    * thermal_conductivity_with_interface: The same, with an interface conductance between the phases
+    * thermal_expansion: Simulations probing the composite's coefficient of thermal expansion
 - "type": Either "steady" or "transient".  "steady" means the simulation results came from a steady state simulation.  In practice, this means all the results fields will have a time dimension of `(2,)` with the first item being the initial conditions for the simulation (which may be zero) and the second item being the steady state simulation results.
 
 #### Responses

@@ -24,6 +24,12 @@
 
 # 2D elastic solid under periodic boundary conditions
 # The model is a unit square with two materials
+#
+# Rigid translation is removed by pinning the `center` node. A periodic
+# fluctuation field cannot contain a rigid rotation, and the macroscopic
+# gradient is fully prescribed (xx, xy, yy by `strain`, yx held at zero by
+# `none`; constraint_types is read column-major), so no further constraint is
+# needed. An extra pinned node would over-constrain the fluctuation field.
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -38,9 +44,9 @@
   [sidesets]
     type = SideSetsFromNormalsGenerator
     input = base
-    normals = '-1 0 0 
-                1 0 0 
-                0 -1 0 
+    normals = '-1 0 0
+                1 0 0
+                0 -1 0
                 0 1 0'
     new_boundary = 'left right bottom top'
   []
@@ -51,14 +57,6 @@
     coord = '0.5 0.5'
     use_closest_node = true
     new_boundary = 'center'
-  []
-
-  [up]
-    type = ExtraNodesetGenerator
-    input = center
-    coord = '0.5 0.75'
-    use_closest_node = true
-    new_boundary = 'up'
   []
 []
 
@@ -71,7 +69,7 @@
         new_system = true
         formulation = TOTAL
         volumetric_locking_correction = true
-        constraint_types =  'strain none none strain strain none none none none' 
+        constraint_types =  'strain none none strain strain none none none none'
         targets = 'value zero zero'
         generate_output = 'cauchy_stress_xx cauchy_stress_xy cauchy_stress_xz cauchy_stress_yy '
                           'cauchy_stress_yz cauchy_stress_zz '
@@ -105,7 +103,7 @@
       auto_direction = 'x y'
     []
   []
-  
+
   # Grab a node near the center to fix rigid body motion
   [fix_center_x]
     type = DirichletBC
@@ -117,13 +115,6 @@
     type = DirichletBC
     variable = disp_y
     boundary = 'center'
-    value = 0
-  []
-  # Now prevent rigid rotation
-  [apply_up_x]
-    type = DirichletBC
-    variable = disp_x
-    boundary = 'up'
     value = 0
   []
 []

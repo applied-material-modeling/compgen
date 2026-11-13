@@ -28,7 +28,9 @@ import os
 import os.path
 import json
 import shutil
+import signal
 import subprocess
+import logging
 
 import numpy as np
 import exodusii
@@ -36,6 +38,8 @@ import exodusii
 from compgen import temp
 from compgen.exoutil import get_element_field
 from compgen.tensors import assemble_tensor
+
+logger = logging.getLogger(__name__)
 
 
 def get_physics(name, settings_name="settings.json", template_name="template.i"):
@@ -262,8 +266,51 @@ def process_output(physics, mesh, material_properties, output_exo, output_csv):
     }
 
 
+def _run_moose_command(cmd, env, capture, timeout_s):
+    """Run a single MOOSE command, killing the whole process tree on timeout.
+
+    ``subprocess.run(timeout=...)`` only kills the direct child (e.g. ``mpirun``);
+    the MPI ranks it spawned would be orphaned and keep running. Launching the
+    command in its own session and killing the process group on timeout tears the
+    whole tree down (mpirun -> hydra_pmi_proxy -> solid_mechanics ranks).
+
+    Args:
+        cmd (list[str]): Command and arguments.
+        env (dict): Environment for the subprocess.
+        capture (bool): Capture stdout/stderr instead of inheriting them.
+        timeout_s (float | None): Wall-clock limit in seconds; ``None`` disables it.
+
+    Raises:
+        subprocess.TimeoutExpired: The command exceeded ``timeout_s`` (tree killed).
+        subprocess.CalledProcessError: The command exited with a non-zero code.
+    """
+    pipe = subprocess.PIPE if capture else None
+    with subprocess.Popen(
+        cmd, env=env, stdout=pipe, stderr=pipe, start_new_session=True
+    ) as proc:
+        try:
+            out, err = proc.communicate(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            # Kill the entire process group (mpirun + hydra_pmi_proxy + ranks).
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.communicate()  # reap the killed tree
+            raise
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(
+                proc.returncode, cmd, output=out, stderr=err
+            )
+
+
 def execute_moose_simulations(
-    physics, mesh, material_properties, settings=None, output_name="output"
+    physics,
+    mesh,
+    material_properties,
+    settings=None,
+    output_name="output",
+    problem_id=None,
 ):
     """
     Execute the MOOSE simulations for a given physics template and mesh.
@@ -276,6 +323,8 @@ def execute_moose_simulations(
     Keyword Args:
         settings (dict): Global settings dict
         output_name (str): Base name for output files
+        problem_id (str): Problem UUID, used only to tag per-load-case log messages
+            so failures/timeouts are greppable by problem.
     """
     if settings is None:
         settings = {}
@@ -311,6 +360,11 @@ def execute_moose_simulations(
         else:
             raise ValueError(f"Unknown substitution mode '{sub_type}'.")
 
+        # Per-load-case wall-clock limit. The config value is in MINUTES; an
+        # absent value or any value <= 0 means no timeout.
+        timeout_min = settings.get("moose", {}).get("timeout")
+        timeout_s = timeout_min * 60 if timeout_min and timeout_min > 0 else None
+
         for target in range(N):
             if sub_type == "dictlist":
                 target_subs = [f"{key}={sub_dict[key][target]}" for key in sub_dict]
@@ -345,21 +399,60 @@ def execute_moose_simulations(
                     + cmd
                 )
 
-            subprocess.run(
-                cmd,
-                check=True,
-                env=settings["moose"].get("environment", {}) | os.environ,
-                capture_output=(not settings.get("verbose", False)),
-            )
-
-            outputs.append(
-                process_output(
-                    physics,
-                    mesh,
-                    material_properties,
-                    f"{output_name}_{target}.e",
-                    f"{output_name}_{target}.csv",
+            try:
+                _run_moose_command(
+                    cmd,
+                    env=dict(os.environ) | settings["moose"].get("environment", {}),
+                    capture=(not settings.get("verbose", False)),
+                    timeout_s=timeout_s,
                 )
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                # A timeout means the solve exceeded the configured wall-clock
+                # limit (typically stuck in time-step cutback) and the whole
+                # process tree has been killed; a non-zero exit code means a
+                # non-converged (or otherwise failed) solve.  With
+                # moose.allow_partial_loads, skip just this load case and keep the
+                # loads that already succeeded.
+                reason = (
+                    f"exceeded the {timeout_min:g}-minute timeout"
+                    if isinstance(e, subprocess.TimeoutExpired)
+                    else f"did not converge (exit code {e.returncode})"
+                )
+                # By default a failed load case fails the whole structure (main's
+                # behavior), so every written result has all N load cases.
+                if not settings["moose"].get("allow_partial_loads", False):
+                    raise RuntimeError(
+                        f"Load case {target} of physics '{physics}' {reason}."
+                    ) from e
+                logger.warning(
+                    "Problem %s: Load case %d of physics '%s' %s; skipping this "
+                    "load and continuing.",
+                    problem_id,
+                    target,
+                    physics,
+                    reason,
+                )
+                continue
+
+            # Open the copy in the temp dir; `mesh` is relative to the original cwd.
+            result = process_output(
+                physics,
+                "mesh.exo",
+                material_properties,
+                f"{output_name}_{target}.e",
+                f"{output_name}_{target}.csv",
             )
+            # Tag the result with its load index (and load values when available)
+            # so downstream output keeps a 1-to-1 index <-> load correspondence
+            # even when some load cases are skipped.
+            result["index"] = target
+            if sub_type == "dictlist":
+                result["loads"] = {key: sub_dict[key][target] for key in sub_dict}
+            outputs.append(result)
+
+    if not outputs:
+        raise RuntimeError(
+            f"All {N} load cases failed to converge for physics '{physics}'."
+        )
 
     return outputs

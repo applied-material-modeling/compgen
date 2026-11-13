@@ -5,3 +5,7 @@
 __pycache__
 demo.log
 demo_output
+doc/local/
+*_backup.py
+demos/*.exo
+demos/*.png

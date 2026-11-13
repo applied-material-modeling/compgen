@@ -52,14 +52,6 @@
     use_closest_node = true
     new_boundary = 'center'
   []
-
-  [up]
-    type = ExtraNodesetGenerator
-    input = center
-    coord = '0.5 0.75'
-    use_closest_node = true
-    new_boundary = 'up'
-  []
 []
 
 [AuxVariables]
@@ -133,13 +125,6 @@
     type = DirichletBC
     variable = disp_y
     boundary = 'center'
-    value = 0
-  []
-  # Now prevent rigid rotation
-  [apply_up_x]
-    type = DirichletBC
-    variable = disp_x
-    boundary = 'up'
     value = 0
   []
 []
