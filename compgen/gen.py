@@ -27,12 +27,14 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 import importlib
+import itertools
 import numpy as np
 import gstools as gs
 from scipy.optimize import curve_fit
-from scipy.spatial import Voronoi, cKDTree
+from scipy.spatial import Voronoi
 import torch
 from compgen.utils import standardize_image
 
@@ -1214,23 +1216,22 @@ class ParticleGenerator(GenerativeStructureGenerator):
 class VoronoiGenerator(GenerativeStructureGenerator):
     """Generate periodic Voronoi tessellations with thick grain boundaries.
 
-    Random seed points partition the unit cell into Voronoi grains.
-    The tessellation is exactly periodic: distances use the minimum-image
-    convention on the unit torus, so grains and boundaries wrap seamlessly across
-    every face.
+    Random seed points partition the unit cell into Voronoi grains. The
+    tessellation is exactly periodic: every seed is copied into the neighboring
+    unit cells, so grains and boundaries wrap seamlessly across every face. Each
+    Voronoi cell is a grain, copies included: where a grain meets its own
+    periodic copy there is a boundary like anywhere else.
 
     Args:
         N (list[int]): Grid resolution in each dimension (length 2 or 3).
-        grain_size (float or list): Characteristic grain diameter in normalised
+        grain_size (float or list): Characteristic grain diameter in normalized
             units ``[0, 1]`` (relative to the unit cell), or a ``[min, max]``
             range sampled per call. Smaller values give more, finer grains; the
             seed count is derived as ``round((1 / grain_size) ** dim)``.
         thickness (float or list): Boundary thickness as a fraction of the
             grain size, or a ``[min, max]`` range. The boundary width in
-            normalised units is ``w = thickness * grain_size``. In 2D (and in the
-            3D ``"faces"`` mode) ``w`` is the full wall width; in the 3D
-            ``"edges"`` mode it is the strut (cylinder) diameter. In 2D the width
-            is approximate (distance-field based); in 3D it is exact.
+            normalized units is ``w = thickness * grain_size``: the full wall
+            width for walls, and the strut diameter in the 3D ``"edges"`` mode.
 
     Keyword Args:
         lloyd_iter (int): Number of Lloyd relaxation iterations applied to the
@@ -1242,13 +1243,11 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             boundary network is not always the same phase. Set ``False`` for a
             deterministic convention (grains ``True``, boundaries ``False``).
         random_seed (int): Seed for the random number generator. Defaults to None.
-        mode (str): Where the boundary phase is placed in 3D. ``"faces"``
-            (default) extrudes every Voronoi face polygon orthogonally by
-            ``w / 2`` on each side, giving uniform-thickness walls. ``"edges"``
-            replaces every Voronoi edge with a cylinder (capsule) of diameter
-            ``w``, giving an open-cell strut network. In 2D the cell faces *are*
-            the polygon edges, so only ``"faces"`` is accepted and it keeps the
-            original 2D behavior.
+        mode (str): Where the boundary phase goes in 3D. ``"faces"`` (default)
+            gives walls: every voxel within ``w / 2`` of a grain boundary (a
+            Voronoi face). ``"edges"`` gives an open-cell strut network:
+            capsules of diameter ``w`` along every Voronoi edge, where grains
+            meet. Ignored in 2D, where the boundary phase is always the walls.
     """
 
     def __init__(
@@ -1268,8 +1267,6 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             )
         if mode not in ("faces", "edges"):
             raise ValueError(f"mode must be 'faces' or 'edges', got {mode!r}.")
-        if self.dim == 2 and mode == "edges":
-            raise ValueError("mode='edges' is only available in 3D.")
         self.mode = mode
         self.grain_size_input = grain_size
         self.thickness_input = thickness
@@ -1289,27 +1286,15 @@ class VoronoiGenerator(GenerativeStructureGenerator):
 
         n_grains = max(2, int(round((1.0 / grain_size) ** self.dim)))
 
-        # Seeds and cell-center coordinates, both in normalised units [0, 1).
+        # Seeds in normalized units [0, 1).
         seeds = self.rng.random((n_grains, self.dim))
-        grids = None
-        if self.dim == 2 or lloyd_iter > 0:
+        if lloyd_iter > 0:
             axes = [(np.arange(n) + 0.5) / n for n in self.N]
             grids = np.meshgrid(*axes, indexing="ij")
-
-        if lloyd_iter > 0:
             seeds = self._relax_seeds(seeds, grids, lloyd_iter)
 
         width = thickness * grain_size
-        if self.dim == 2:
-            d1, d2 = self._two_nearest(seeds, grids)
-            # Boundary where a point is near the bisector of its two nearest seeds.
-            boundary = (d2 - d1) <= width
-        elif self.mode == "faces":
-            faces = self._periodic_voronoi_3d(seeds, "faces")
-            boundary = self._rasterize_faces(self.N, faces, width)
-        else:
-            segments = self._periodic_voronoi_3d(seeds, "edges")
-            boundary = self._rasterize_edges(self.N, segments, width)
+        boundary = self._boundary(self.N, seeds, width, self.mode)
 
         # Grain interiors True, boundaries False (before optional inversion).
         img = ~boundary
@@ -1321,37 +1306,24 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         return img
 
     @staticmethod
-    def _two_nearest(seeds, grids):
-        """Distances to the nearest and second-nearest seed for every grid point.
-
-        Uses the minimum-image convention per axis so distances are periodic on
-        the unit torus. Tracks only the two smallest distances, keeping memory at
-        O(grid points) regardless of the number of seeds.
+    def _tile(seeds):
+        """Copies of the seeds in the unit cell and its ``3**dim - 1`` neighbors,
+        and the seed each copy comes from.
 
         Args:
-            seeds (np.ndarray): ``(n_grains, dim)`` seed coordinates in [0, 1).
-            grids (list[np.ndarray]): Per-axis coordinate grids from meshgrid.
+            seeds (np.ndarray): ``(n, dim)`` seed coordinates in [0, 1).
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: ``(d1, d2)`` nearest / second-nearest
-            distance arrays, each of shape ``grids[0].shape``.
+            tuple: ``(points, seed, offsets)``. ``offsets`` is the ``(m, dim)``
+            integer array of lattice offsets, starting with the zero offset;
+            ``points[k * n + i] = seeds[i] + offsets[k]``, so the unshifted
+            seeds come first, and ``seed[k * n + i] = i``.
         """
-        shape = grids[0].shape
-        d1 = np.full(shape, np.inf)
-        d2 = np.full(shape, np.inf)
-        for s in seeds:
-            dist2 = np.zeros(shape)
-            for k, g in enumerate(grids):
-                delta = g - s[k]
-                delta -= np.round(delta)  # minimum image -> periodic
-                dist2 += delta * delta
-            dist = np.sqrt(dist2)
-            closer = dist < d1
-            d2 = np.where(closer, d1, d2)
-            d1 = np.where(closer, dist, d1)
-            between = (~closer) & (dist < d2)
-            d2 = np.where(between, dist, d2)
-        return d1, d2
+        n, dim = seeds.shape
+        offsets = np.array(list(itertools.product((0, -1, 1), repeat=dim)), dtype=int)
+        points = (offsets[:, None, :] + seeds[None, :, :]).reshape(-1, dim)
+        seed = np.tile(np.arange(n), len(offsets))
+        return points, seed, offsets
 
     @staticmethod
     def _relax_seeds(seeds, grids, iters):
@@ -1399,88 +1371,138 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         return seeds
 
     @staticmethod
-    def _periodic_voronoi_3d(seeds, kind):
-        """Geometric primitives of the periodic 3D Voronoi tessellation.
+    def _boundary(N, seeds, width, mode="faces"):
+        """Boolean mask of the boundary phase, ``True`` on walls or struts.
 
-        The seeds are tiled over the 27 periodic images of the unit cell and
-        tessellated with :class:`scipy.spatial.Voronoi`. For any point within a
-        central seed's cell, the nearest image of every seed lies in this
-        tiling, so the cells of the central (unshifted) seed copies are exact
-        even for very few seeds. Cells of outer image seeds are not, so only
-        faces incident to a central seed are used.
+        Walls (2D, and the 3D ``"faces"`` mode) are the voxels within
+        ``width / 2`` of a Voronoi face. In 2D a face is a segment, and the
+        points within ``width / 2`` of it form a capsule. In 3D a face is a
+        polygon; since every grain is a convex Voronoi cell, the points of a
+        grain within ``width / 2`` of its boundary all lie in the slabs over its
+        faces.
 
-        A face between central seed ``i`` and seed ``j`` shifted by lattice
-        offset ``o`` is the same periodic face as the one between central ``j``
-        and ``i`` shifted by ``-o``; faces are de-duplicated on that exact
-        integer key and translated so their centroid lies in ``[0, 1)^3``.
-        Edges are the polygon edges of those faces, de-duplicated (periodically)
-        by midpoint.
+        Struts (the 3D ``"edges"`` mode) are capsules of diameter ``width``
+        around the Voronoi edges.
 
         Args:
-            seeds (np.ndarray): ``(n_grains, 3)`` seed coordinates in [0, 1).
-            kind (str): ``"faces"`` or ``"edges"``.
+            N (list[int]): Grid resolution (length 2 or 3).
+            seeds (np.ndarray): ``(n, dim)`` seed coordinates in [0, 1).
+            width (float): Wall width or strut diameter in normalized units.
+            mode (str): ``"faces"`` or ``"edges"``; only used in 3D.
 
         Returns:
-            For ``"faces"``: list of ``(vertices, normal)`` tuples, where
-            ``vertices`` is a ``(k, 3)`` array of polygon corners in cyclic order
-            and ``normal`` a unit vector. For ``"edges"``: ``(m, 2, 3)`` array of
-            segment end points.
+            np.ndarray: Bool array of shape ``N``.
         """
-        if kind not in ("faces", "edges"):
-            raise ValueError(f"Unknown kind {kind!r}.")
+        if len(N) == 3 and mode == "edges":
+            edges = VoronoiGenerator._geometry(seeds, "edges")
+            return VoronoiGenerator._rasterize_capsules(N, edges, width)
+        faces = VoronoiGenerator._geometry(seeds, "faces")
+        if len(N) == 2:
+            segments = np.array([poly for poly, _ in faces]).reshape((-1, 2, 2))
+            return VoronoiGenerator._rasterize_capsules(N, segments, width)
+        return VoronoiGenerator._rasterize_slabs(N, faces, width)
 
-        n = seeds.shape[0]
-        offsets = np.array(
-            [(i, j, k) for i in (0, -1, 1) for j in (0, -1, 1) for k in (0, -1, 1)],
-            dtype=int,
-        )
-        points = (offsets[:, None, :] + seeds[None, :, :]).reshape(-1, 3)
+    @staticmethod
+    def _geometry(seeds, kind):
+        """Faces, or edges (3D), of the periodic Voronoi tessellation.
+
+        Qhull tessellates the ``3**dim`` periodic copies of the seeds. Every
+        point in the cell of an unshifted seed is within half a cell of that
+        seed, where the nearest copy of every seed is part of the tiling, so
+        these cells are exact; only their faces are used. This includes the
+        faces between a seed and its own copy.
+
+        Each periodic face or edge is found several times. Copies are
+        recognized by exact integer keys: for a face, the two seeds and the
+        lattice offset between their cells; for an edge, the ``(seed, lattice
+        offset)`` of the cells around it, up to a lattice translation.
+
+        Args:
+            seeds (np.ndarray): ``(n, dim)`` seed coordinates in [0, 1).
+            kind (str): ``"faces"`` or ``"edges"`` (3D only).
+
+        Returns:
+            For ``"faces"``: list of ``(vertices, normal)``, the ``(k, dim)``
+            face corners (in cyclic order in 3D; ``k = 2`` in 2D), shifted by a
+            lattice vector so that their centroid lies in ``[0, 1)^dim``, and the
+            unit face normal. For ``"edges"``: ``(m, 2, 3)`` array of the
+            Voronoi edges, each once, shifted so that their midpoints lie in
+            ``[0, 1)^3``.
+        """
+        n, dim = seeds.shape
+        points, seed, offsets = VoronoiGenerator._tile(seeds)
         vor = Voronoi(points)
         verts = vor.vertices
 
         faces = {}
+        around = defaultdict(set)  # (vertex, vertex) -> cells around that edge
         for (p, q), ridge in zip(vor.ridge_points, vor.ridge_vertices):
             if p >= n and q >= n:
-                continue  # neither side is a central seed
+                continue  # not a face of an unshifted seed's cell
             if p >= n:
-                p, q = q, p  # p is now central
-            i, j, off = p, q % n, tuple(int(o) for o in offsets[q // n])
-            key = min((i, j, *off), (j, i, *(-o for o in off)))
+                p, q = q, p  # p is the unshifted seed
+            ridge = np.asarray(ridge)
+            if np.any(ridge < 0):  # impossible for the cell of an unshifted seed
+                raise RuntimeError("Unbounded face in periodic Voronoi tessellation.")
+            normal = points[q] - points[p]
+            if kind == "edges":
+                ridge = ridge[VoronoiGenerator._ring_order(verts[ridge], normal)]
+                for u, v in zip(ridge, np.roll(ridge, -1)):
+                    around[(min(u, v), max(u, v))].update((p, q))
+                continue
+            off = tuple(int(o) for o in offsets[q // n])
+            j = int(seed[q])
+            key = min((p, j, *off), (j, p, *(-o for o in off)))
             if key in faces:
                 continue
-            ridge = np.asarray(ridge)
-            if np.any(ridge < 0) or ridge.size < 3:  # impossible for central seeds
-                raise RuntimeError("Unbounded face in periodic Voronoi tessellation.")
+            if dim == 3:
+                ridge = ridge[VoronoiGenerator._ring_order(verts[ridge], normal)]
             poly = verts[ridge]
-            normal = points[q] - points[p]
-            normal /= np.linalg.norm(normal)
-            poly = VoronoiGenerator._order_polygon(poly, normal)
-            poly = poly - np.floor(poly.mean(axis=0))
-            faces[key] = (poly, normal)
+            faces[key] = (
+                poly - np.floor(poly.mean(axis=0)),
+                normal / np.linalg.norm(normal),
+            )
 
-        if kind == "faces":
-            return list(faces.values())
-
-        segments = np.array(
-            [
-                (a, b)
-                for poly, _ in faces.values()
-                for a, b in zip(poly, np.roll(poly, -1, axis=0))
-            ],
-            dtype=float,
-        ).reshape((-1, 2, 3))
-        # Every edge is shared by >= 3 faces; keep one copy per periodic midpoint.
-        mid = np.mod(segments.mean(axis=1), 1.0)
-        mid[mid >= 1.0] = 0.0
-        tree = cKDTree(mid, boxsize=1.0)
-        keep = np.ones(len(segments), dtype=bool)
-        for _, b in tree.query_pairs(r=1e-8):
-            keep[b] = False
-        return segments[keep]
+        if kind == "edges":
+            edges = VoronoiGenerator._unique_edges(around, verts, offsets, n)
+            return edges.reshape((-1, 2, dim))
+        return list(faces.values())
 
     @staticmethod
-    def _order_polygon(poly, normal):
-        """Sort planar polygon vertices counter-clockwise about ``normal``."""
+    def _unique_edges(around, verts, offsets, n):
+        """One copy of each periodic Voronoi edge.
+
+        Args:
+            around (dict): ``(vertex, vertex) -> set of cells`` around each edge.
+            verts (np.ndarray): Voronoi vertex coordinates.
+            offsets (np.ndarray): Lattice offsets from :meth:`_tile`.
+            n (int): Number of seeds.
+
+        Returns:
+            np.ndarray: ``edges`` as in :meth:`_geometry`.
+        """
+        segments = {}
+        for (u, v), cells in around.items():
+            members = [
+                (int(c % n), tuple(int(o) for o in offsets[c // n])) for c in cells
+            ]
+            key = min(
+                tuple(
+                    sorted(
+                        (g, tuple(a - b for a, b in zip(o, ref))) for g, o in members
+                    )
+                )
+                for _, ref in members
+            )
+            if key not in segments:
+                shift = np.floor(0.5 * (verts[u] + verts[v]))
+                segments[key] = (verts[u] - shift, verts[v] - shift)
+        return np.array(list(segments.values()), dtype=float)
+
+    @staticmethod
+    def _ring_order(poly, normal):
+        """Indices that sort planar polygon vertices by angle about ``normal``."""
+        normal = normal / np.linalg.norm(normal)
         ref = np.array([1.0, 0.0, 0.0])
         if abs(normal[0]) > 0.9:
             ref = np.array([0.0, 1.0, 0.0])
@@ -1488,7 +1510,7 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         e1 /= np.linalg.norm(e1)
         e2 = np.cross(normal, e1)
         rel = poly - poly.mean(axis=0)
-        return poly[np.argsort(np.arctan2(rel @ e2, rel @ e1))]
+        return np.argsort(np.arctan2(rel @ e2, rel @ e1))
 
     @staticmethod
     def _local_box(N, lo, hi):
@@ -1496,7 +1518,7 @@ class VoronoiGenerator(GenerativeStructureGenerator):
 
         Args:
             N (list[int]): Grid resolution.
-            lo, hi (np.ndarray): Box corners in normalised units (may extend
+            lo, hi (np.ndarray): Box corners in normalized units (may extend
                 outside the unit cell).
 
         Returns:
@@ -1510,7 +1532,7 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             i0 = int(np.floor(lo[k] * n - 0.5))
             i1 = int(np.ceil(hi[k] * n - 0.5))
             idx = np.arange(i0, i1 + 1)
-            shape = [1, 1, 1]
+            shape = [1] * len(N)
             shape[k] = idx.size
             coords.append(((idx + 0.5) / n).reshape(shape))
             index.append(np.mod(idx, n).reshape(shape))
@@ -1523,25 +1545,51 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         if all(i.size <= n for i, n in zip(index, mask.shape)):
             mask[ix] |= local
         else:  # box wraps onto itself: accumulate duplicate indices safely
-            np.logical_or.at(mask, ix, np.broadcast_to(local, local.shape))
+            np.logical_or.at(mask, ix, local)
 
     @staticmethod
-    def _rasterize_faces(N, faces, width):
-        """Periodic boolean mask of the union of orthogonally extruded faces.
+    def _rasterize_capsules(N, segments, width):
+        """Periodic boolean mask of the points within ``width / 2`` of segments.
 
-        Each convex face polygon is extruded by ``width / 2`` along its normal on
-        both sides (a prism). A voxel center is inside when its height above the
-        face plane is at most ``width / 2`` and its in-plane projection lies in
-        the polygon.
+        Args:
+            N (list[int]): Grid resolution (length 2 or 3).
+            segments (np.ndarray): ``(m, 2, dim)`` segment end points.
+            width (float): Capsule diameter in normalized units.
+
+        Returns:
+            np.ndarray: Bool array of shape ``N``.
+        """
+        mask = np.zeros(N, dtype=bool)
+        r = 0.5 * width
+        for a, b in segments:
+            index, x = VoronoiGenerator._local_box(
+                N, np.minimum(a, b) - r, np.maximum(a, b) + r
+            )
+            ab = b - a
+            L2 = float(ab @ ab)
+            rel = [xk - ak for xk, ak in zip(x, a)]
+            t = 0.0
+            if L2 > 0.0:
+                t = np.clip(sum(rk * dk for rk, dk in zip(rel, ab)) / L2, 0.0, 1.0)
+            d2 = sum((rk - t * dk) ** 2 for rk, dk in zip(rel, ab))
+            VoronoiGenerator._scatter_or(mask, index, d2 <= r * r)
+        return mask
+
+    @staticmethod
+    def _rasterize_slabs(N, faces, width):
+        """Periodic boolean mask of the slabs over 3D face polygons.
+
+        A voxel center is inside the slab of a face when its distance to the
+        face plane is at most ``width / 2`` and its projection onto the plane
+        lies in the polygon.
 
         Args:
             N (list[int]): Grid resolution (length 3).
-            faces (list): ``(vertices, normal)`` tuples from
-                :meth:`_periodic_voronoi_3d`.
-            width (float): Full wall width in normalised units.
+            faces (list): ``(vertices, normal)`` tuples from :meth:`_geometry`.
+            width (float): Full wall width in normalized units.
 
         Returns:
-            np.ndarray: Bool array of shape ``N``, ``True`` on the walls.
+            np.ndarray: Bool array of shape ``N``.
         """
         mask = np.zeros(N, dtype=bool)
         half = 0.5 * width
@@ -1554,42 +1602,10 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             inside = np.abs(normal[0] * dx + normal[1] * dy + normal[2] * dz) <= half
             # Vertices are counter-clockwise about ``normal``, so the inward
             # in-plane normal of edge k is ``normal x e_k``.
-            edges = np.roll(poly, -1, axis=0) - poly
-            for vk, ek in zip(poly, edges):
+            for vk, ek in zip(poly, np.roll(poly, -1, axis=0) - poly):
                 c = np.cross(normal, ek)
                 inside &= (
                     c[0] * (x - vk[0]) + c[1] * (y - vk[1]) + c[2] * (z - vk[2])
                 ) >= 0.0
-            VoronoiGenerator._scatter_or(mask, index, inside)
-        return mask
-
-    @staticmethod
-    def _rasterize_edges(N, segments, width):
-        """Periodic boolean mask of the union of capsules around edge segments.
-
-        Args:
-            N (list[int]): Grid resolution (length 3).
-            segments (np.ndarray): ``(m, 2, 3)`` segment end points from
-                :meth:`_periodic_voronoi_3d`.
-            width (float): Cylinder diameter in normalised units.
-
-        Returns:
-            np.ndarray: Bool array of shape ``N``, ``True`` on the struts.
-        """
-        mask = np.zeros(N, dtype=bool)
-        r = 0.5 * width
-        for a, b in segments:
-            index, (x, y, z) = VoronoiGenerator._local_box(
-                N, np.minimum(a, b) - r, np.maximum(a, b) + r
-            )
-            ab = b - a
-            L2 = float(ab @ ab)
-            px, py, pz = x - a[0], y - a[1], z - a[2]
-            if L2 > 0.0:
-                t = np.clip((px * ab[0] + py * ab[1] + pz * ab[2]) / L2, 0.0, 1.0)
-            else:
-                t = np.zeros_like(px + py + pz)
-            qx, qy, qz = px - t * ab[0], py - t * ab[1], pz - t * ab[2]
-            inside = qx * qx + qy * qy + qz * qz <= r * r
             VoronoiGenerator._scatter_or(mask, index, inside)
         return mask

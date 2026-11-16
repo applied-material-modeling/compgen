@@ -95,11 +95,15 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
   - `grain_size` — grain diameter in normalized `[0, 1]` (scalar or `[min, max]`);
     seed count derives as `round((1 / grain_size) ** dim)`.
   - `thickness` — boundary thickness as a fraction of grain size (scalar or range):
-    full wall width in 2D / 3D `"faces"`, strut diameter in 3D `"edges"`.
-  - `mode` — 3D only: `"faces"` (default) extrudes each Voronoi face polygon
-    orthogonally into a uniform-thickness wall; `"edges"` turns each Voronoi edge
-    into a cylinder, giving an open-cell strut network. In 2D only `"faces"` is
-    accepted and the behavior is unchanged.
+    full wall width for walls, strut diameter in 3D `"edges"`. Walls have exactly
+    uniform width: a voxel is a wall when it lies within half that width of a
+    grain boundary (a Voronoi face).
+  - `mode` — 3D only, ignored in 2D (2D always gives walls): `"faces"` (default)
+    gives walls; `"edges"` gives an open-cell strut network, with a cylinder along
+    every Voronoi edge.
+  - The structure is periodic, and every Voronoi cell is a grain, including the
+    cells of a seed's periodic copies: where a grain meets its own copy across
+    the unit cell, there is a boundary like anywhere else.
   - `lloyd_iter` — Lloyd relaxation iterations (`0` = irregular Poisson-Voronoi;
     a few = more equiaxed, uniform grains). Like the other params it may be given
     as `[min, max]` and sampled per draw; the sampled value is rounded to an
