@@ -32,7 +32,7 @@ import importlib
 import numpy as np
 import gstools as gs
 from scipy.optimize import curve_fit
-from scipy.spatial import Voronoi
+from scipy.spatial import Voronoi, cKDTree
 import torch
 from compgen.utils import standardize_image
 
@@ -1233,13 +1233,6 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             is approximate (distance-field based); in 3D it is exact.
 
     Keyword Args:
-        mode (str): Where the boundary phase is placed in 3D. ``"faces"``
-            (default) extrudes every Voronoi face polygon orthogonally by
-            ``w / 2`` on each side, giving uniform-thickness walls. ``"edges"``
-            replaces every Voronoi edge with a cylinder (capsule) of diameter
-            ``w``, giving an open-cell strut network. In 2D the cell faces *are*
-            the polygon edges, so only ``"faces"`` is accepted and it keeps the
-            original 2D behavior.
         lloyd_iter (int): Number of Lloyd relaxation iterations applied to the
             seeds before tessellation. ``0`` (default) leaves seeds fully random
             (irregular Poisson-Voronoi grains with a broad size distribution); a
@@ -1249,6 +1242,13 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             boundary network is not always the same phase. Set ``False`` for a
             deterministic convention (grains ``True``, boundaries ``False``).
         random_seed (int): Seed for the random number generator. Defaults to None.
+        mode (str): Where the boundary phase is placed in 3D. ``"faces"``
+            (default) extrudes every Voronoi face polygon orthogonally by
+            ``w / 2`` on each side, giving uniform-thickness walls. ``"edges"``
+            replaces every Voronoi edge with a cylinder (capsule) of diameter
+            ``w``, giving an open-cell strut network. In 2D the cell faces *are*
+            the polygon edges, so only ``"faces"`` is accepted and it keeps the
+            original 2D behavior.
     """
 
     def __init__(
@@ -1257,9 +1257,9 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         grain_size,
         thickness,
         lloyd_iter=0,
-        mode: str = "faces",
         invert: bool = True,
         random_seed=None,
+        mode: str = "faces",
     ):
         super().__init__(N, random_seed=random_seed)
         if self.dim not in (2, 3):
@@ -1403,10 +1403,18 @@ class VoronoiGenerator(GenerativeStructureGenerator):
         """Geometric primitives of the periodic 3D Voronoi tessellation.
 
         The seeds are tiled over the 27 periodic images of the unit cell and
-        tessellated with :class:`scipy.spatial.Voronoi`. Every cell of an
-        original seed is then bounded by finite ridges. Each periodic face/edge
-        appears in several images; exactly one copy (the one whose centroid /
-        midpoint lies in ``[0, 1)^3``) is kept.
+        tessellated with :class:`scipy.spatial.Voronoi`. For any point within a
+        central seed's cell, the nearest image of every seed lies in this
+        tiling, so the cells of the central (unshifted) seed copies are exact
+        even for very few seeds. Cells of outer image seeds are not, so only
+        faces incident to a central seed are used.
+
+        A face between central seed ``i`` and seed ``j`` shifted by lattice
+        offset ``o`` is the same periodic face as the one between central ``j``
+        and ``i`` shifted by ``-o``; faces are de-duplicated on that exact
+        integer key and translated so their centroid lies in ``[0, 1)^3``.
+        Edges are the polygon edges of those faces, de-duplicated (periodically)
+        by midpoint.
 
         Args:
             seeds (np.ndarray): ``(n_grains, 3)`` seed coordinates in [0, 1).
@@ -1418,65 +1426,69 @@ class VoronoiGenerator(GenerativeStructureGenerator):
             and ``normal`` a unit vector. For ``"edges"``: ``(m, 2, 3)`` array of
             segment end points.
         """
+        if kind not in ("faces", "edges"):
+            raise ValueError(f"Unknown kind {kind!r}.")
+
+        n = seeds.shape[0]
         offsets = np.array(
             [(i, j, k) for i in (0, -1, 1) for j in (0, -1, 1) for k in (0, -1, 1)],
-            dtype=float,
+            dtype=int,
         )
         points = (offsets[:, None, :] + seeds[None, :, :]).reshape(-1, 3)
         vor = Voronoi(points)
         verts = vor.vertices
 
-        def in_cell(x):
-            return bool(np.all((x >= 0.0) & (x < 1.0)))
-
-        def ordered(i, j, ridge):
-            """Ridge vertex indices in cyclic order and the ridge unit normal."""
+        faces = {}
+        for (p, q), ridge in zip(vor.ridge_points, vor.ridge_vertices):
+            if p >= n and q >= n:
+                continue  # neither side is a central seed
+            if p >= n:
+                p, q = q, p  # p is now central
+            i, j, off = p, q % n, tuple(int(o) for o in offsets[q // n])
+            key = min((i, j, *off), (j, i, *(-o for o in off)))
+            if key in faces:
+                continue
             ridge = np.asarray(ridge)
-            normal = points[j] - points[i]
+            if np.any(ridge < 0) or ridge.size < 3:  # impossible for central seeds
+                raise RuntimeError("Unbounded face in periodic Voronoi tessellation.")
+            poly = verts[ridge]
+            normal = points[q] - points[p]
             normal /= np.linalg.norm(normal)
-            ref = np.array([1.0, 0.0, 0.0])
-            if abs(normal[0]) > 0.9:
-                ref = np.array([0.0, 1.0, 0.0])
-            e1 = np.cross(normal, ref)
-            e1 /= np.linalg.norm(e1)
-            e2 = np.cross(normal, e1)
-            rel = verts[ridge] - verts[ridge].mean(axis=0)
-            return ridge[np.argsort(np.arctan2(rel @ e2, rel @ e1))], normal
-
-        finite = [
-            (i, j, ridge)
-            for (i, j), ridge in zip(vor.ridge_points, vor.ridge_vertices)
-            if -1 not in ridge and len(ridge) >= 3
-        ]
+            poly = VoronoiGenerator._order_polygon(poly, normal)
+            poly = poly - np.floor(poly.mean(axis=0))
+            faces[key] = (poly, normal)
 
         if kind == "faces":
-            faces = []
-            for i, j, ridge in finite:
-                if not in_cell(verts[ridge].mean(axis=0)):
-                    continue
-                order, normal = ordered(i, j, ridge)
-                faces.append((verts[order], normal))
-            return faces
+            return list(faces.values())
 
-        if kind == "edges":
-            pairs = set()
-            for i, j, ridge in finite:
-                # Edge midpoints lie in the ridge's bounding box, so skip ridges
-                # whose box misses the unit cell.
-                poly = verts[ridge]
-                if np.any(poly.max(axis=0) < 0.0) or np.any(poly.min(axis=0) >= 1.0):
-                    continue
-                order, _ = ordered(i, j, ridge)
-                for a, b in zip(order, np.roll(order, -1)):
-                    pairs.add((min(a, b), max(a, b)))
-            segments = [
-                (verts[a], verts[b])
-                for a, b in sorted(pairs)
-                if in_cell(0.5 * (verts[a] + verts[b]))
-            ]
-            return np.asarray(segments, dtype=float).reshape((-1, 2, 3))
+        segments = np.array(
+            [
+                (a, b)
+                for poly, _ in faces.values()
+                for a, b in zip(poly, np.roll(poly, -1, axis=0))
+            ],
+            dtype=float,
+        ).reshape((-1, 2, 3))
+        # Every edge is shared by >= 3 faces; keep one copy per periodic midpoint.
+        mid = np.mod(segments.mean(axis=1), 1.0)
+        mid[mid >= 1.0] = 0.0
+        tree = cKDTree(mid, boxsize=1.0)
+        keep = np.ones(len(segments), dtype=bool)
+        for _, b in tree.query_pairs(r=1e-8):
+            keep[b] = False
+        return segments[keep]
 
-        raise ValueError(f"Unknown kind {kind!r}.")
+    @staticmethod
+    def _order_polygon(poly, normal):
+        """Sort planar polygon vertices counter-clockwise about ``normal``."""
+        ref = np.array([1.0, 0.0, 0.0])
+        if abs(normal[0]) > 0.9:
+            ref = np.array([0.0, 1.0, 0.0])
+        e1 = np.cross(normal, ref)
+        e1 /= np.linalg.norm(e1)
+        e2 = np.cross(normal, e1)
+        rel = poly - poly.mean(axis=0)
+        return poly[np.argsort(np.arctan2(rel @ e2, rel @ e1))]
 
     @staticmethod
     def _local_box(N, lo, hi):

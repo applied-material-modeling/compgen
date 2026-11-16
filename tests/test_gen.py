@@ -212,6 +212,17 @@ def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter,
     assert img.any() and not img.all()
 
 
+def test_voronoi_generator_positional_args():
+    """`mode` is the last parameter, so pre-existing positional calls keep their
+    meaning (lloyd_iter, invert, random_seed)."""
+    gen = VoronoiGenerator([32, 32], 0.3, 0.1, 0, False, 42)
+    assert gen.invert is False and gen.mode == "faces"
+    assert np.array_equal(
+        gen.sample(),
+        VoronoiGenerator([32, 32], 0.3, 0.1, invert=False, random_seed=42).sample(),
+    )
+
+
 def test_voronoi_generator_rejects_bad_mode():
     """Unknown modes, and the 3D-only edges mode in 2D, are rejected."""
     with pytest.raises(ValueError):
@@ -265,6 +276,49 @@ def test_voronoi_3d_faces_on_bisectors():
     d1, d2 = VoronoiGenerator._two_nearest(seeds, np.meshgrid(*axes, indexing="ij"))
     assert (d2 - d1)[mask].max() <= width
     assert mask[(d2 - d1) < 1e-3].all()
+
+
+def _sorted_periodic_distances(seeds, N):
+    """Brute-force sorted distances from every voxel center to all seed images."""
+    axes = [(np.arange(n) + 0.5) / n for n in N]
+    grid = np.stack(np.meshgrid(*axes, indexing="ij"), axis=-1).reshape(-1, 3)
+    offsets = np.array(
+        [(i, j, k) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1)],
+        dtype=float,
+    )
+    images = (offsets[:, None, :] + seeds[None, :, :]).reshape(-1, 3)
+    dist = np.linalg.norm(grid[:, None, :] - images[None, :, :], axis=-1)
+    dist.sort(axis=1)
+    return dist.reshape(*N, -1)
+
+
+@pytest.mark.parametrize("n_seeds", [2, 3, 4, 5])
+@pytest.mark.parametrize("rng_seed", [3, 9, 12, 13])
+def test_voronoi_3d_sparse_seeds(n_seeds, rng_seed):
+    """With very few seeds, walls and struts still follow the true periodic
+    tessellation: no false walls from outer-image cells, and none missing.
+
+    A voxel within w/2 of a face satisfies d2 - d1 <= w, and one within w/2 of
+    an edge satisfies d3 - d1 <= w, where d_k is the k-th nearest seed image.
+    """
+    seeds = np.random.default_rng(rng_seed).random((n_seeds, 3))
+    N = [32, 32, 32]
+    width = 0.06
+    dist = _sorted_periodic_distances(seeds, N)
+
+    faces = VoronoiGenerator._rasterize_faces(
+        N, VoronoiGenerator._periodic_voronoi_3d(seeds, "faces"), width
+    )
+    gap2 = dist[..., 1] - dist[..., 0]
+    assert gap2[faces].max() <= width + 1e-9
+    assert faces[gap2 < 1e-3].all()
+
+    edges = VoronoiGenerator._rasterize_edges(
+        N, VoronoiGenerator._periodic_voronoi_3d(seeds, "edges"), width
+    )
+    gap3 = dist[..., 2] - dist[..., 0]
+    assert gap3[edges].max() <= width + 1e-9
+    assert edges[gap3 < 1e-3].all()
 
 
 @pytest.mark.parametrize("mode", ["faces", "edges"])

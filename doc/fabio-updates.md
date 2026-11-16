@@ -90,7 +90,7 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
   *approaches* the requested value — and a draw that fails to converge is rejected
   and redrawn.
 
-- **`VoronoiGenerator(N, grain_size, thickness, lloyd_iter=0, mode="faces", invert=True)`** —
+- **`VoronoiGenerator(N, grain_size, thickness, lloyd_iter=0, invert=True, random_seed=None, mode="faces")`** —
   periodic Voronoi grain structures.
   - `grain_size` — grain diameter in normalized `[0, 1]` (scalar or `[min, max]`);
     seed count derives as `round((1 / grain_size) ** dim)`.
