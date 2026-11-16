@@ -183,16 +183,18 @@ def test_particle_generator_rejects_invalid_shape_params(bad):
 
 
 @pytest.mark.parametrize(
-    "N,grain_size,thickness,lloyd_iter",
+    "N,grain_size,thickness,lloyd_iter,mode",
     [
-        ([64, 64], 0.25, 0.03, 0),
-        ([64, 64], [0.15, 0.25], 0.05, 0),
-        ([64, 64], 0.2, 0.04, 5),
-        ([32, 32, 32], 0.35, 0.05, 0),
-        ([32, 32, 32], 0.4, 0.06, 3),
+        ([64, 64], 0.25, 0.03, 0, "faces"),
+        ([64, 64], [0.15, 0.25], 0.05, 0, "faces"),
+        ([64, 64], 0.2, 0.04, 5, "faces"),
+        ([32, 32, 32], 0.35, 0.05, 0, "faces"),
+        ([32, 32, 32], 0.4, 0.06, 3, "faces"),
+        ([32, 32, 32], 0.35, 0.15, 0, "edges"),
+        ([32, 32, 32], [0.3, 0.4], [0.1, 0.2], 3, "edges"),
     ],
 )
-def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter):
+def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter, mode):
     """Test that the VoronoiGenerator produces bool images of the correct shape,
     containing both phases."""
     gen = VoronoiGenerator(
@@ -200,6 +202,7 @@ def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter)
         grain_size=grain_size,
         thickness=thickness,
         lloyd_iter=lloyd_iter,
+        mode=mode,
         random_seed=42,
     )
     img = gen.sample()
@@ -207,6 +210,97 @@ def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter)
     assert img.dtype == bool
     # Both grains and boundaries should be present for these parameters.
     assert img.any() and not img.all()
+
+
+def test_voronoi_generator_rejects_bad_mode():
+    """Unknown modes, and the 3D-only edges mode in 2D, are rejected."""
+    with pytest.raises(ValueError):
+        VoronoiGenerator([32, 32, 32], 0.3, 0.1, mode="vertices")
+    with pytest.raises(ValueError):
+        VoronoiGenerator([32, 32], 0.3, 0.1, mode="edges")
+
+
+# The geometry tests below check VoronoiGenerator internals directly.
+# pylint: disable=protected-access
+
+
+def _polygon_area(poly):
+    center = poly.mean(axis=0)
+    nxt = np.roll(poly, -1, axis=0)
+    return 0.5 * np.linalg.norm(np.cross(poly - center, nxt - center), axis=1).sum()
+
+
+def test_voronoi_3d_faces_volume_fraction():
+    """Wall volume matches sum(face area) * width, up to overlaps at edges."""
+    seeds = np.random.default_rng(1).random((27, 3))
+    faces = VoronoiGenerator._periodic_voronoi_3d(seeds, "faces")
+    width = 0.03
+    mask = VoronoiGenerator._rasterize_faces([96, 96, 96], faces, width)
+    predicted = sum(_polygon_area(poly) for poly, _ in faces) * width
+    assert mask.mean() == pytest.approx(predicted, rel=0.15)
+    assert mask.mean() < predicted  # overlaps only remove volume
+
+
+def test_voronoi_3d_edges_volume_fraction():
+    """Strut volume matches sum(edge length) * pi * r^2, up to vertex overlaps."""
+    seeds = np.random.default_rng(1).random((27, 3))
+    segments = VoronoiGenerator._periodic_voronoi_3d(seeds, "edges")
+    width = 0.03
+    mask = VoronoiGenerator._rasterize_edges([96, 96, 96], segments, width)
+    length = np.linalg.norm(segments[:, 1] - segments[:, 0], axis=1).sum()
+    predicted = length * np.pi * (0.5 * width) ** 2
+    assert mask.mean() == pytest.approx(predicted, rel=0.25)
+
+
+def test_voronoi_3d_faces_on_bisectors():
+    """Wall voxels lie near the bisector of the two nearest seeds, and every
+    voxel essentially on a bisector is covered (no gaps between prisms)."""
+    seeds = np.random.default_rng(2).random((27, 3))
+    N = [64, 64, 64]
+    width = 0.04
+    mask = VoronoiGenerator._rasterize_faces(
+        N, VoronoiGenerator._periodic_voronoi_3d(seeds, "faces"), width
+    )
+    axes = [(np.arange(n) + 0.5) / n for n in N]
+    d1, d2 = VoronoiGenerator._two_nearest(seeds, np.meshgrid(*axes, indexing="ij"))
+    assert (d2 - d1)[mask].max() <= width
+    assert mask[(d2 - d1) < 1e-3].all()
+
+
+@pytest.mark.parametrize("mode", ["faces", "edges"])
+def test_voronoi_3d_periodic(mode):
+    """Translating the seeds by whole voxels rolls the image exactly, so the
+    structure is seamlessly periodic across the cell faces."""
+    N = [40, 40, 40]
+    shift = np.array([5, -7, 11])
+    seeds = np.random.default_rng(3).random((27, 3))
+    raster = (
+        VoronoiGenerator._rasterize_faces
+        if mode == "faces"
+        else VoronoiGenerator._rasterize_edges
+    )
+
+    def image(s):
+        return raster(N, VoronoiGenerator._periodic_voronoi_3d(s, mode), 0.05)
+
+    base = image(seeds)
+    moved = image((seeds + shift / np.array(N)) % 1.0)
+    assert base.any()
+    assert np.array_equal(np.roll(base, tuple(shift), axis=(0, 1, 2)), moved)
+
+
+# pylint: enable=protected-access
+
+
+def test_voronoi_3d_edges_thinner_than_faces():
+    """For the same width the strut network occupies less volume than walls."""
+    kwargs = {"grain_size": 0.3, "thickness": 0.15, "invert": False, "random_seed": 7}
+    faces = VoronoiGenerator([32, 32, 32], mode="faces", **kwargs).sample()
+    edges = VoronoiGenerator([32, 32, 32], mode="edges", **kwargs).sample()
+    assert (~edges).sum() < (~faces).sum()
+    # Struts are a subset of the walls (both centered on the same geometry,
+    # capsule radius == half wall width).
+    assert not np.any(~edges & faces)
 
 
 @pytest.mark.parametrize("dtype", [bool, np.uint8, np.int64, np.float32])
@@ -245,6 +339,7 @@ def test_all_generators_return_bool():
         ParticleGenerator([32, 32], 0.3, "disks", {"size_m": 0.2}, random_seed=0),
         RandomGenerator([16, 16, 16], 0.4, random_seed=0),
         VoronoiGenerator([16, 16, 16], 0.4, 0.2, random_seed=0),
+        VoronoiGenerator([16, 16, 16], 0.4, 0.2, mode="edges", random_seed=0),
         ParticleGenerator([16, 16, 16], 0.3, "spheres", {"size_m": 0.3}, random_seed=0),
     ]
     for gen in generators:

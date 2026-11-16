@@ -91,11 +91,16 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
   *approaches* the requested value — and a draw that fails to converge is rejected
   and redrawn.
 
-- **`VoronoiGenerator(N, grain_size, thickness, lloyd_iter=0, invert=True)`** —
+- **`VoronoiGenerator(N, grain_size, thickness, lloyd_iter=0, mode="faces", invert=True)`** —
   periodic Voronoi grain structures.
   - `grain_size` — grain diameter in normalized `[0, 1]` (scalar or `[min, max]`);
     seed count derives as `round((1 / grain_size) ** dim)`.
-  - `thickness` — boundary thickness as a fraction of grain size (scalar or range).
+  - `thickness` — boundary thickness as a fraction of grain size (scalar or range):
+    full wall width in 2D / 3D `"faces"`, strut diameter in 3D `"edges"`.
+  - `mode` — 3D only: `"faces"` (default) extrudes each Voronoi face polygon
+    orthogonally into a uniform-thickness wall; `"edges"` turns each Voronoi edge
+    into a cylinder, giving an open-cell strut network. In 2D only `"faces"` is
+    accepted and the behavior is unchanged.
   - `lloyd_iter` — Lloyd relaxation iterations (`0` = irregular Poisson-Voronoi;
     a few = more equiaxed, uniform grains). Like the other params it may be given
     as `[min, max]` and sampled per draw; the sampled value is rounded to an
