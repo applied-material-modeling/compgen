@@ -22,9 +22,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# 2D plastic solid under periodic boundary conditions
-# loaded in a direction indicated by theta
-# The model is a unit square with two materials
+# 3D plastic solid under periodic boundary conditions
+# loaded in a direction indicated by theta and phi
+# The model is a unit cube with two materials
+#
+# Macroscopic constraints (constraint_types is read column-major:
+# xx yx zx xy yy zy xz yz zz). F_xy = F_xz = F_yz = 0 (strain) with
+# P_yx = P_zx = P_zy = 0 (stress) makes F lower triangular and P upper
+# triangular, so the Cauchy stress J^-1 P F^T is diagonal in the load axes,
+# and rigid rotations are fixed. This is the same convention as the 2D plastic
+# template (F_xy = 0), so 2D and 3D results share one convention.
 
 theta = 0.0 # [0, pi]
 phi = 0.0 # [0, 2*pi]
@@ -67,22 +74,6 @@ eq_strain_max = 0.02 # Should cause termination
     use_closest_node = true
     new_boundary = 'center'
   []
-
-  [up]
-    type = ExtraNodesetGenerator
-    input = center
-    coord = '0.5 0.75 0.5'
-    use_closest_node = true
-    new_boundary = 'up'
-  []
-
-  [forward]
-    type = ExtraNodesetGenerator
-    input = up
-    coord = '0.5 0.5 0.75'
-    use_closest_node = true
-    new_boundary = 'forward'
-  []
 []
 
 
@@ -119,25 +110,6 @@ eq_strain_max = 0.02 # Should cause termination
     type = DirichletBC
     variable = disp_z
     boundary = 'center'
-    value = 0
-  []
-  # Now prevent rigid rotation
-  [apply_up_x]
-    type = DirichletBC
-    variable = disp_x
-    boundary = 'up'
-    value = 0
-  []
-  [apply_up_z]
-    type = DirichletBC
-    variable = disp_z
-    boundary = 'up'
-    value = 0
-  []
-  [apply_forward_x]
-    type = DirichletBC
-    variable = disp_x
-    boundary = 'forward'
     value = 0
   []
 []
@@ -484,7 +456,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all0]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 0
-    constraint_types = 'stress strain strain stress stress strain stress stress stress' 
+    constraint_types = 'stress stress stress strain stress stress strain strain stress' 
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -494,7 +466,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all1]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 1
-    constraint_types = 'stress strain strain stress stress strain stress stress stress'  
+    constraint_types = 'stress stress stress strain stress stress strain strain stress'  
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -504,7 +476,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all2]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 2
-    constraint_types = 'stress strain strain stress stress strain stress stress stress' 
+    constraint_types = 'stress stress stress strain stress stress strain strain stress' 
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -521,7 +493,7 @@ eq_strain_max = 0.02 # Should cause termination
   []
   [all_compute_homogenization_gradient]
     type = ComputeHomogenizedLagrangianStrain
-    constraint_types = 'stress strain strain stress stress strain stress stress stress' 
+    constraint_types = 'stress stress stress strain stress stress strain strain stress' 
     homogenization_gradient_name = homogenization_gradient
     macro_gradient = hvar
     targets = 'value_xx zero zero zero value_yy zero zero zero value_zz'

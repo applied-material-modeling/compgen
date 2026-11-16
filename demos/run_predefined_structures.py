@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     # There is an annoyance: my previous generators were meant to generate infinite structures on demand, so the
     # gen.FromNumpyGenerator class will just infinitely loop over the structures in the file.
-    # The annoyance then is you should set 'num_structures' in the JSON to the number of structures in the npy file (here 1),
+    # The annoyance then is you should set 'number' in the JSON to the number of structures in the npy file (here 1),
     # otherwise it will just loop what you have to make up the difference.
 
     # Also note you need to setup 'demos/machine_config.json' to your machine information.  I can help with this on aurora.

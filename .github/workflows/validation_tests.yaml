@@ -21,13 +21,16 @@ jobs:
               - conda-forge
             channel_priority: flexible
           init-shell: bash
+          # moose-dev does not ship pip, so add it explicitly; otherwise
+          # `python -m pip` in the moose env fails with "No module named pip"
+          # and a stray pip on PATH would install into the wrong interpreter.
           create-args: moose-dev=2026.02.20=mpich pip
         continue-on-error: false
 
       - name: Install dependencies
         shell: bash -el {0}
         run: pip install -e .[dev]
-      
+
       - name: Checkout MOOSE
         shell: bash -el {0}
         run: git clone https://github.com/reverendbedford/moose.git --branch off_diagonal_off

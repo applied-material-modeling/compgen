@@ -81,6 +81,16 @@
                 "stress_xy"
             ]
         },
+        "cauchy_stress_zz": {
+            "type": "scalar",
+            "dim": 2,
+            "field_components": [
+                "cauchy_stress_zz"
+            ],
+            "postprocessor_components": [
+                "stress_zz"
+            ]
+        },
         "equivalent_stress": {
             "type": "scalar",
             "dim": 2,

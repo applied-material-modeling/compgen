@@ -25,6 +25,12 @@
 # 2D plastic solid under periodic boundary conditions
 # loaded in a direction indicated by theta
 # The model is a unit square with two materials
+#
+# Macroscopic constraints (constraint_types is read column-major:
+# xx yx zx xy yy zy xz yz zz). F_xy = 0 (strain) with P_yx = 0 (stress)
+# makes F lower triangular and P upper triangular, so the Cauchy stress
+# J^-1 P F^T is diagonal in the load axes, and rigid rotation is fixed.
+# The 3D plastic template uses the same convention (F_xy = F_xz = F_yz = 0).
 
 theta = 0.0
 
@@ -64,14 +70,6 @@ eq_strain_max = 0.02 # Should cause termination
     use_closest_node = true
     new_boundary = 'center'
   []
-
-  [up]
-    type = ExtraNodesetGenerator
-    input = center
-    coord = '0.5 0.75'
-    use_closest_node = true
-    new_boundary = 'up'
-  []
 []
 
 [BCs]
@@ -86,12 +84,6 @@ eq_strain_max = 0.02 # Should cause termination
     []
   []
 
-  [apply_up_x]
-    type = DirichletBC
-    boundary = up
-    value = 0
-    variable = disp_x
-  []
   [fix_center_x]
     type = DirichletBC
     boundary = center
@@ -439,7 +431,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all0]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 0
-    constraint_types = 'stress stress none stress stress none none none none'
+    constraint_types = 'stress stress none strain stress none none none none'
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -449,7 +441,7 @@ eq_strain_max = 0.02 # Should cause termination
   [TM_all1]
     type = HomogenizedTotalLagrangianStressDivergence
     component = 1
-    constraint_types = 'stress stress none stress stress none none none none'
+    constraint_types = 'stress stress none strain stress none none none none'
     macro_var = hvar
     off_diagonal_jacobian = true
     stabilize_strain = true
@@ -467,7 +459,7 @@ eq_strain_max = 0.02 # Should cause termination
   []
   [all_compute_homogenization_gradient]
     type = ComputeHomogenizedLagrangianStrain
-    constraint_types = 'stress stress none stress stress none none none none'
+    constraint_types = 'stress stress none strain stress none none none none'
     homogenization_gradient_name = homogenization_gradient
     macro_gradient = hvar
     targets = 'value_xx zero zero value_yy'
@@ -506,6 +498,12 @@ eq_strain_max = 0.02 # Should cause termination
   [stress_yy]
     type = ElementAverageValue
     variable = cauchy_stress_yy
+  []
+  # Out-of-plane stress: the 2D model is plane strain (F_zz = 1), so stress_zz
+  # is a reaction, recorded because yielding depends on it.
+  [stress_zz]
+    type = ElementAverageValue
+    variable = cauchy_stress_zz
   []
   [equivalent_strain]
     type = ElementAverageValue

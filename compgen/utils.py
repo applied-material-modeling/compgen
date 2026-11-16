@@ -76,7 +76,7 @@ def standardize_image(image, shape=None, dtype=None):
         if len(shape) != img.ndim:
             raise ValueError(
                 f"shape dimensionality must match image dimensionality: "
-                f"got image shape {img.shape} ({img.ndim}D)"
+                f"got image shape {img.shape} ({img.ndim}D) "
                 f"and target shape {shape} ({len(shape)}D)"
             )
 
