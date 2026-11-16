@@ -53,7 +53,7 @@ Issues = "https://github.com/applied-material-modeling/compgen/issues"
 
 [project.optional-dependencies]
 mcrpy = ["mcrpy"]
-demos = ["matplotlib"]
+demos = ["matplotlib", "plotly"]
 dev = [
     "black==26.3.0",
     "pytest==9.0.2",
