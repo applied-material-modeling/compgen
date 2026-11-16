@@ -29,15 +29,12 @@ from __future__ import annotations
 
 from pathlib import Path
 import importlib
-from typing import TYPE_CHECKING
 import numpy as np
 import gstools as gs
 from scipy.optimize import curve_fit
 from scipy.spatial import Voronoi
+import torch
 from compgen.utils import standardize_image
-
-if TYPE_CHECKING:
-    import torch
 
 
 class DampedOscillationCovariance(gs.CovModel):
@@ -633,7 +630,6 @@ class Reconstruction2D(GenerativeStructureGenerator):
 
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
-# pylint: disable=import-outside-toplevel
 class ParticleGenerator(GenerativeStructureGenerator):
     """Generate microstructures by randomly placing and optionally rearranging particles.
 
@@ -694,14 +690,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
     ):
         super().__init__(N, random_seed=random_seed)
         self.random_seed = random_seed
-
-        try:
-            import torch  # pylint: disable=import-error
-        except ImportError as e:
-            raise RuntimeError(
-                "ParticleGenerator requires PyTorch. "
-                "Install it with: pip install compgen[particles] (or pip install torch)"
-            ) from e
 
         self.torch_rng = torch.Generator(device="cpu")
         if random_seed is not None:
@@ -787,8 +775,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
         Returns:
             np.ndarray: 2D/3D bool array of shape `self.N`.
         """
-        import torch  # pylint: disable=import-error
-
         rearrange = self.buffer is not None
 
         # Per-dimension caps: rearranging more particles becomes prohibitively slow.
@@ -854,8 +840,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
         device: str | torch.device = "cpu",
         torch_rng: torch.Generator | None = None,
     ):
-        import torch  # pylint: disable=import-error
-
         if dtype is None:
             dtype = torch.float64
         device = torch.device(device)
@@ -977,8 +961,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
     # pylint: disable=too-many-statements
     @staticmethod
     def _overlap_energy(particles, buffer, eps=1e-12):
-        import torch  # pylint: disable=import-error
-
         p = particles
         n = p.shape[0]
         if n <= 1:
@@ -1097,8 +1079,6 @@ class ParticleGenerator(GenerativeStructureGenerator):
 
     @staticmethod
     def _rearrange_particles(particles, opt_i, buffer, dt, max_iter, tol=1e-9):
-        import torch  # pylint: disable=import-error
-
         opt_i = list(range(opt_i))
         p = particles.detach().clone().requires_grad_(True)
         optimizer = torch.optim.Adam([p], lr=dt)

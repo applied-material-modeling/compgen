@@ -68,7 +68,6 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
 
 - **`ParticleGenerator(N, vf, kind, shape_params, buffer=None, dt=0.001,
   max_iter=1000, tol=1e-9)`** — places (and optionally rearranges) particles.
-  Requires PyTorch: `pip install compgen[particles]`.
   - `N` — grid resolution; must be equal in every dimension.
   - `vf` — target volume fraction. Particles are added until their *analytic*
     areas/volumes sum to `vf`, so it is the realized fraction **only for
@@ -313,6 +312,6 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   with **impenetrable** ellipses (`buffer=0.6` → overlap-minimized clearance),
   then `make_periodic`. `RUN_SCULPT=True` uses CUBIT/Sculpt (`-ims` smooth
   interface when `refinement > 0`, needs `$CUBIT_DIR`); `RUN_SCULPT=False` writes
-  a plain voxel mesh with no external dependency. Requires PyTorch. Writes three
+  a plain voxel mesh with no external dependency. Writes three
   files next to the script: `2d_mesher.exo` (the mesh), `2d_mesher_input.png`
   (the input structure), and `2d_mesher_output.png` (the rendered mesh).
