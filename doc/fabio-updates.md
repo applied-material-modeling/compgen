@@ -68,7 +68,6 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
 
 - **`ParticleGenerator(N, vf, kind, shape_params, buffer=None, dt=0.001,
   max_iter=1000, tol=1e-9)`** — places (and optionally rearranges) particles.
-  Requires PyTorch: `pip install compgen[particles]`.
   - `N` — grid resolution; must be equal in every dimension.
   - `vf` — target volume fraction. Particles are added until their *analytic*
     areas/volumes sum to `vf`, so it is the realized fraction **only for
@@ -91,11 +90,20 @@ also a config-file key under `generator.params`; a value given as `[min, max]`
   *approaches* the requested value — and a draw that fails to converge is rejected
   and redrawn.
 
-- **`VoronoiGenerator(N, grain_size, thickness, lloyd_iter=0, invert=True)`** —
+- **`VoronoiGenerator(N, grain_size, thickness, lloyd_iter=0, invert=True, random_seed=None, mode="faces")`** —
   periodic Voronoi grain structures.
   - `grain_size` — grain diameter in normalized `[0, 1]` (scalar or `[min, max]`);
     seed count derives as `round((1 / grain_size) ** dim)`.
-  - `thickness` — boundary thickness as a fraction of grain size (scalar or range).
+  - `thickness` — boundary thickness as a fraction of grain size (scalar or range):
+    full wall width for walls, strut diameter in 3D `"edges"`. Walls have exactly
+    uniform width: a voxel is a wall when it lies within half that width of a
+    grain boundary (a Voronoi face).
+  - `mode` — 3D only, ignored in 2D (2D always gives walls): `"faces"` (default)
+    gives walls; `"edges"` gives an open-cell strut network, with a cylinder along
+    every Voronoi edge.
+  - The structure is periodic, and every Voronoi cell is a grain, including the
+    cells of a seed's periodic copies: where a grain meets its own copy across
+    the unit cell, there is a boundary like anywhere else.
   - `lloyd_iter` — Lloyd relaxation iterations (`0` = irregular Poisson-Voronoi;
     a few = more equiaxed, uniform grains). Like the other params it may be given
     as `[min, max]` and sampled per draw; the sampled value is rounded to an
@@ -308,6 +316,6 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   with **impenetrable** ellipses (`buffer=0.6` → overlap-minimized clearance),
   then `make_periodic`. `RUN_SCULPT=True` uses CUBIT/Sculpt (`-ims` smooth
   interface when `refinement > 0`, needs `$CUBIT_DIR`); `RUN_SCULPT=False` writes
-  a plain voxel mesh with no external dependency. Requires PyTorch. Writes three
+  a plain voxel mesh with no external dependency. Writes three
   files next to the script: `2d_mesher.exo` (the mesh), `2d_mesher_input.png`
   (the input structure), and `2d_mesher_output.png` (the rendered mesh).

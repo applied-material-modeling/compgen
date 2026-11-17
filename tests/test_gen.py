@@ -26,6 +26,7 @@
 
 import numpy as np
 import pytest
+from scipy.spatial import cKDTree
 
 from compgen.gen import (
     RandomGenerator,
@@ -183,16 +184,18 @@ def test_particle_generator_rejects_invalid_shape_params(bad):
 
 
 @pytest.mark.parametrize(
-    "N,grain_size,thickness,lloyd_iter",
+    "N,grain_size,thickness,lloyd_iter,mode",
     [
-        ([64, 64], 0.25, 0.03, 0),
-        ([64, 64], [0.15, 0.25], 0.05, 0),
-        ([64, 64], 0.2, 0.04, 5),
-        ([32, 32, 32], 0.35, 0.05, 0),
-        ([32, 32, 32], 0.4, 0.06, 3),
+        ([64, 64], 0.25, 0.03, 0, "faces"),
+        ([64, 64], [0.15, 0.25], 0.05, 0, "faces"),
+        ([64, 64], 0.2, 0.04, 5, "faces"),
+        ([32, 32, 32], 0.35, 0.05, 0, "faces"),
+        ([32, 32, 32], 0.4, 0.06, 3, "faces"),
+        ([32, 32, 32], 0.35, 0.15, 0, "edges"),
+        ([32, 32, 32], [0.3, 0.4], [0.1, 0.2], 3, "edges"),
     ],
 )
-def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter):
+def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter, mode):
     """Test that the VoronoiGenerator produces bool images of the correct shape,
     containing both phases."""
     gen = VoronoiGenerator(
@@ -200,6 +203,7 @@ def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter)
         grain_size=grain_size,
         thickness=thickness,
         lloyd_iter=lloyd_iter,
+        mode=mode,
         random_seed=42,
     )
     img = gen.sample()
@@ -207,6 +211,179 @@ def test_voronoi_generator_shape_and_dtype(N, grain_size, thickness, lloyd_iter)
     assert img.dtype == bool
     # Both grains and boundaries should be present for these parameters.
     assert img.any() and not img.all()
+
+
+def test_voronoi_generator_positional_args():
+    """`mode` is the last parameter, so pre-existing positional calls keep their
+    meaning (lloyd_iter, invert, random_seed)."""
+    gen = VoronoiGenerator([32, 32], 0.3, 0.1, 0, False, 42)
+    assert gen.invert is False and gen.mode == "faces"
+    assert np.array_equal(
+        gen.sample(),
+        VoronoiGenerator([32, 32], 0.3, 0.1, invert=False, random_seed=42).sample(),
+    )
+
+
+def test_voronoi_generator_mode():
+    """Unknown modes are rejected; in 2D the mode is ignored."""
+    with pytest.raises(ValueError):
+        VoronoiGenerator([32, 32, 32], 0.3, 0.1, mode="vertices")
+    with pytest.raises(ValueError):
+        VoronoiGenerator([32, 32], 0.3, 0.1, mode="vertices")
+    kwargs = {"invert": False, "random_seed": 4}
+    assert np.array_equal(
+        VoronoiGenerator([48, 48], 0.3, 0.1, mode="edges", **kwargs).sample(),
+        VoronoiGenerator([48, 48], 0.3, 0.1, mode="faces", **kwargs).sample(),
+    )
+
+
+# The geometry tests below check VoronoiGenerator internals directly.
+# pylint: disable=protected-access
+
+
+def _seed_copies(seeds):
+    """All copies of the seeds in the 5**dim unit cells around the origin."""
+    dim = seeds.shape[1]
+    steps = np.arange(-2, 3)
+    offsets = np.stack(np.meshgrid(*[steps] * dim, indexing="ij"), axis=-1)
+    return (offsets.reshape(-1, 1, dim) + seeds).reshape(-1, dim)
+
+
+def _voxel_centers(N):
+    axes = [(np.arange(n) + 0.5) / n for n in N]
+    return np.stack(np.meshgrid(*axes, indexing="ij"), axis=-1).reshape(-1, len(N))
+
+
+def _distance_to_cell_boundary(seeds, N, width, k=64):
+    """Brute-force distance from every voxel center to the boundary of its
+    Voronoi cell, where every seed copy has its own cell (no Qhull). A cell is
+    convex, so this is the smallest distance to the plane bisecting the
+    voxel's nearest copy and any other copy. Only copies within ``width`` of the
+    nearest one can matter for distances up to ``width / 2``; the test checks
+    that the ``k`` nearest include all of them."""
+    copies = _seed_copies(seeds)
+    k = min(k, len(copies))
+    d, idx = cKDTree(copies).query(_voxel_centers(N), k=k)
+    assert k == len(copies) or np.all(d[:, -1] > d[:, 0] + width)
+    sep = np.linalg.norm(copies[idx[:, 1:]] - copies[idx[:, :1]], axis=-1)
+    h = (d[:, 1:] ** 2 - d[:, :1] ** 2) / (2.0 * sep)
+    return h.min(axis=1).reshape(N)
+
+
+def _sorted_copy_distances(seeds, N, k=4):
+    """Distances from every voxel center to its ``k`` nearest seed copies."""
+    d, _ = cKDTree(_seed_copies(seeds)).query(_voxel_centers(N), k=k)
+    return d.reshape(*N, k)
+
+
+VORONOI_CASES = [
+    # (dim, n_grains, rng_seed, width); with 2-5 grains, grains meet their own
+    # periodic copies; the last case has thick walls.
+    (2, 2, 0, 0.05),
+    (2, 3, 1, 0.05),
+    (2, 3, 52, 0.035),
+    (2, 12, 2, 0.04),
+    (3, 2, 3, 0.06),
+    (3, 3, 9, 0.06),
+    (3, 4, 12, 0.06),
+    (3, 5, 13, 0.06),
+    (3, 20, 2, 0.05),
+    (3, 2, 5, 0.2),
+]
+
+
+@pytest.mark.parametrize("dim,n_grains,rng_seed,width", VORONOI_CASES)
+def test_voronoi_walls_follow_grain_boundaries(dim, n_grains, rng_seed, width):
+    """Walls are exactly the voxels within w/2 of a grain boundary, compared
+    voxel by voxel with a brute-force reference in which every Voronoi cell is
+    a grain, including the cells of a seed's periodic copies."""
+    seeds = np.random.default_rng(rng_seed).random((n_grains, dim))
+    N = [96, 96] if dim == 2 else [40, 40, 40]
+    walls = VoronoiGenerator._boundary(N, seeds, width)
+    reference = _distance_to_cell_boundary(seeds, N, width)
+    undecided = np.abs(reference - width / 2) < 1e-9
+    assert np.array_equal(walls[~undecided], (reference <= width / 2)[~undecided])
+
+
+@pytest.mark.parametrize("n_grains,rng_seed", [(2, 0), (3, 9), (5, 13), (20, 2)])
+def test_voronoi_3d_edges(n_grains, rng_seed):
+    """Struts follow the Voronoi edges, where three cells meet (cells of copies
+    of the same seed count as different grains).
+
+    - Each segment midpoint is equidistant from its three nearest seed copies,
+      and closer to them than to any other copy.
+    - Every strut voxel has three seed copies within w of each other (a point
+      within w/2 of an edge), and voxels essentially on an edge are covered.
+    - Struts lie inside the walls of the same width.
+    """
+    seeds = np.random.default_rng(rng_seed).random((n_grains, 3))
+    N = [40, 40, 40]
+    width = 0.06
+    segments = VoronoiGenerator._geometry(seeds, "edges")
+    assert len(segments) > 0
+
+    d, _ = cKDTree(_seed_copies(seeds)).query(segments.mean(axis=1), k=4)
+    assert np.all(d[:, 2] - d[:, 0] < 1e-9)
+    assert np.all(d[:, 3] - d[:, 0] > 1e-9)
+
+    struts = VoronoiGenerator._boundary(N, seeds, width, mode="edges")
+    near = _sorted_copy_distances(seeds, N)
+    gap3 = near[..., 2] - near[..., 0]
+    assert gap3[struts].max() <= width + 1e-9
+    assert struts[gap3 < 1e-3].all()
+
+    walls = VoronoiGenerator._boundary(N, seeds, width, mode="faces")
+    assert not np.any(struts & ~walls)
+
+
+def test_voronoi_3d_edges_volume_fraction():
+    """Strut volume matches sum(edge length) * pi * r^2, up to vertex overlaps."""
+    seeds = np.random.default_rng(1).random((27, 3))
+    segments = VoronoiGenerator._geometry(seeds, "edges")
+    width = 0.03
+    mask = VoronoiGenerator._rasterize_capsules([96, 96, 96], segments, width)
+    length = np.linalg.norm(segments[:, 1] - segments[:, 0], axis=1).sum()
+    predicted = length * np.pi * (0.5 * width) ** 2
+    assert mask.mean() == pytest.approx(predicted, rel=0.25)
+
+
+@pytest.mark.parametrize(
+    "N,mode,n_grains,width",
+    [
+        ([48, 48], "faces", 12, 0.05),
+        ([48, 80], "faces", 3, 0.2),
+        ([40, 40, 40], "faces", 12, 0.05),
+        ([24, 40, 32], "faces", 2, 0.2),
+        ([40, 40, 40], "edges", 12, 0.05),
+        ([24, 40, 32], "edges", 5, 0.08),
+    ],
+)
+def test_voronoi_periodic(N, mode, n_grains, width):
+    """Translating the seeds by whole voxels rolls the image exactly, so the
+    structure is seamlessly periodic across the cell faces. Covers few grains
+    (grains meeting their own copies), thick walls and non-cubic grids."""
+    shift = np.array([5, -7, 11][: len(N)])
+    seeds = np.random.default_rng(3).random((n_grains, len(N)))
+
+    def image(s):
+        return VoronoiGenerator._boundary(N, s, width, mode)
+
+    base = image(seeds)
+    moved = image((seeds + shift / np.array(N)) % 1.0)
+    assert base.any()
+    assert np.array_equal(np.roll(base, tuple(shift), axis=tuple(range(len(N)))), moved)
+
+
+# pylint: enable=protected-access
+
+
+def test_voronoi_3d_edges_inside_faces():
+    """For the same width the strut network is a subset of the walls."""
+    kwargs = {"grain_size": 0.3, "thickness": 0.15, "invert": False, "random_seed": 7}
+    faces = VoronoiGenerator([32, 32, 32], mode="faces", **kwargs).sample()
+    edges = VoronoiGenerator([32, 32, 32], mode="edges", **kwargs).sample()
+    assert (~edges).sum() < (~faces).sum()
+    assert not np.any(~edges & faces)
 
 
 @pytest.mark.parametrize("dtype", [bool, np.uint8, np.int64, np.float32])
@@ -245,6 +422,7 @@ def test_all_generators_return_bool():
         ParticleGenerator([32, 32], 0.3, "disks", {"size_m": 0.2}, random_seed=0),
         RandomGenerator([16, 16, 16], 0.4, random_seed=0),
         VoronoiGenerator([16, 16, 16], 0.4, 0.2, random_seed=0),
+        VoronoiGenerator([16, 16, 16], 0.4, 0.2, mode="edges", random_seed=0),
         ParticleGenerator([16, 16, 16], 0.3, "spheres", {"size_m": 0.3}, random_seed=0),
     ]
     for gen in generators:
