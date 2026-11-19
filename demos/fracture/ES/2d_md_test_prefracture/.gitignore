@@ -1,0 +1,6 @@
+# Simulation output and generated plotting artifacts
+simulations/*
+plotting/logs/
+visualizations/*.png
+__pycache__/
+*.pyc

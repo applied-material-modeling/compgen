@@ -1,0 +1,15 @@
+{
+    "racoon": {
+        "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
+        "options": [],
+        "discard_raccoon_text": false
+    },
+    "mpi": {
+        "executable": "mpirun",
+        "rank_command": "-np",
+        "ranks": "4"
+    },
+    "storage": {},
+    "verbose": false,
+    "log_level": "INFO"
+}
