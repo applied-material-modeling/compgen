@@ -1,9 +1,7 @@
 {
     "number": 1,
-    "L": [
-        1.0,
-        1.0
-    ],
+    "dim": 2,
+    "L": 1.0,
     "moose": {
         "executable": "${MOOSE_DIR}/modules/heat_transfer/heat_transfer-opt",
         "options": []

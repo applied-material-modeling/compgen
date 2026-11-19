@@ -36,6 +36,8 @@ FACTOR = 3  # cap = FACTOR * NUMBER draws
 class _CountingGenerator:
     """Yields structures and records how many draws the runner asked for."""
 
+    N = [16, 16]
+
     def __init__(self, binary=True):
         self.binary = binary
         self.draws = 0
@@ -53,7 +55,8 @@ def _config(filter_spec, nthreads):
     return {
         "number": NUMBER,
         "max_attempts_factor": FACTOR,
-        "L": [1.0, 1.0],
+        "dim": 2,
+        "L": 1.0,
         "nthreads": nthreads,
         "filtering": [filter_spec],
         "mesh": {"type": "mesh.generate_mesh"},
@@ -100,7 +103,7 @@ def test_deterministic_filter_errors_abort_without_retrying(
     config = _config(filter_spec, nthreads)
 
     monkeypatch.setattr(runner.utils, "load_json", lambda _files: config)
-    monkeypatch.setattr(runner, "setup_generator", lambda _c: gen)
+    monkeypatch.setattr(runner, "setup_generator", lambda *_a: gen)
     monkeypatch.setattr(runner, "setup_material", lambda _c: iter(lambda: {}, object()))
 
     with pytest.raises(expected):
@@ -118,6 +121,7 @@ class _PredefinedGenerator(_CountingGenerator):
     """
 
     predefined = True
+    N = [2, 2]
 
     def __next__(self):
         self.draws += 1
@@ -136,7 +140,7 @@ def test_predefined_structures_are_not_backfilled(monkeypatch, nthreads):
         return runner.MESH_FAILED if idx == 1 else idx
 
     monkeypatch.setattr(runner.utils, "load_json", lambda _files: config)
-    monkeypatch.setattr(runner, "setup_generator", lambda _c: gen)
+    monkeypatch.setattr(runner, "setup_generator", lambda *_a: gen)
     monkeypatch.setattr(runner, "setup_material", lambda _c: iter(lambda: {}, object()))
     monkeypatch.setattr(runner, "run_single", fake_run_single)
 
@@ -144,42 +148,85 @@ def test_predefined_structures_are_not_backfilled(monkeypatch, nthreads):
     assert gen.draws == NUMBER
 
 
-def test_setup_generator_refinement_upscales_n():
-    """With `refinement`, the generator is built at N * 2**refinement."""
-    gen = runner.setup_generator(
-        {
-            "type": "gen.RandomGenerator",
-            "params": {"N": [8, 8], "vf": 0.5, "refinement": 2},
-        }
-    )
-    assert list(gen.N) == [32, 32]
-    assert gen.base_N == [8, 8]
-    assert gen.refinement == 2
+def test_setup_generator_scalar_n_and_dim():
+    """A scalar `N` and the config's `dim` give a square/cubic generator."""
+    spec = {"type": "gen.RandomGenerator", "params": {"N": 8, "vf": 0.5}}
+    assert runner.setup_generator(spec, 3).N == [8, 8, 8]
+    with pytest.raises(ValueError, match="dim"):
+        runner.setup_generator(spec)
+    with pytest.raises(ValueError, match="integer"):
+        runner.setup_generator({**spec, "params": {"N": [8, 8], "vf": 0.5}}, 2)
 
 
-def test_setup_generator_refinement_without_n_raises(tmp_path):
-    """A generator with no `N` cannot be upscaled, so `refinement` must fail
-    instead of letting the mesher silently coarsen the structure."""
+def test_from_numpy_generator_takes_size_from_data(tmp_path):
+    """No `N`: the size comes from the data, which must be square/cubic."""
     path = tmp_path / "structures.npy"
     np.save(path, np.zeros((1, 8, 8), dtype=bool))
-    with pytest.raises(ValueError, match="refinement"):
+    gen = runner.setup_generator(
+        {"type": "gen.FromNumpyGenerator", "params": {"filename": str(path)}}, 2
+    )
+    assert gen.N == [8, 8] and gen.dim == 2
+    np.save(path, np.zeros((1, 8, 10), dtype=bool))
+    with pytest.raises(ValueError, match="square"):
         runner.setup_generator(
-            {
-                "type": "gen.FromNumpyGenerator",
-                "params": {"filename": str(path), "refinement": 1},
-            }
+            {"type": "gen.FromNumpyGenerator", "params": {"filename": str(path)}}, 2
         )
 
 
-def test_filter_params_passes_refinement_only_where_taken():
-    """make_periodic gets the generator's refinement; other filters don't, and
-    an explicit value in the config wins."""
+def _res_config(n_mesh=None, n_out=None, dim=2):
+    config = {"dim": dim, "L": 1.0, "mesh": {"params": {}}, "output": {"grid_extractor": {}}}
+    if n_mesh is not None:
+        config["mesh"]["params"]["N"] = n_mesh
+    if n_out is not None:
+        config["output"]["grid_extractor"]["params"] = {"N": n_out}
+    return config
+
+
+class _Shape:  # pylint: disable=too-few-public-methods
+    def __init__(self, n, dim=2):
+        self.N = [n] * dim
+
+
+def test_check_resolutions_defaults_and_values():
+    """N_mesh defaults to N_gen and N_out to N_mesh; non-integer ratios are fine."""
+    assert runner.check_resolutions(_res_config(), _Shape(64)) == (64, 64, 64)
+    assert runner.check_resolutions(_res_config(96, 128), _Shape(256)) == (256, 96, 128)
+    assert runner.check_resolutions(_res_config(96), _Shape(256)) == (256, 96, 96)
+
+
+def test_check_resolutions_rejects_mesh_finer_than_generator():
+    with pytest.raises(ValueError, match="below mesh"):
+        runner.check_resolutions(_res_config(128), _Shape(96))
+
+
+def test_check_resolutions_warns_on_aliasing_output():
+    with pytest.warns(UserWarning, match="alias"):
+        runner.check_resolutions(_res_config(96, 32), _Shape(256))
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"dim": 4, "L": 1.0},
+        {"L": 1.0},
+        {"dim": 2, "L": [1.0, 1.0]},
+        {"dim": 3, "L": 1.0},  # 2D generator
+    ],
+)
+def test_check_resolutions_rejects_bad_dim_or_l(config):
+    with pytest.raises(ValueError):
+        runner.check_resolutions(config, _Shape(16))
+
+
+def test_filter_params_passes_n_mesh_only_where_taken():
+    """make_periodic gets mesh.params.N; other filters don't, and an explicit
+    value in the config wins."""
     mp = {"type": "filters.make_periodic", "params": {"margin_cells": 2.5}}
-    assert runner.filter_params(runner.filters.make_periodic, mp, 3) == {
+    assert runner.filter_params(runner.filters.make_periodic, mp, 96) == {
         "margin_cells": 2.5,
-        "refinement": 3,
+        "n_mesh": 96,
     }
     mf = {"type": "filters.mean_filter", "params": {"radius": 0.02}}
-    assert runner.filter_params(runner.filters.mean_filter, mf, 3) == {"radius": 0.02}
-    explicit = {"params": {"margin_cells": 2, "refinement": 0}}
-    assert runner.filter_params(runner.filters.make_periodic, explicit, 3)["refinement"] == 0
+    assert runner.filter_params(runner.filters.mean_filter, mf, 96) == {"radius": 0.02}
+    explicit = {"params": {"margin_cells": 2, "n_mesh": 32}}
+    assert runner.filter_params(runner.filters.make_periodic, explicit, 96)["n_mesh"] == 32

@@ -31,9 +31,14 @@ import pytest
 from compgen.mesh import (
     MeshQualityError,
     _validate_mesh,
+    downsample_vfrac,
     extrude,
+    extract_grid_from_mesh,
     face_mismatch,
+    generate_mesh_2d,
     generate_mesh_3d,
+    overlap_vfrac,
+    project_element_field_to_grid,
     snap_periodic_faces,
     write_mesh_2d,
     write_mesh_3d,
@@ -210,7 +215,7 @@ def test_validate_mesh_rejects_nan_coords_without_quality_check(tmp_path):
     _rewrite_coords(fname, lambda c: np.where(np.arange(len(c))[:, None] == 0, np.nan, c))
 
     with pytest.raises(MeshQualityError, match="non-finite") as exc:
-        _validate_mesh(fname, False, None, (1, 1, 1), (2, 2, 2))
+        _validate_mesh(fname, False, None, 1.0, 2)
     assert exc.value.reason == "non-finite"
 
 
@@ -221,7 +226,7 @@ def test_validate_mesh_snaps_faces_in_place(tmp_path):
     _rewrite_coords(fname, _shift_top_center)
     assert face_mismatch(_read(fname)[0]) == pytest.approx(0.01)
 
-    _validate_mesh(fname, False, 0.1, (1, 1, 1), (4, 4, 4))  # cap 0.025
+    _validate_mesh(fname, False, 0.1, 1.0, 4)  # cap 0.025
 
     assert face_mismatch(_read(fname)[0]) == 0.0
 
@@ -233,7 +238,7 @@ def test_validate_mesh_rejects_move_above_cap(tmp_path):
     _rewrite_coords(fname, _shift_top_center)
 
     with pytest.raises(MeshQualityError, match="need a move") as exc:
-        _validate_mesh(fname, False, 0.02, (1, 1, 1), (4, 4, 4))  # cap 0.005
+        _validate_mesh(fname, False, 0.02, 1.0, 4)  # cap 0.005
     assert exc.value.reason == "snap-move"
     assert face_mismatch(_read(fname)[0]) == pytest.approx(0.01)
 
@@ -290,3 +295,91 @@ def test_generate_mesh_3d_snap_without_sculpt(tmp_path, monkeypatch):
     img = np.random.default_rng(0).random((3, 3, 3)) < 0.5
     generate_mesh_3d(img, "mesh.e", run_sculpt=False, max_snap_move=1e-9)
     assert (tmp_path / "mesh.e").exists()
+
+
+def test_generate_mesh_2d_coarsens_without_sculpt(tmp_path, monkeypatch):
+    """mesh N below the image size meshes the thresholded overlap fractions."""
+    monkeypatch.chdir(tmp_path)
+    img = np.random.default_rng(1).random((12, 12)) < 0.5
+    generate_mesh_2d(img, "mesh.e", N=5, run_sculpt=False, max_snap_move=1e-9)
+    coords, conn = _read(str(tmp_path / "mesh.e"))
+    assert len(conn) == 25 and coords.max() == pytest.approx(1.0)
+
+
+def test_generate_mesh_rejects_mesh_finer_than_image(tmp_path, monkeypatch):
+    """N_mesh > N_gen is an error."""
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="exceeds"):
+        generate_mesh_2d(np.zeros((8, 8), dtype=bool), "mesh.e", N=9, run_sculpt=False)
+
+
+@pytest.mark.parametrize("shape,factor", [((24, 24), 2), ((24, 24), 3), ((24, 24), 8), ((12, 12, 12), 4), ((12, 12, 12), 3)])
+def test_overlap_vfrac_matches_downsample_for_integer_ratio(shape, factor):
+    """For an integer ratio the overlap operator is the block mean, exactly."""
+    img = np.random.default_rng(2).random(shape) > 0.5
+    out = overlap_vfrac(img, shape[0] // factor)
+    assert np.array_equal(out, downsample_vfrac(img, factor))
+
+
+@pytest.mark.parametrize("n_gen,n", [(256, 96), (192, 50), (10, 7), (9, 9)])
+def test_overlap_vfrac_non_integer_ratio(n_gen, n):
+    """Any ratio: fractions in [0, 1], total material conserved, constants kept."""
+    img = np.random.default_rng(3).random((n_gen, n_gen)) > 0.5
+    out = overlap_vfrac(img, n)
+    assert out.shape == (n, n)
+    assert out.min() >= 0 and out.max() <= 1
+    assert out.mean() == pytest.approx(img.mean())
+    assert np.array_equal(overlap_vfrac(np.ones((n_gen,) * 2), n), np.ones((n, n)))
+
+
+def test_overlap_vfrac_exact_fraction():
+    """A 1D-style step at x = 0.5 of a 4-cell grid seen from 3 cells: the
+    middle cell straddles it and is half full."""
+    img = np.zeros((4, 4))
+    img[:2] = 1
+    out = overlap_vfrac(img, 3)
+    assert np.allclose(out[:, 0], [1.0, 0.5, 0.0])
+
+
+def test_project_element_field_to_grid_any_resolution(tmp_path):
+    """A voxel mesh projected to a coarser and a finer grid samples the
+    element under each grid centroid."""
+    fname = str(tmp_path / "mesh.e")
+    img = np.random.default_rng(5).random((6, 6)) > 0.5
+    write_mesh_2d(img, fname)
+    coords, conn = _read(fname)
+    with exodusii.File(fname, mode="r") as exo:
+        n_a = len(exo.get_element_conn(1))
+    material = np.zeros(len(conn))
+    material[:n_a] = 1
+    field = {"type": "scalar", "shape": (), "data": material[None, :]}
+    same = project_element_field_to_grid(coords, conn, field, 1.0, 6)["data"][0]
+    assert np.array_equal(same.astype(bool), img)
+    fine = project_element_field_to_grid(coords, conn, field, 1.0, 12)["data"][0]
+    assert np.array_equal(fine.astype(bool), np.kron(img, np.ones((2, 2), dtype=bool)))
+
+
+def test_extract_grid_uses_output_resolution(tmp_path):
+    """The grid has N_out cells per side; material_generated is the meshed
+    image resampled to N_out."""
+    fname = str(tmp_path / "mesh.e")
+    img = np.kron(np.random.default_rng(6).random((4, 4)) > 0.5, np.ones((3, 3), dtype=bool))
+    write_mesh_2d(img, fname)
+    coords, conn = _read(fname)
+    with exodusii.File(fname, mode="r") as exo:
+        n_a = len(exo.get_element_conn(1))
+    material = np.zeros(len(conn))
+    material[:n_a] = 1
+    mesh_data = {
+        "coords": coords,
+        "connectivity": conn,
+        "element_fields": {
+            "material": {"type": "scalar", "shape": (), "data": material[None, :]},
+            "stimuli": {},
+            "responses": {},
+        },
+    }
+    grid = extract_grid_from_mesh(mesh_data, img, 1.0, N=4)["cell_fields"]
+    assert grid["material"]["data"].shape == (4, 4)
+    assert np.array_equal(grid["material"]["data"].astype(bool), grid["material_generated"]["data"])
+    assert grid["lx"] == grid["ly"] == 1.0 and "lz" not in grid

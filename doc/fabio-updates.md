@@ -122,49 +122,78 @@ Two independent improvements to what the solver receives.
 
 **(a) Better meshing — smooth interface** (`mesh.py`, ~+210 lines):
 
-- **`refinement` / `downsample_vfrac`** — the smooth-interface path: a fine
-  binary image at `N·2**refinement` is coarsened into fractional volume fractions
-  and meshed via SCULPT's `-ims` path, instead of the direct binary `-ice` path.
-  Fewer staircase artifacts at phase boundaries (matters most for plasticity).
+- **Smooth interface** — the generated binary image is reduced to fractional
+  volume fractions on the mesh grid and meshed via SCULPT's `-ims` path,
+  instead of the direct binary `-ice` path. Fewer staircase artifacts at phase
+  boundaries (matters most for plasticity).
 - **`normalize_mesh`, `_write_micro`, `sculpt(..., sculpt_input="ice"|"ims")`** —
   the "new meshing style" refactor supporting both paths.
-- **Refinement plumbing** (`runner.py`) — the `refinement` knob is read from the
-  generator config and threaded through to the mesher; the generator emits the
-  fine image while output is projected back to the `N` grid.
 
-`refinement` lives under `generator.params` (the runner pops it and tells the
-mesher the factor). Example from `../compgen-tests/elasticity/config.json` — a
-128² Voronoi structure meshed through the smooth-interface path at refinement 2:
+#### Resolutions: generator, mesh and output
+
+A run has three resolutions, each set in its own stage's config, plus the cell
+size and dimension at the top level:
+
+| key | meaning |
+|---|---|
+| `dim` | 2 or 3 (required) |
+| `L` | side length of the square/cubic cell (a number) |
+| `generator.params.N` | $N_	ext{gen}$: pixels/voxels per side of the generated image |
+| `mesh.params.N` | $N_	ext{mesh}$: mesh cells per side (default $N_	ext{gen}$) |
+| `output.grid_extractor.params.N` | $N_	ext{out}$: cells per side of the exported grids (default $N_	ext{mesh}$) |
+
+Cells are always square (2D) or cubic (3D), so every `N` and `L` is a single
+number. Example (3D thermal, 256³ generated, 96³ mesh, 128³ output grids):
 
 ```json
-"L": [1.0, 1.0],
+"dim": 3,
+"L": 1.0,
 "generator": {
-    "type": "gen.VoronoiGenerator",
-    "params": {
-        "random_seed": 0,
-        "N": [128, 128],
-        "refinement": 2,
-        "grain_size": [0.2, 0.6],
-        "thickness": [0.05, 0.3],
-        "lloyd_iter": [1.0, 5.0]
-    }
+    "type": "gen.SpinodalGenerator",
+    "params": {"N": 256, "vf": [0.1, 0.9], "l": [0.4, 2.0], "bandwidth": [0.25, 0.75]}
 },
 "mesh": {
     "type": "mesh.generate_mesh",
-    "params": {"run_sculpt": true}
+    "params": {"N": 96, "run_sculpt": true, "max_snap_move": 0.3}
+},
+"output": {
+    "grid_extractor": {"type": "mesh.extract_grid_from_mesh", "params": {"N": 128}}
 }
 ```
 
-At refinement 2 the generator rasterizes at 512² (128·2²) and `downsample_vfrac`
-coarsens it to 128 fractional volume fractions for Sculpt's `-ims` path.
+What happens at each step:
 
-> `refinement` scales `N` only. Length parameters (`SpinodalGenerator.l`,
-> `mean_filter.radius`, `defeature.min_size`) are fractions of the cell, so
-> they need no scaling. `make_periodic.margin_cells` is in mesh cells; the
-> runner passes `refinement` to the filter, which overwrites
-> $\lceil$`margin_cells`$\cdot 2^r\rceil$ fine layers. `refinement` also requires a
-> generator with an `N` parameter; using it with e.g. `FromNumpyGenerator` now
-> raises an error.
+- **Generate → mesh.** The image is reduced to $N_	ext{mesh}$ cells per side;
+  each mesh cell gets the exact fraction of its area/volume covered by
+  material A, so the ratio $N_	ext{gen}/N_	ext{mesh}$ need not be an integer.
+  Sculpt always meshes these fractions (`-ims`). With $N_	ext{mesh} = N_	ext{gen}$
+  the fractions are just 0 and 1 and the mesh follows the pixels more closely;
+  a finer generator ($N_	ext{gen} = 4$–$8	imes N_	ext{mesh}$) gives smoother
+  interfaces.
+- **Mesh → output.** Every field (material, stimuli, responses) is sampled at
+  the centers of an $N_	ext{out}$ grid, taking the value of the nearest mesh
+  element. `material` is the material of the mesh actually solved;
+  `material_generated` is the generated image reduced to $N_	ext{out}$ the same
+  way as for the mesh (fractions, then $> 0.5$), for comparison.
+- **Checks at start-up.** The run stops if $N_	ext{gen} < N_	ext{mesh}$, and
+  warns if $N_	ext{out} < N_	ext{mesh}/2$: sampling skips most mesh cells
+  then, so the grids alias rather than average. The log records
+  `N_gen=… -> N_mesh=… -> N_out=…`.
+- `add_density` uses the volume fraction of the exported `material`.
+
+> Length parameters (`SpinodalGenerator.l`, `mean_filter.radius`,
+> `defeature.min_size`) are fractions of the cell, so they do not change with
+> the resolution. `make_periodic.margin_cells` is in mesh cells: the runner
+> gives the filter $N_	ext{mesh}$, and it overwrites
+> $\lceil$`margin_cells`$\cdot N_	ext{gen}/N_	ext{mesh}ceil$ pixel layers.
+> Generators without an `N` (e.g. `FromNumpyGenerator`) take the size from the
+> data, which must be square/cubic. `make_orthogonal` doubles every side, so
+> the meshed image then has $2N_	ext{gen}$ pixels per side.
+
+> **Old configs:** `generator.params.refinement` is gone. A config with
+> `"N": [32, 32, 32], "refinement": 3` and `"L": [1, 1, 1]` becomes `"dim": 3`,
+> `"L": 1`, `generator.params.N = 256`, `mesh.params.N = 32` and (to keep the
+> 32³ output grids) `output.grid_extractor.params.N = 32`.
 
 **(b) Corrected mechanics constraints** (`compgen/physics/**/template.i`):
 
@@ -238,7 +267,8 @@ The reliability rework, spread across three modules.
   mutual nearest partner, the side topology differs, or the move would exceed
   the cap. The Jacobian check runs after snapping. Off by default. It needs
   flat faces (Sculpt `-S 2` or `-S 3`) and a `make_periodic` margin of at least
-  2 mesh cells (`margin_cells` $\ge 2$; 2.5 was used in the tests below).
+  2 mesh cells (`margin_cells` $\ge 2$; 2.5 was used in the tests below). The
+  element size is `L / mesh.params.N`.
   In tests at $N_\text{mesh} = 32$–$128$ this removed every executor failure
   (0 of 116 structures, against 8 of 20 before).
 - **Run summary** lists mesh and executor failures by reason (Jacobian, each
@@ -301,7 +331,10 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   it (different filters would reduce it differently). Backed by two new
   exceptions: **`FilterInputError`** and **`NonBinaryImageError`**.
 - **`make_orthogonal`** and **`make_periodic`** — moved here from `gen.py`.
-  Its margin is now `margin_cells`, in mesh cells (default 2; floats allowed).
+  Its margin is now `margin_cells`, in mesh cells (default 2; floats allowed):
+  $\lceil$`margin_cells`$\cdot N_\text{gen}/N_\text{mesh}\rceil$ pixel layers,
+  rounded up so that, with a non-integer ratio, the mesh cells inside the margin
+  still see only copied layers. The runner passes `mesh.params.N` to it.
   `make_periodic` gained an opt-in `shift=True` option that circular-shifts each
   axis to minimize the seam-overwrite cost before enforcing periodicity. The
   default is `shift=False`, so existing configs produce the same structures as
@@ -326,6 +359,7 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
 
 - **`FromNumpyGenerator`** now normalizes its output to `bool` (binarizes
   grayscale input), so loaded structures obey the same contract as generated ones.
+  It rejects structures that are not square/cubic.
 - `make_orthogonal` **moved out** of `gen.py` into `filters.py` (above).
 
 **Utilities** (`utils.py`):
@@ -343,7 +377,7 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   (generator/filtering/mesh/sculpt, no executor/materials): `ParticleGenerator`
   with **impenetrable** ellipses (`buffer=0.6` → overlap-minimized clearance),
   then `make_periodic`. `RUN_SCULPT=True` uses CUBIT/Sculpt (`-ims` smooth
-  interface when `refinement > 0`, needs `$CUBIT_DIR`); `RUN_SCULPT=False` writes
+  interface, generated at 1024² and meshed at 128², needs `$CUBIT_DIR`); `RUN_SCULPT=False` writes
   a plain voxel mesh with no external dependency. Writes three
   files next to the script: `2d_mesher.exo` (the mesh), `2d_mesher_input.png`
   (the input structure), and `2d_mesher_output.png` (the rendered mesh).

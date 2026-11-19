@@ -2,19 +2,12 @@
     "number": 1,
     "nthreads": 1,
     "mesh_file": "mesh.exo",
-    "L": [
-        1.0,
-        1.0,
-        1.0
-    ],
+    "dim": 3,
+    "L": 1.0,
     "generator": {
         "type": "gen.RandomGenerator",
         "params": {
-            "N": [
-                8,
-                8,
-                8
-            ],
+            "N": 8,
             "vf": [
                 0.01,
                 0.99

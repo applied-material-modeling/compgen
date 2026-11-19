@@ -173,6 +173,9 @@ def make_orthogonal(img):
     This works for arrays of arbitrary dimensionality by concatenating the
     array with its flipped version along each axis (processing axes from
     last to first). Takes and returns a bool array.
+
+    A square/cubic input stays square/cubic, but every side doubles, so the
+    meshed image has ``N_gen = 2 * generator.params.N``.
     """
     arr = _as_binary(img, "make_orthogonal")
     for axis in reversed(range(arr.ndim)):
@@ -185,16 +188,19 @@ def make_periodic(
     margin_cells: float = 2,
     shift: bool = False,
     center: bool = False,
-    refinement: int = 0,
+    n_mesh: int | None = None,
 ) -> np.ndarray:
     """
     Make periodic for Sculpt/MOOSE workflow.
 
-    `margin_cells` is in mesh cells. The input is the generator grid, which is
-    ``2**refinement`` times finer than the mesh, so the margin is
-    ``ceil(margin_cells * 2**refinement)`` pixel layers; below, `margin` is
-    that number. Floats are allowed (2.5 cells = 20 layers at refinement 3).
-    The runner passes the generator's `refinement` automatically.
+    `margin_cells` is in mesh cells. The input is the generator grid of
+    ``N_gen = img.shape[0]`` pixels per side, meshed with ``n_mesh`` cells per
+    side, so the margin is ``ceil(margin_cells * N_gen / n_mesh)`` pixel
+    layers; below, `margin` is that number. Floats are allowed (2.5 cells = 20
+    layers for 256 -> 32). Rounding up matters for a non-integer ratio: a mesh
+    cell that overlaps even one pixel outside the block gets a mixed volume
+    fraction. The runner passes ``mesh.params.N`` as `n_mesh` automatically;
+    None means ``n_mesh = N_gen``.
 
     Overwrite the first and last `margin` layers of each axis with the layer at
     index `margin`, for 2D or 3D arrays.
@@ -220,7 +226,10 @@ def make_periodic(
         raise FilterInputError(f"Expected 2D or 3D array, got {arr.ndim}D")
     if isinstance(margin_cells, bool) or not isinstance(margin_cells, (int, float)) or margin_cells <= 0:
         raise FilterInputError(f"margin_cells must be a positive number, got {margin_cells}")
-    margin = _ceil(margin_cells * 2**refinement)
+    if len(set(arr.shape)) != 1:
+        raise FilterInputError(f"make_periodic needs a square/cubic image, got {arr.shape}")
+    n_gen = arr.shape[0]
+    margin = _ceil(margin_cells * n_gen / (n_gen if n_mesh is None else n_mesh))
     if any(2 * margin >= s for s in arr.shape):
         raise FilterInputError(f"margin of {margin} layers is too large for shape {arr.shape}")
 

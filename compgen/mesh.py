@@ -60,10 +60,13 @@ def generate_mesh(img, fname, **kwargs):
     mesh to the cwd.
 
     Args:
-        img (2D or 3D array): Binary image where 1 indicates material A
+        img (2D or 3D array): Square/cubic binary image (1 = material A) at the
+            generator resolution ``N_gen = img.shape[0]``.
         fname (str): Output filename for the mesh.
     Keyword Args:
-        L (tuple): Lengths of the domain in each direction.
+        L (float): Side length of the square/cubic domain.
+        N (int or None): Mesh cells per side, ``N_mesh <= N_gen``. None means
+            ``N_gen``.
         settings (dict): Global settings dict
         run_sculpt (bool): Whether to sculpt the mesh
         quality_check (bool): Whether to run a mesh quality check
@@ -79,12 +82,26 @@ def generate_mesh(img, fname, **kwargs):
         raise ValueError("Input image must be 2D or 3D.")
 
 
+def _mesh_vfrac(img, N):
+    """Volume fractions of ``img`` on the ``N``-cell mesh grid, and ``N``.
+
+    Checks that ``img`` is square/cubic and ``N <= N_gen``.
+    """
+    if len(set(img.shape)) != 1:
+        raise ValueError(f"Image must be square/cubic, got shape {img.shape}.")
+    n_gen = img.shape[0]
+    n_mesh = n_gen if N is None else int(N)
+    if n_mesh > n_gen:
+        raise ValueError(f"Mesh resolution N={n_mesh} exceeds the image resolution {n_gen}.")
+    return overlap_vfrac(img, n_mesh), n_mesh
+
+
 def generate_mesh_2d(
     img,
     fname,
-    L=(1.0, 1.0),
+    L=1.0,
+    N=None,
     settings=None,
-    refinement=0,
     run_sculpt=True,
     quality_check=True,
     max_snap_move=None,
@@ -94,20 +111,22 @@ def generate_mesh_2d(
     This function will access a temp directory to store intermediate files, but copy the final
     mesh to the cwd.
 
+    The image is reduced to area fractions on the ``N x N`` mesh grid with
+    ``overlap_vfrac`` (any ratio ``N_gen / N``), which Sculpt meshes from its
+    ``-ims`` microstructure input. ``N = N_gen`` takes the same path: the
+    fractions are then 0/1.
+
     Args:
-        img (2D array): Binary image where 1 indicates material A. When
-            ``refinement > 0`` it is the fine image at resolution ``N * 2**refinement``.
+        img (2D array): Square binary image where 1 indicates material A, at
+            the generator resolution ``N_gen = img.shape[0]``.
         fname (str): Output filename for the mesh.
 
     Keyword Args:
-        L (tuple): Lengths of the domain in each direction.
+        L (float): Side length of the square domain.
+        N (int or None): Mesh cells per side (``<= N_gen``). None means ``N_gen``.
         settings (dict): Global settings dict
-        refinement (int): If 0 (default), mesh the binary image directly with the
-            ``-ice`` path (extrude -> sculpt -> slice). If > 0, coarsen the image
-            by ``2**refinement`` into fractional volume fractions and mesh those
-            with Sculpt's ``-ims`` input (smooth interface), giving a mesh at
-            ``img.shape / 2**refinement``.
-        run_sculpt (bool): Whether to sculpt the mesh
+        run_sculpt (bool): Whether to sculpt the mesh. If False, write the
+            voxel mesh of the thresholded fractions (``> 0.5``).
         quality_check (bool): Whether to run a mesh quality check
         max_snap_move (float or None): If set, make opposite faces match
             exactly by moving the max-face nodes onto their min-face partners,
@@ -117,48 +136,32 @@ def generate_mesh_2d(
     assert len(img.shape) == 2, "Input image must be 2D."
     if settings is None:
         settings = {}
-
-    lx, ly = L
-    factor = 2**refinement
+    phi, n_mesh = _mesh_vfrac(img, N)
 
     with temp.TempDirectory(settings) as (cwd, _):
         if not run_sculpt:
-            write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
+            write_mesh_2d(phi > 0.5, "temp_mesh.e", lx=L, ly=L)
             shutil.move("temp_mesh.e", os.path.join(cwd, fname))
-        elif factor == 1:
-            write_mesh_2d(img, "temp_mesh.e", lx=lx, ly=ly)
-            extrude("temp_mesh.e", prefix="extruded_", lx=lx, ly=ly)
-            sculpt("extruded_temp_mesh.e", prefix="sculpted_", settings=settings)
-            slice_mesh("sculpted_extruded_temp_mesh.e", prefix="sliced_")
-            shutil.move(
-                "sliced_sculpted_extruded_temp_mesh.e", os.path.join(cwd, fname)
-            )
         else:
-            assert all(
-                n % factor == 0 for n in img.shape
-            ), f"image {img.shape} not divisible by 2**refinement={factor}"
-            phi = downsample_vfrac(img, factor)
             _write_micro(phi, "micro.tec")
             sculpt(
                 "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
             )
             # -ims output is a unit-cell, origin-centred 3D slab; map to the domain
             # (this also puts the z-bottom at 0 so the unchanged slice works).
-            normalize_mesh("sculpted_micro.e", (lx, ly, lx / phi.shape[0]))
+            normalize_mesh("sculpted_micro.e", (L, L, L / n_mesh))
             slice_mesh("sculpted_micro.e", prefix="sliced_")
             shutil.move("sliced_sculpted_micro.e", os.path.join(cwd, fname))
 
-    _validate_mesh(
-        fname, quality_check, max_snap_move, L, [n // factor for n in img.shape]
-    )
+    _validate_mesh(fname, quality_check, max_snap_move, L, n_mesh)
 
 
 def generate_mesh_3d(
     img,
     fname,
-    L=(1.0, 1.0, 1.0),
+    L=1.0,
+    N=None,
     settings=None,
-    refinement=0,
     run_sculpt=True,
     quality_check=True,
     max_snap_move=None,
@@ -168,18 +171,20 @@ def generate_mesh_3d(
     This function will access a temp directory to store intermediate files, but copy the final
     mesh to the cwd.
 
+    Same as ``generate_mesh_2d`` (volume fractions on the ``N^3`` mesh grid,
+    Sculpt ``-ims``), without the slice.
+
     Args:
-        img (3D array): Binary image where 1 indicates material A. When
-            ``refinement > 0`` it is the fine image at resolution ``N * 2**refinement``.
+        img (3D array): Cubic binary image where 1 indicates material A, at
+            the generator resolution ``N_gen = img.shape[0]``.
         fname (str): Output filename for the mesh.
 
     Keyword Args:
-        L (tuple): Lengths of the domain in each direction.
+        L (float): Side length of the cubic domain.
+        N (int or None): Mesh cells per side (``<= N_gen``). None means ``N_gen``.
         settings (dict): Global settings dict
-        refinement (int): If 0 (default), mesh the binary image directly with the
-            ``-ice`` path. If > 0, coarsen by ``2**refinement`` into fractional
-            volume fractions and mesh with Sculpt's ``-ims`` input. No slice in 3D.
-        run_sculpt (bool): Whether to sculpt the mesh
+        run_sculpt (bool): Whether to sculpt the mesh. If False, write the
+            voxel mesh of the thresholded fractions (``> 0.5``).
         quality_check (bool): Whether to run a mesh quality check
         max_snap_move (float or None): If set, make opposite faces match
             exactly by moving the max-face nodes onto their min-face partners,
@@ -189,33 +194,21 @@ def generate_mesh_3d(
     assert len(img.shape) == 3, "Input image must be 3D."
     if settings is None:
         settings = {}
-
-    lx, ly, lz = L
-    factor = 2**refinement
+    phi, n_mesh = _mesh_vfrac(img, N)
 
     with temp.TempDirectory(settings) as (cwd, _):
         if not run_sculpt:
-            write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
+            write_mesh_3d(phi > 0.5, "temp_mesh.e", lx=L, ly=L, lz=L)
             shutil.move("temp_mesh.e", os.path.join(cwd, fname))
-        elif factor == 1:
-            write_mesh_3d(img, "temp_mesh.e", lx=lx, ly=ly, lz=lz)
-            sculpt("temp_mesh.e", prefix="sculpted_", settings=settings)
-            shutil.move("sculpted_temp_mesh.e", os.path.join(cwd, fname))
         else:
-            assert all(
-                n % factor == 0 for n in img.shape
-            ), f"image {img.shape} not divisible by 2**refinement={factor}"
-            phi = downsample_vfrac(img, factor)
             _write_micro(phi, "micro.tec")
             sculpt(
                 "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
             )
-            normalize_mesh("sculpted_micro.e", (lx, ly, lz))  # unit-cell -> domain
+            normalize_mesh("sculpted_micro.e", (L, L, L))  # unit-cell -> domain
             shutil.move("sculpted_micro.e", os.path.join(cwd, fname))
 
-    _validate_mesh(
-        fname, quality_check, max_snap_move, L, [n // factor for n in img.shape]
-    )
+    _validate_mesh(fname, quality_check, max_snap_move, L, n_mesh)
 
 
 def mesh_quality(exofile, min_qual=0.1):
@@ -232,7 +225,7 @@ def mesh_quality(exofile, min_qual=0.1):
     return qual.get_data_range("scaled_jacobian")[0] > min_qual
 
 
-def _validate_mesh(fname, quality_check, max_snap_move, L, ncells):
+def _validate_mesh(fname, quality_check, max_snap_move, L, n):
     """Post-mesh checks; raise MeshQualityError if the mesh is unusable.
 
     In order: finite coordinates (always), periodic face snapping (when
@@ -247,9 +240,9 @@ def _validate_mesh(fname, quality_check, max_snap_move, L, ncells):
         fname (str): Exodus mesh, modified in place if snapped.
         quality_check (bool): Run the scaled-Jacobian check.
         max_snap_move (float or None): Largest allowed snap, as a fraction of
-            the smallest element size ``min(L / ncells)``.
-        L (sequence): Domain lengths.
-        ncells (sequence): Mesh cells per axis.
+            the element size ``L / n``.
+        L (float): Domain side length.
+        n (int): Mesh cells per side.
     """
     with exodusii.File(fname, mode="r") as exo:
         coords = np.asarray(exo.get_coords(), dtype=float)
@@ -259,8 +252,8 @@ def _validate_mesh(fname, quality_check, max_snap_move, L, ncells):
     if not np.all(np.isfinite(coords)):
         raise MeshQualityError("Generated mesh has non-finite node coordinates.", "non-finite")
     if max_snap_move is not None:
-        h = min(l / n for l, n in zip(L, ncells))
-        snapped = snap_periodic_faces(coords, conn, ncells, max_snap_move * h)
+        ncells = [n] * coords.shape[1]
+        snapped = snap_periodic_faces(coords, conn, ncells, max_snap_move * L / n)
         _write_coords(fname, snapped)
     if quality_check and not mesh_quality(fname):
         raise MeshQualityError("Generated mesh did not pass quality check.", "jacobian")
@@ -477,6 +470,54 @@ def downsample_vfrac(img, factor):
     for s in arr.shape:
         new_shape += [s // factor, factor]
     return arr.reshape(new_shape).mean(axis=tuple(range(1, 2 * arr.ndim, 2)))
+
+
+def overlap_weights(n_out, n_in):
+    """Integer 1D overlap matrix between an ``n_out`` and an ``n_in`` grid.
+
+    Both grids split the same interval into equal cells. In units of
+    ``1 / lcm(n_out, n_in)`` every cell edge is an integer, so entry ``(i, j)``
+    is the exact overlap length of output cell ``i`` and input cell ``j``, and
+    every row sums to ``n_in / gcd`` (the output cell size). Divide by that to
+    get fractions.
+
+    Returns:
+        tuple: ``(W, row_sum)``, ``W`` an ``(n_out, n_in)`` int64 array.
+    """
+    g = np.gcd(n_out, n_in)
+    a, b = n_in // g, n_out // g  # output / input cell size, integer units
+    out_edges = np.arange(n_out + 1) * a
+    in_edges = np.arange(n_in + 1) * b
+    lo = np.maximum(out_edges[:-1, None], in_edges[None, :-1])
+    hi = np.minimum(out_edges[1:, None], in_edges[None, 1:])
+    return np.clip(hi - lo, 0, None).astype(np.int64), int(a)
+
+
+def overlap_vfrac(img, n):
+    """Resample a square/cubic image to ``n`` cells per side by exact overlap.
+
+    Each output cell gets the overlap-weighted mean of the input cells it
+    covers: for a binary image, its exact area/volume fraction of material.
+    The 1D overlap matrix ``W`` (``overlap_weights``) is applied along every
+    axis, ``W img W^T`` in 2D. Works for any ratio ``img.shape[0] / n``;
+    for an integer ratio and a binary image it equals ``downsample_vfrac``
+    bit for bit, since the integer weights are summed exactly and divided once.
+
+    Args:
+        img (array): 2D or 3D square/cubic image.
+        n (int): Output cells per side.
+
+    Returns:
+        np.ndarray: Float image of shape ``(n,) * img.ndim``.
+    """
+    arr = np.asarray(img, float)
+    if len(set(arr.shape)) != 1:
+        raise ValueError(f"overlap_vfrac needs a square/cubic image, got {arr.shape}")
+    W, row_sum = overlap_weights(int(n), arr.shape[0])
+    W = W.astype(float)
+    for ax in range(arr.ndim):
+        arr = np.moveaxis(np.tensordot(W, arr, axes=([1], [ax])), 0, ax)
+    return arr / float(row_sum) ** arr.ndim
 
 
 def _write_micro(phi, fname):
@@ -754,52 +795,52 @@ def project_element_field_to_grid(mesh_coords, mesh_conn, element_field, L, N):
     This uses closest element centroid projection.
 
     Args:
-        mesh_coords (array): Coordinates of the mesh nodes.
+        mesh_coords (array): ``(n_nodes, dim)`` coordinates of the mesh nodes.
         mesh_conn (array): Connectivity of the mesh elements, assumed to be quads.
         element_field (type, shape, data): Element field values to project.
-        L (tuple): Lengths of the domain in each direction.
-        N (tuple): Number of elements in each direction.
+        L (float): Side length of the square/cubic domain.
+        N (int): Grid cells per side.
     """
-    assert len(L) == len(N)
-
     tensor_type = element_field["type"]
     shape = element_field["shape"]
     data = element_field["data"]
+    dim = mesh_coords.shape[1]
 
-    # Grid centroids
-    G = np.meshgrid(
-        *[np.linspace(l / n / 2, l - l / n / 2, n) for l, n in zip(L, N)], indexing="ij"
-    )
+    # Grid centroids, in C order of the (N,) * dim grid
+    centers = (np.indices((N,) * dim).reshape(dim, -1).T + 0.5) * (L / N)
 
     # Cell centroids
-    elem_centroids = np.zeros((mesh_conn.shape[0], len(L)))
+    elem_centroids = np.zeros((mesh_conn.shape[0], dim))
     for iel, conn in enumerate(mesh_conn):
         points = mesh_coords[conn]
         elem_centroids[iel, :] = np.mean(points, axis=0)
 
     tree = sp.cKDTree(elem_centroids)
     # Find the closest element for each grid point
-    _, closest_elems = tree.query(np.column_stack([g.ravel() for g in G]), k=1)
+    _, closest_elems = tree.query(centers, k=1)
 
     return {
         "type": tensor_type,
         "shape": shape,
-        "data": data[:, closest_elems].reshape((-1,) + tuple(N) + shape),
+        "data": data[:, closest_elems].reshape((-1,) + (N,) * dim + shape),
     }
 
 
-def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
+def extract_grid_from_mesh(mesh_data, img, L, N=None, length_names=None):
     """Extract grid information from mesh data.
 
     Args:
         mesh_data (dict): Mesh data containing unstructured grid output
-        img (array): Generated binary image (1 = material A) at the output
-            grid resolution. Sets the grid shape and is kept as
+        img (array): Generated binary image (1 = material A), as meshed, at
+            the generator resolution. Resampled to the output grid with
+            ``overlap_vfrac`` and thresholded at 0.5, it is kept as
             ``material_generated`` for comparison; the exported ``material``
             is projected from the mesh, like the stimuli and responses.
-        L (tuple): Lengths of the domain in each direction.
+        L (float): Side length of the square/cubic domain.
 
     Keyword Args:
+        N (int or None): Output grid cells per side, ``N_out``
+            (``output.grid_extractor.params.N``). None means ``img.shape[0]``.
         length_names (list): Names for the length entries in the output grid.
 
     Returns:
@@ -807,6 +848,13 @@ def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
     """
     if length_names is None:
         length_names = ["lx", "ly", "lz"]
+    dim = mesh_data["coords"].shape[1]
+    n_out = img.shape[0] if N is None else int(N)
+
+    def project(field):
+        return project_element_field_to_grid(
+            mesh_data["coords"], mesh_data["connectivity"], field, L, n_out
+        )
 
     grid = {
         "cell_fields": {
@@ -815,38 +863,25 @@ def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
                 "shape": tuple(),
                 # Material of the mesh actually solved, on the same grid and
                 # with the same projection as the stimuli/responses below.
-                "data": project_element_field_to_grid(
-                    mesh_data["coords"],
-                    mesh_data["connectivity"],
-                    mesh_data["element_fields"]["material"],
-                    L,
-                    img.shape,
-                )["data"][0],
+                "data": project(mesh_data["element_fields"]["material"])["data"][0],
             },
-            # The generated image, to check the mesh against what was meshed.
-            "material_generated": {"type": "scalar", "shape": tuple(), "data": img},
+            # The generated image on the output grid, to check the mesh
+            # against what was meshed.
+            "material_generated": {
+                "type": "scalar",
+                "shape": tuple(),
+                "data": overlap_vfrac(img, n_out) > 0.5,
+            },
             "stimuli": {},
             "responses": {},
         }
-        | {length_names[i]: L[i] for i in range(len(L))},
+        | {name: L for name in length_names[:dim]},
     }
 
     for name, val in mesh_data["element_fields"]["stimuli"].items():
-        grid["cell_fields"]["stimuli"][name] = project_element_field_to_grid(
-            mesh_data["coords"],
-            mesh_data["connectivity"],
-            val,
-            L,
-            img.shape,
-        )
+        grid["cell_fields"]["stimuli"][name] = project(val)
 
     for name, val in mesh_data["element_fields"]["responses"].items():
-        grid["cell_fields"]["responses"][name] = project_element_field_to_grid(
-            mesh_data["coords"],
-            mesh_data["connectivity"],
-            val,
-            L,
-            img.shape,
-        )
+        grid["cell_fields"]["responses"][name] = project(val)
 
     return grid

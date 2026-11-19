@@ -421,7 +421,8 @@ def _plastic_problem(tmp_path):
         "number": 1,
         "nthreads": 1,
         "mesh_file": "mesh.exo",
-        "L": [1.0, 1.0],
+        "dim": 2,
+        "L": 1.0,
         "generator": {
             "type": "gen.FromNumpyGenerator",
             "params": {"filename": str(tmp_path / "lamellae.npy")},

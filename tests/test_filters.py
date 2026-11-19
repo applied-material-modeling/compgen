@@ -255,7 +255,7 @@ def _make_periodic_reference(img, margin, shift, center=False):
     return arr.astype(bool)
 
 
-@pytest.mark.parametrize("shape", [(40, 52), (17, 24, 20)])
+@pytest.mark.parametrize("shape", [(40, 40), (17, 17, 17)])
 @pytest.mark.parametrize("margin", [1, 2, 5])
 @pytest.mark.parametrize("shift", [False, True])
 @pytest.mark.parametrize("center", [False, True])
@@ -270,7 +270,7 @@ def test_make_periodic_matches_reference(shape, margin, shift, center):
         assert np.array_equal(out, _make_periodic_reference(img, margin, shift, center))
 
 
-@pytest.mark.parametrize("shape", [(30, 34), (14, 16, 18)])
+@pytest.mark.parametrize("shape", [(30, 30), (15, 15, 15)])
 @pytest.mark.parametrize("center", [False, True])
 def test_make_periodic_block(shape, center):
     """Each face gets 2 * margin + 1 identical layers (n - margin, ..., margin),
@@ -290,15 +290,40 @@ def test_make_periodic_block(shape, center):
 
 
 @pytest.mark.parametrize(
-    "cells,refinement,layers", [(1, 0, 1), (7, 0, 7), (1.3, 0, 2), (2, 1, 4), (2.5, 2, 10)]
+    "cells,n_mesh,layers",
+    [(1, None, 1), (7, None, 7), (1.3, 60, 2), (2, 30, 4), (2.5, 15, 10), (2, 25, 5), (2.5, 50, 3)],
 )
-def test_make_periodic_margin_cells_are_mesh_cells(cells, refinement, layers):
-    """margin_cells counts mesh cells: ceil(cells * 2**refinement) pixel layers."""
-    img = np.random.default_rng(4).random((50, 60)) > 0.5
-    out = make_periodic(img, margin_cells=cells, center=True, refinement=refinement)
+def test_make_periodic_margin_cells_are_mesh_cells(cells, n_mesh, layers):
+    """margin_cells counts mesh cells: ceil(cells * N_gen / n_mesh) pixel layers."""
+    img = np.random.default_rng(4).random((60, 60)) > 0.5
+    out = make_periodic(img, margin_cells=cells, center=True, n_mesh=n_mesh)
     for i in [*range(1, layers + 1), *range(-layers, 0)]:
         assert np.array_equal(out[i], out[0])
     assert not np.array_equal(out[layers + 1], out[0])
+
+
+@pytest.mark.parametrize("n_gen,n_mesh", [(256, 64), (256, 96), (192, 50)])
+@pytest.mark.parametrize("cells", [2, 2.5])
+@pytest.mark.parametrize("center", [False, True])
+def test_make_periodic_gives_constant_mesh_cells(n_gen, n_mesh, cells, center):
+    """After make_periodic and the overlap operator, the first and last
+    floor(cells) mesh cells along each axis are identical slices."""
+    from compgen.mesh import overlap_vfrac  # pylint: disable=import-outside-toplevel
+
+    img = np.random.default_rng(7).random((n_gen, n_gen)) > 0.5
+    out = make_periodic(img, margin_cells=cells, shift=True, center=center, n_mesh=n_mesh)
+    vf = overlap_vfrac(out, n_mesh)
+    k = int(np.floor(cells))
+    for ax in range(2):
+        ref = np.take(vf, 0, axis=ax)
+        for i in [*range(k), *range(n_mesh - k, n_mesh)]:
+            assert np.array_equal(np.take(vf, i, axis=ax), ref)
+
+
+def test_make_periodic_rejects_non_square():
+    """N_gen is the image side, so the cell must be square."""
+    with pytest.raises(FilterInputError, match="square"):
+        make_periodic(np.zeros((20, 24), dtype=bool), margin_cells=2)
 
 
 def test_make_periodic_leaves_input_unchanged():

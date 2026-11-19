@@ -167,14 +167,18 @@ class GenerativeStructureGenerator(StructureGenerator):
     Makes new structures from scratch
 
     Args:
-        N (list): Size of the generated structures in each dimension
+        N (list): Shape of the generated structures, the same size on every
+            axis (square/cubic cells only). The runner builds it from the
+            config's scalar ``generator.params.N`` and top-level ``dim``.
     """
 
     def __init__(self, N, random_seed=None):
         super().__init__(random_seed=random_seed)
         if len(N) < 1:
             raise ValueError("N must be a list with at least one dimension.")
-        self.N = N
+        if len(set(N)) != 1:
+            raise ValueError(f"Only square/cubic structures are supported, got N={list(N)}.")
+        self.N = list(N)
         self.rng = np.random.default_rng(random_seed)
 
     @property
@@ -457,8 +461,24 @@ class FromNumpyGenerator(StructureGenerator):
     def __init__(self, filename, random_seed=None):
         super().__init__(random_seed=random_seed)
         self.data = np.load(filename)
+        shape = self.data.shape[1:]
+        if len(shape) not in (2, 3) or len(set(shape)) != 1:
+            raise ValueError(
+                f"{filename}: structures must be square (2D) or cubic (3D), "
+                f"got shape {shape} (the first axis counts structures)."
+            )
         self.index = 0
         self.total = self.data.shape[0]
+
+    @property
+    def N(self):
+        """Size of the structures on every axis (taken from the data)."""
+        return list(self.data.shape[1:])
+
+    @property
+    def dim(self):
+        """Dimension of the structures."""
+        return self.data.ndim - 1
 
     def sample(self):
         """Generate the next structure from the loaded data.

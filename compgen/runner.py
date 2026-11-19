@@ -32,6 +32,7 @@ import importlib
 import inspect
 import logging
 import time
+import warnings
 
 import numpy as np
 import multiprocess
@@ -380,13 +381,17 @@ def _run(config, config_files, log, stats):
     if log:
         logger.info("Setting up generator and materials")
     try:
-        generator = setup_generator(config["generator"])
+        generator = setup_generator(config["generator"], config.get("dim"))
     except Exception as e:
         if log:
             logger.error("Error setting up generator: %s", str(e))
         raise e
     if log:
         logger.info("Generator set up successfully")
+
+    n_gen, n_mesh, n_out = check_resolutions(config, generator)
+    if log:
+        logger.info("Resolutions: N_gen=%d -> N_mesh=%d -> N_out=%d", n_gen, n_mesh, n_out)
 
     try:
         material_a = setup_material(config["material_A"])
@@ -635,11 +640,12 @@ def run_single(img, material_A, material_B, material_AB, config):
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
-    refinement = config.get("generator", {}).get("params", {}).get("refinement", 0)
+    # None (unset) lets make_periodic take N_mesh = N_gen from the image.
+    n_mesh_cfg = config.get("mesh", {}).get("params", {}).get("N")
     for filter_spec in config.get("filtering", []):
         try:
             filter_func = get_object_from_module(filter_spec.get("type"))
-            img = filter_func(img, **filter_params(filter_func, filter_spec, refinement))
+            img = filter_func(img, **filter_params(filter_func, filter_spec, n_mesh_cfg))
         except _FATAL_FILTER_ERRORS as e:
             # Deterministic: bad params (TypeError) or an input the config fixes
             # for every draw. Redrawing fails identically, so abort rather than
@@ -670,7 +676,6 @@ def run_single(img, material_A, material_B, material_AB, config):
         if log:
             logger.info("Problem %s: Generating mesh", uid)
 
-        refinement = config.get("generator", {}).get("params", {}).get("refinement", 0)
         try:
             mesh_function = get_object_from_module(config["mesh"]["type"])
             mesh_file = config["mesh_file"]
@@ -679,7 +684,6 @@ def run_single(img, material_A, material_B, material_AB, config):
                 mesh_file,
                 L=config["L"],
                 settings=config,
-                refinement=refinement,
                 **config["mesh"].get("params", {}),
             )
         except mesh.SculptError as e:
@@ -750,14 +754,13 @@ def run_single(img, material_A, material_B, material_AB, config):
     if log:
         logger.info("Problem %s: Starting to write output files", uid)
 
-    # Material image at the mesh/output resolution N (the generated image is at
-    # N * 2**refinement when refining), so the grid projection lands on the N grid.
-    # Bool either way: the material field is documented as boolean and every
-    # refined run already forced it via the `> 0.5` below.
-    grid_img = (
-        mesh.downsample_vfrac(img, 2**refinement) > 0.5
-        if refinement
-        else np.asarray(img, dtype=bool)
+    # The extractor projects onto N_out (default N_mesh) and resamples the
+    # meshed image `img` (at N_gen) to N_out itself.
+    extractor_params = dict(
+        config.get("output", {}).get("grid_extractor", {}).get("params", {})
+    )
+    extractor_params.setdefault(
+        "N", output_resolution(config, mesh_resolution(config, img.shape[0]))
     )
 
     # Actually write the output
@@ -769,7 +772,7 @@ def run_single(img, material_A, material_B, material_AB, config):
         if extractor is not None:
             try:
                 result["grid"] = extractor(
-                    result["unstructured_mesh"], grid_img, config["L"]
+                    result["unstructured_mesh"], img, config["L"], **extractor_params
                 )
             except Exception as e:
                 if log:
@@ -782,7 +785,13 @@ def run_single(img, material_A, material_B, material_AB, config):
                 return _Failure("exec", "grid-extraction")
 
         if config.get("output", {}).get("add_density", False):
-            vf = np.sum(grid_img) / float(grid_img.size)
+            # Material-A fraction of the mesh actually solved, as exported;
+            # without a grid, fall back to the meshed image.
+            if extractor is not None:
+                material = result["grid"]["cell_fields"]["material"]["data"]
+            else:
+                material = np.asarray(img, dtype=bool)
+            vf = float(np.mean(material))
             rho = vf * material_A.get("density", 0) + (1 - vf) * material_B.get(
                 "density", 0
             )
@@ -832,50 +841,106 @@ def run_single(img, material_A, material_B, material_AB, config):
     return res
 
 
-def filter_params(filter_func, filter_spec, refinement):
-    """The filter's config params, plus the generator's `refinement` when the
+def filter_params(filter_func, filter_spec, n_mesh):
+    """The filter's config params, plus `n_mesh` (``mesh.params.N``) when the
     filter takes one (e.g. `make_periodic`, whose margin is in mesh cells) and
     the config doesn't set it."""
     params = dict(filter_spec.get("params", {}))
-    if "refinement" not in params:
+    if "n_mesh" not in params:
         try:
-            takes = "refinement" in inspect.signature(filter_func).parameters
+            takes = "n_mesh" in inspect.signature(filter_func).parameters
         except (TypeError, ValueError):
             takes = False
         if takes:
-            params["refinement"] = refinement
+            params["n_mesh"] = n_mesh
     return params
 
 
-def setup_generator(config_input):
+def mesh_resolution(config, n_gen):
+    """``N_mesh``: ``mesh.params.N``, or ``n_gen`` if unset."""
+    n = config.get("mesh", {}).get("params", {}).get("N")
+    return n_gen if n is None else int(n)
+
+
+def output_resolution(config, n_mesh):
+    """``N_out``: ``output.grid_extractor.params.N``, or ``n_mesh`` if unset."""
+    out = config.get("output") or {}
+    n = out.get("grid_extractor", {}).get("params", {}).get("N")
+    return n_mesh if n is None else int(n)
+
+
+# Warn when N_out < N_mesh / this: the nearest-centroid projection then skips
+# most mesh cells instead of averaging them.
+_ALIAS_RATIO = 2
+
+
+def check_resolutions(config, generator):
+    """Check ``dim``, ``L`` and the three resolutions at load time.
+
+    ``N_gen`` comes from the generator (``generator.params.N``, or the data for
+    e.g. FromNumpyGenerator), ``N_mesh`` from ``mesh.params.N`` (default
+    ``N_gen``), ``N_out`` from ``output.grid_extractor.params.N`` (default
+    ``N_mesh``).
+
+    Raises:
+        ValueError: bad ``dim``/``L``/``N``, a generator of another dimension,
+            or ``N_gen < N_mesh``.
+
+    Returns:
+        tuple: ``(n_gen, n_mesh, n_out)``.
+    """
+    dim = config.get("dim")
+    if dim not in (2, 3):
+        raise ValueError(f"config `dim` must be 2 or 3, got {dim!r}")
+    L = config.get("L")
+    if isinstance(L, bool) or not isinstance(L, (int, float)) or L <= 0:
+        raise ValueError(f"config `L` must be a positive number (square/cubic cell), got {L!r}")
+    shape = list(getattr(generator, "N", None) or [])
+    if len(shape) != dim:
+        raise ValueError(f"generator makes {len(shape)}D structures {shape}, config `dim` is {dim}")
+    n_gen = int(shape[0])
+    n_mesh = mesh_resolution(config, n_gen)
+    n_out = output_resolution(config, n_mesh)
+    for name, n in (("mesh.params.N", n_mesh), ("output.grid_extractor.params.N", n_out)):
+        if n < 1:
+            raise ValueError(f"{name} must be a positive integer, got {n}")
+    if n_gen < n_mesh:
+        raise ValueError(
+            f"generator N={n_gen} is below mesh N={n_mesh}: the mesh cannot be finer "
+            "than the generated image"
+        )
+    if n_out * _ALIAS_RATIO < n_mesh:
+        msg = (
+            f"output N={n_out} is far below mesh N={n_mesh}: the nearest-centroid "
+            "projection point-samples the mesh and will alias instead of averaging"
+        )
+        logger.warning(msg)
+        warnings.warn(msg)
+    return n_gen, n_mesh, n_out
+
+
+def setup_generator(config_input, dim=None):
     """Set up a generator based on input specifications.
 
     Args:
-        config_input (dict): Input specifications for the generator.
+        config_input (dict): Input specifications for the generator. A scalar
+            ``params.N`` is the size on every axis.
+        dim (int): Structure dimension (the config's top-level ``dim``);
+            needed with a scalar ``N``.
 
     Returns:
         object: An instance of the generator.
     """
     gen_cls = get_object_from_module(config_input.get("type"))
     params = dict(config_input.get("params", {}))
-    # `refinement` (default 0) is a generator-config knob, not a constructor arg.
-    # When > 0 the generator must output the FINE image at N * 2**refinement so the
-    # mesher can coarsen it back to N as fractional volume fractions (-ims).
-    refinement = params.pop("refinement", 0)
-    base_N = params.get("N")
-    if refinement and base_N is None:
-        # The mesher would still coarsen by 2**refinement, silently shrinking a
-        # structure the generator did not upscale (e.g. FromNumpyGenerator).
-        raise ValueError(
-            "generator `refinement` requires an `N` parameter to upscale; "
-            f"{config_input.get('type')} has none"
-        )
-    if refinement:
-        params["N"] = [int(n * 2**refinement) for n in base_N]
-    gen = gen_cls(**params)
-    gen.refinement = refinement
-    gen.base_N = base_N
-    return gen
+    n = params.get("N")
+    if n is not None:
+        if not isinstance(n, int) or isinstance(n, bool):
+            raise ValueError(f"generator `N` must be an integer (square/cubic cell), got {n!r}")
+        if dim is None:
+            raise ValueError("a scalar generator `N` needs the config's `dim`")
+        params["N"] = [n] * dim
+    return gen_cls(**params)
 
 
 def setup_material(config_input):

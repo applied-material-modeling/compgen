@@ -42,17 +42,17 @@ PREVIEW_OUT = os.path.join(HERE, "2d_mesher_input.png")
 MESH_IMG_OUT = os.path.join(HERE, "2d_mesher_output.png")
 
 # A meshing-only config: generation + filtering + mesh, no executor/materials.
-# `refinement > 0` exercises fabio's smooth-interface path: the generator emits a
-# fine image at N * 2**refinement and the mesher coarsens it to N as fractional
-# volume fractions (Sculpt -ims). Set refinement to 0 for the direct binary path.
+# Three independent resolutions: the generator draws at generator.params.N
+# (N_gen) and the mesher reduces it to mesh.params.N (N_mesh <= N_gen, any
+# ratio) as area fractions for Sculpt -ims (smooth interface).
 CONFIG = {
-    "L": [1.0, 1.0],
+    "dim": 2,
+    "L": 1.0,
     "generator": {
         "type": "gen.ParticleGenerator",
         "params": {
             "random_seed": 0,
-            "N": [128, 128],
-            "refinement": 3,
+            "N": 1024,
             "vf": 0.3,
             "kind": "ellipses",
             "shape_params": {
@@ -73,7 +73,7 @@ CONFIG = {
     ],
     "mesh": {
         "type": "mesh.generate_mesh",
-        "params": {"run_sculpt": RUN_SCULPT, "quality_check": RUN_SCULPT},
+        "params": {"N": 128, "run_sculpt": RUN_SCULPT, "quality_check": RUN_SCULPT},
     },
     "mesh_file": MESH_OUT,
     # Mirrors elasticity/config.json; only consulted when RUN_SCULPT is True.
@@ -176,28 +176,23 @@ def main():
             "voxel mesh.\n"
         )
 
-    # 1) Structure. setup_generator handles the `refinement` knob: it pops it from
-    #    params, scales N to the fine resolution, and records it on the generator.
+    # 1) Structure, at N_gen (the scalar N and `dim` give a square image).
     print("Generating structure...")
-    generator = runner.setup_generator(CONFIG["generator"])
-    refinement = generator.refinement
-    img = next(generator)  # fine image at N * 2**refinement
-    print(f"  drew fine image of shape {img.shape} (refinement={refinement})")
+    generator = runner.setup_generator(CONFIG["generator"], CONFIG["dim"])
+    n_mesh = CONFIG["mesh"]["params"]["N"]
+    img = next(generator)
+    print(f"  drew image of shape {img.shape} (mesh N={n_mesh})")
 
-    # 2) Filters -- applied on the fine image, exactly as run_single does.
+    # 2) Filters -- applied on the generated image, exactly as run_single does
+    #    (filter_params passes mesh.params.N to make_periodic).
     for spec in CONFIG["filtering"]:
         filter_func = runner.get_object_from_module(spec["type"])
-        img = filter_func(img, **runner.filter_params(filter_func, spec, refinement))
+        img = filter_func(img, **runner.filter_params(filter_func, spec, n_mesh))
         print(f"  applied {spec['type']}")
 
-    # Save a preview of the material image at mesh resolution (coarsened when
-    # refining), so you can eyeball what got meshed.
-    factor = 2**refinement
-    coarse = (
-        mesh.downsample_vfrac(img, factor) > 0.5
-        if refinement
-        else np.asarray(img, bool)
-    )
+    # Save a preview of the material image at mesh resolution, so you can
+    # eyeball what got meshed.
+    coarse = mesh.overlap_vfrac(img, n_mesh) > 0.5
     plt.imshow(coarse.T, cmap="gray", origin="lower")
     plt.axis("off")
     plt.title(f"input structure ({coarse.shape[0]}x{coarse.shape[1]})")
@@ -213,7 +208,6 @@ def main():
         CONFIG["mesh_file"],
         L=CONFIG["L"],
         settings=CONFIG,
-        refinement=refinement,
         **CONFIG["mesh"].get("params", {}),
     )
     print(f"  mesh written -> {MESH_OUT}")

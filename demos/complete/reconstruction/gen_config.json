@@ -13,10 +13,7 @@
     "generator": {
         "type": "gen.Reconstruction2D",
         "params": {
-            "N": [
-                128,
-                128
-            ],
+            "N": 128,
             "target_path": "../demo_microstructures",
             "descriptors": {
                 "TwoPointCorrelations": 1.0
