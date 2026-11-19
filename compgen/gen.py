@@ -380,6 +380,12 @@ class EllipseGenerator(GenerativeStructureGenerator):
         remove_edge_ellipses (bool): Do not add ellipses touching the edge.
         remove_overlapping_ellipses (bool): Do not add ellipses overlapping an
             already added ellipse.
+        prefracture_length_fraction (float): Fraction of the width occupied by
+            a protected, left-entering pre-fracture corridor. Set to zero to
+            disable it.
+        prefracture_y_fraction (float): Vertical position of the corridor
+            center, measured as a fraction of the image height.
+        prefracture_width (float): Width of the protected corridor in pixels.
         inclusion_material (str): Material represented by the ellipses, either
             ``"A"`` or ``"B"``. The other material is the matrix. Defaults to
             ``"A"`` for backward compatibility.
@@ -395,6 +401,9 @@ class EllipseGenerator(GenerativeStructureGenerator):
         aspect_ratio=1.0,
         remove_edge_ellipses=True,
         remove_overlapping_ellipses=False,
+        prefracture_length_fraction=0.0,
+        prefracture_y_fraction=0.5,
+        prefracture_width=0.0,
         inclusion_material="A",
         random_seed=None,
     ):
@@ -415,9 +424,41 @@ class EllipseGenerator(GenerativeStructureGenerator):
         self.aspect_ratio = aspect_ratio
         self.remove_edge_ellipses = remove_edge_ellipses
         self.remove_overlapping_ellipses = remove_overlapping_ellipses
+        if not 0 <= prefracture_length_fraction <= 1:
+            raise ValueError("prefracture_length_fraction must be between 0 and 1.")
+        if not 0 <= prefracture_y_fraction <= 1:
+            raise ValueError("prefracture_y_fraction must be between 0 and 1.")
+        if prefracture_width < 0:
+            raise ValueError("prefracture_width must be non-negative.")
+        if prefracture_length_fraction > 0 and prefracture_width == 0:
+            raise ValueError(
+                "prefracture_width must be positive when the pre-fracture is enabled."
+            )
+        self.prefracture_length_fraction = prefracture_length_fraction
+        self.prefracture_y_fraction = prefracture_y_fraction
+        self.prefracture_width = prefracture_width
         if inclusion_material not in {"A", "B"}:
             raise ValueError("inclusion_material must be either 'A' or 'B'.")
         self.inclusion_material = inclusion_material
+
+    def prefracture_mask(self):
+        """Return the protected left-entering pre-fracture corridor.
+
+        The mesh generator currently accepts only a binary two-material image,
+        so this mask reserves the corridor during ellipse placement rather than
+        introducing an unsupported third material. It is exposed for preview
+        and validation tools.
+        """
+        mask = np.zeros((self.nx, self.ny), dtype=bool)
+        if self.prefracture_length_fraction == 0:
+            return mask
+        x_end = max(1, int(np.ceil(self.nx * self.prefracture_length_fraction)))
+        center_y = self.ny * self.prefracture_y_fraction
+        half_width = self.prefracture_width / 2
+        y0 = max(0, int(np.floor(center_y - half_width)))
+        y1 = min(self.ny, int(np.ceil(center_y + half_width)))
+        mask[:x_end, y0:y1] = True
+        return mask
 
     def sample(self):
         """Generate a structure containing randomly placed ellipses."""
@@ -426,6 +467,7 @@ class EllipseGenerator(GenerativeStructureGenerator):
             raise ValueError("vf must be between 0 and 1.")
 
         img = np.zeros(tuple(self.N), dtype=bool)
+        protected = self.prefracture_mask()
         # ``vf`` retains its original meaning: the volume fraction of material
         # A. When material B is selected as the inclusion phase, the ellipses
         # therefore occupy the complementary fraction.
@@ -474,7 +516,9 @@ class EllipseGenerator(GenerativeStructureGenerator):
             candidate = np.zeros_like(img)
             candidate[x0:x1, y0:y1] = ellipse
 
-            if self.remove_overlapping_ellipses and np.any(img & candidate):
+            if (self.remove_overlapping_ellipses and np.any(img & candidate)) or np.any(
+                protected & candidate
+            ):
                 continue
             img |= candidate
             if np.count_nonzero(img) >= target_pixels:

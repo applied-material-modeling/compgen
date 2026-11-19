@@ -33,3 +33,34 @@ builds the mesh. In these configs, material A is aluminum (`E=68000`,
 the remaining 20% ellipse phase is SiC (material B), and the 80% material-A
 phase is the Al matrix. The default remains `"A"` for other existing
 configurations.
+## Pre-fracture geometry
+
+Cases 1, 5, and 10 reserve a horizontal pre-fracture corridor that enters from
+ the left edge and extends 40% of the model width. The corridor is centered at
+`prefracture_y_fraction = 0.5` and is 10 pixels wide. During ellipse generation,
+any candidate ellipse that touches this corridor is discarded and another
+candidate is sampled, so the requested ellipse volume fraction remains the
+target rather than being filled by inclusions near the fracture.
+
+The corridor parameters are generator parameters:
+
+```json
+"prefracture_length_fraction": 0.4,
+"prefracture_y_fraction": 0.5,
+"prefracture_width": 10.0
+```
+
+`plotting/plot_ellipse_preview.py` creates a starting-geometry verification
+figure with the protected corridor outlined in red. This is currently a
+geometry reservation in the binary two-material image. The existing mesh and
+RACCOON input path has no third crack/void phase or initial-damage field, so an
+initially open/cohesive crack must be wired into the physics input separately;
+the reserved corridor ensures later ellipse placement cannot overlap it.
+
+To run the requested cases after reviewing the preview:
+
+```bash
+./run_fracture_predefined_local.sh case1
+./run_fracture_predefined_local.sh case5
+./run_fracture_predefined_local.sh case10
+```

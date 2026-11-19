@@ -85,11 +85,11 @@
         "write_files": true,
         "add_density": true,
         "output_prefix": "alan_case9",
-        "output_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/case9/output"
+        "output_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case9/output"
     },
     "storage": {
-        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/case9/tmp",
+        "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case9/tmp",
         "delete_temp_dir": false
     },
-    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test/simulations/case9/logs/compgen.log"
+    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case9/logs/compgen.log"
 }

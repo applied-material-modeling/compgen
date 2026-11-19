@@ -39,3 +39,45 @@ def test_ellipse_generator_rejects_unknown_inclusion_material():
             max_size=4,
             inclusion_material="C",
         )
+
+
+def test_prefracture_mask_enters_from_left_by_configured_fraction():
+    generator = EllipseGenerator(
+        N=[100, 80],
+        vf=0.8,
+        min_size=6,
+        max_size=10,
+        prefracture_length_fraction=0.35,
+        prefracture_y_fraction=0.5,
+        prefracture_width=8,
+        random_seed=42,
+    )
+
+    mask = generator.prefracture_mask()
+    assert mask[:35].any()
+    assert not mask[35:].any()
+    assert mask[:, 36:44].sum() > 0
+    assert mask[:, :36].sum() == 0
+    assert mask[:, 44:].sum() == 0
+
+
+def test_ellipses_do_not_touch_prefracture_corridor():
+    generator = EllipseGenerator(
+        N=[96, 96],
+        vf=0.8,
+        min_size=5,
+        max_size=10,
+        remove_edge_ellipses=False,
+        remove_overlapping_ellipses=True,
+        prefracture_length_fraction=0.4,
+        prefracture_y_fraction=0.5,
+        prefracture_width=10,
+        inclusion_material="B",
+        random_seed=7,
+    )
+
+    structure = generator.sample()
+    corridor = generator.prefracture_mask()
+    # With B as the inclusion phase, True is the matrix phase reserved by the
+    # corridor; no B ellipse may occupy any protected pixel.
+    assert np.all(structure[corridor])

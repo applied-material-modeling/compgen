@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEMO_DIR = SCRIPT_DIR.parent
 REPO_DIR = DEMO_DIR.parents[3]
-CONFIG_FILE = DEMO_DIR / "config_fracture.json"
+CONFIG_FILE = DEMO_DIR / "config_case1.json"
 OUTPUT_DIR = DEMO_DIR / "visualizations"
 OUTPUT_FILE = OUTPUT_DIR / "ellipse_preview.png"
 NUMBER_OF_STRUCTURES = 10
@@ -41,10 +41,18 @@ def main():
     for index, axis in enumerate(axes.flat, start=1):
         structure = generator.sample()
         axis.imshow(structure.T, cmap="gray", origin="lower", interpolation="nearest")
+        protected = generator.prefracture_mask()
+        axis.contour(
+            protected.T,
+            levels=[0.5],
+            colors=["crimson"],
+            linewidths=1.5,
+            origin="lower",
+        )
         axis.set_title(f"Structure {index}")
         axis.axis("off")
 
-    figure.suptitle("Ellipse structure preview")
+    figure.suptitle("Ellipse structures with protected left-entering pre-fracture")
     figure.savefig(OUTPUT_FILE, dpi=200)
     plt.close(figure)
     print(f"Saved ellipse preview to {OUTPUT_FILE}")
