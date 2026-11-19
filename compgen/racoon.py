@@ -170,6 +170,25 @@ def inject_prefracture(fracture_file_path, prefracture):
         f.writelines(lines)
 
 
+def prefracture_endpoints(prefracture, domain):
+    """Convert normalized pre-fracture settings to physical endpoints."""
+    if len(domain) != 2:
+        raise ValueError("A 2D pre-fracture requires a two-dimensional domain.")
+    length_fraction = prefracture["length_fraction"]
+    y_fraction = prefracture["y_fraction"]
+    if not 0 < length_fraction <= 1:
+        raise ValueError("prefracture.length_fraction must be in (0, 1].")
+    if not 0 <= y_fraction <= 1:
+        raise ValueError("prefracture.y_fraction must be between 0 and 1.")
+    lx, ly = domain
+    return {
+        "x1": 0.0,
+        "y1": y_fraction * ly,
+        "x2": length_fraction * lx,
+        "y2": y_fraction * ly,
+    }
+
+
 def execute_racoon_simulations(
     physics, mesh, material_properties, settings={}, output_name="output"
 ):
@@ -195,7 +214,10 @@ def execute_racoon_simulations(
             if aux_file == "fracture.i":
                 prefracture = settings.get("prefracture")
                 if prefracture is not None:
-                    inject_prefracture(os.path.join(tmpdir, aux_file), prefracture)
+                    inject_prefracture(
+                        os.path.join(tmpdir, aux_file),
+                        prefracture_endpoints(prefracture, settings.get("L", [])),
+                    )
                 else:
                     ncrack = settings.get("fracture", {}).get("ncrack", 8)
                     L_avg = settings.get("fracture", {}).get("L_avg", 0.1)

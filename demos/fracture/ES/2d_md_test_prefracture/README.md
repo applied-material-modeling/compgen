@@ -50,6 +50,16 @@ The corridor parameters are generator parameters:
 "prefracture_width": 10.0
 ```
 
+The physics crack uses the normalized settings below and scales them by the
+configured model dimensions `L`:
+
+```json
+"prefracture": {
+    "length_fraction": 0.4,
+    "y_fraction": 0.5
+}
+```
+
 `plotting/plot_ellipse_preview.py` creates a starting-geometry verification
 figure with the ellipse exclusion corridor outlined in red and the initial
 cohesive fracture drawn as a thick black line. The fracture is initialized in

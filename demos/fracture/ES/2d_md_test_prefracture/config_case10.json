@@ -96,9 +96,7 @@
     },
     "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case10/logs/compgen.log",
     "prefracture": {
-        "x1": 0.0,
-        "y1": 0.5,
-        "x2": 0.4,
-        "y2": 0.5
+        "length_fraction": 0.4,
+        "y_fraction": 0.5
     }
 }

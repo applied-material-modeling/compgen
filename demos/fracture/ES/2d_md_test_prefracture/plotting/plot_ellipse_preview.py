@@ -52,9 +52,12 @@ def main():
             origin="lower",
         )
         if prefracture is not None:
+            x1 = 0.0
+            x2 = prefracture["length_fraction"] * generator.nx
+            y = prefracture["y_fraction"] * generator.ny
             axis.plot(
-                [prefracture["x1"] * generator.nx, prefracture["x2"] * generator.nx],
-                [prefracture["y1"] * generator.ny, prefracture["y2"] * generator.ny],
+                [x1, x2],
+                [y, y],
                 color="black",
                 linewidth=3.0,
                 solid_capstyle="butt",

@@ -8,7 +8,7 @@ REPO_DIR = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(REPO_DIR))
 
 from compgen.gen import EllipseGenerator
-from compgen.racoon import inject_prefracture
+from compgen.racoon import inject_prefracture, prefracture_endpoints
 
 
 def test_material_b_inclusion_preserves_material_a_vf_semantics():
@@ -97,11 +97,21 @@ def test_prefracture_injector_writes_configured_segment(tmp_path):
 
     inject_prefracture(
         fracture_file,
-        {"x1": 0.0, "y1": 0.5, "x2": 0.4, "y2": 0.5},
+        prefracture_endpoints(
+            {"length_fraction": 0.4, "y_fraction": 0.5}, [2.0, 4.0]
+        ),
     )
 
     text = fracture_file.read_text()
     assert "x1 = '0.0'" in text
-    assert "y1 = '0.5'" in text
-    assert "x2 = '0.4'" in text
-    assert "y2 = '0.5'" in text
+    assert "y1 = '2.0'" in text
+    assert "x2 = '0.8'" in text
+    assert "y2 = '2.0'" in text
+
+
+def test_prefracture_endpoints_validate_and_scale_to_domain():
+    assert prefracture_endpoints(
+        {"length_fraction": 0.4, "y_fraction": 0.5}, [2.0, 4.0]
+    ) == {"x1": 0.0, "y1": 2.0, "x2": 0.8, "y2": 2.0}
+    with pytest.raises(ValueError, match="length_fraction"):
+        prefracture_endpoints({"length_fraction": 1.1, "y_fraction": 0.5}, [1, 1])
