@@ -293,7 +293,7 @@ stop_fraction = 0.8
 [UserObjects]
   [stop]
     type = Terminator
-    expression = 'R_y < R_y_max * stop_fraction'
+    expression = 'R_y < R_y_max * ${stop_fraction}'
     fail_mode = HARD
     message = 'onset of softening has begun'
   []
