@@ -1,13 +1,13 @@
 {
     "racoon": {
-        "executable": "/project/ai4ns_composites/fracture_code/raccoon/raccoon-opt",
+        "executable": "/home/bbrunsvik/code/raccoon/raccoon-opt",
         "options": [],
         "discard_raccoon_text": false
     },
     "mpi": {
         "executable": "mpirun",
         "rank_command": "-np",
-        "ranks": "6"
+        "ranks": "4"
     },
     "storage": {},
     "verbose": false,
