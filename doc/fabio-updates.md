@@ -160,8 +160,9 @@ coarsens it to 128 fractional volume fractions for Sculpt's `-ims` path.
 
 > `refinement` scales `N` only. Length parameters (`SpinodalGenerator.l`,
 > `mean_filter.radius`, `defeature.min_size`) are fractions of the cell, so
-> they need no scaling. `make_periodic.margin_cells` is the exception: it counts
-> pixels of the generated (fine) image, so scale it with $2^r$ yourself. `refinement` also requires a
+> they need no scaling. `make_periodic.margin_cells` is in mesh cells; the
+> runner passes `refinement` to the filter, which overwrites
+> $\lceil$`margin_cells`$\cdot 2^r\rceil$ fine layers. `refinement` also requires a
 > generator with an `N` parameter; using it with e.g. `FromNumpyGenerator` now
 > raises an error.
 
@@ -237,7 +238,7 @@ The reliability rework, spread across three modules.
   mutual nearest partner, the side topology differs, or the move would exceed
   the cap. The Jacobian check runs after snapping. Off by default. It needs
   flat faces (Sculpt `-S 2` or `-S 3`) and a `make_periodic` margin of at least
-  2 mesh cells, i.e. `margin_cells` $\ge 2 \cdot 2^r$ fine pixels.
+  2 mesh cells (`margin_cells` $\ge 2$; 2.5 was used in the tests below).
   In tests at $N_\text{mesh} = 32$–$128$ this removed every executor failure
   (0 of 116 structures, against 8 of 20 before).
 - **Run summary** lists mesh and executor failures by reason (Jacobian, each
@@ -300,8 +301,7 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   it (different filters would reduce it differently). Backed by two new
   exceptions: **`FilterInputError`** and **`NonBinaryImageError`**.
 - **`make_orthogonal`** and **`make_periodic`** — moved here from `gen.py`.
-  Its margin is now `margin_cells`: a whole number of pixel layers of the image
-  it receives (default 2).
+  Its margin is now `margin_cells`, in mesh cells (default 2; floats allowed).
   `make_periodic` gained an opt-in `shift=True` option that circular-shifts each
   axis to minimize the seam-overwrite cost before enforcing periodicity. The
   default is `shift=False`, so existing configs produce the same structures as

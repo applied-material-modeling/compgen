@@ -181,13 +181,20 @@ def make_orthogonal(img):
 
 
 def make_periodic(
-    img: np.ndarray, margin_cells: int = 2, shift: bool = False, center: bool = False
+    img: np.ndarray,
+    margin_cells: float = 2,
+    shift: bool = False,
+    center: bool = False,
+    refinement: int = 0,
 ) -> np.ndarray:
     """
     Make periodic for Sculpt/MOOSE workflow.
 
-    `margin_cells` is a whole number of pixel layers of the input image (the
-    generator grid); below, `margin` is that number.
+    `margin_cells` is in mesh cells. The input is the generator grid, which is
+    ``2**refinement`` times finer than the mesh, so the margin is
+    ``ceil(margin_cells * 2**refinement)`` pixel layers; below, `margin` is
+    that number. Floats are allowed (2.5 cells = 20 layers at refinement 3).
+    The runner passes the generator's `refinement` automatically.
 
     Overwrite the first and last `margin` layers of each axis with the layer at
     index `margin`, for 2D or 3D arrays.
@@ -203,8 +210,7 @@ def make_periodic(
     smaller interface jumps. Opt-in; best combined with shift=True.
 
     For periodic face snapping (``mesh.generate_mesh(max_snap_move=...)``) the
-    block must cover at least 2 mesh cells: with ``refinement`` r, use
-    ``margin_cells >= 2 * 2**r``.
+    block must cover at least 2 mesh cells: use ``margin_cells >= 2``.
 
     Takes and returns a bool array.
     """
@@ -212,16 +218,9 @@ def make_periodic(
 
     if arr.ndim not in (2, 3):
         raise FilterInputError(f"Expected 2D or 3D array, got {arr.ndim}D")
-    if (
-        isinstance(margin_cells, bool)
-        or not isinstance(margin_cells, (int, float))
-        or margin_cells != int(margin_cells)
-        or margin_cells < 1
-    ):
-        raise FilterInputError(
-            f"margin_cells must be a positive whole number of pixels, got {margin_cells}"
-        )
-    margin = int(margin_cells)
+    if isinstance(margin_cells, bool) or not isinstance(margin_cells, (int, float)) or margin_cells <= 0:
+        raise FilterInputError(f"margin_cells must be a positive number, got {margin_cells}")
+    margin = _ceil(margin_cells * 2**refinement)
     if any(2 * margin >= s for s in arr.shape):
         raise FilterInputError(f"margin of {margin} layers is too large for shape {arr.shape}")
 

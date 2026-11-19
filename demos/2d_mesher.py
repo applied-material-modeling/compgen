@@ -69,7 +69,7 @@ CONFIG = {
         },
     },
     "filtering": [
-        {"type": "filters.make_periodic", "params": {"margin_cells": 64, "shift": True}},
+        {"type": "filters.make_periodic", "params": {"margin_cells": 8, "shift": True}},
     ],
     "mesh": {
         "type": "mesh.generate_mesh",
@@ -187,7 +187,7 @@ def main():
     # 2) Filters -- applied on the fine image, exactly as run_single does.
     for spec in CONFIG["filtering"]:
         filter_func = runner.get_object_from_module(spec["type"])
-        img = filter_func(img, **spec.get("params", {}))
+        img = filter_func(img, **runner.filter_params(filter_func, spec, refinement))
         print(f"  applied {spec['type']}")
 
     # Save a preview of the material image at mesh resolution (coarsened when

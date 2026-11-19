@@ -289,12 +289,13 @@ def test_make_periodic_block(shape, center):
     assert np.array_equal(out[(src, *sl)], img[(src, *sl)])
 
 
-@pytest.mark.parametrize("cells", [1, 5, 7, 7.0])
-def test_make_periodic_margin_cells_are_pixels(cells):
-    """margin_cells counts pixel layers of the input; an integral float is fine."""
+@pytest.mark.parametrize(
+    "cells,refinement,layers", [(1, 0, 1), (7, 0, 7), (1.3, 0, 2), (2, 1, 4), (2.5, 2, 10)]
+)
+def test_make_periodic_margin_cells_are_mesh_cells(cells, refinement, layers):
+    """margin_cells counts mesh cells: ceil(cells * 2**refinement) pixel layers."""
     img = np.random.default_rng(4).random((50, 60)) > 0.5
-    out = make_periodic(img, margin_cells=cells, center=True)
-    layers = int(cells)
+    out = make_periodic(img, margin_cells=cells, center=True, refinement=refinement)
     for i in [*range(1, layers + 1), *range(-layers, 0)]:
         assert np.array_equal(out[i], out[0])
     assert not np.array_equal(out[layers + 1], out[0])
@@ -314,7 +315,7 @@ def test_make_periodic_leaves_input_unchanged():
         (mean_filter, {}, np.zeros((2, 2, 2, 2), dtype=bool)),
         (make_periodic, {}, np.zeros(8, dtype=bool)),
         (make_periodic, {"margin_cells": 0}, np.zeros((8, 8), dtype=bool)),
-        (make_periodic, {"margin_cells": 2.5}, np.zeros((8, 8), dtype=bool)),
+        (make_periodic, {"margin_cells": -1}, np.zeros((8, 8), dtype=bool)),
         (make_periodic, {"margin_cells": 99}, np.zeros((8, 8), dtype=bool)),
     ],
 )

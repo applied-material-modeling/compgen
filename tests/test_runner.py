@@ -169,3 +169,17 @@ def test_setup_generator_refinement_without_n_raises(tmp_path):
                 "params": {"filename": str(path), "refinement": 1},
             }
         )
+
+
+def test_filter_params_passes_refinement_only_where_taken():
+    """make_periodic gets the generator's refinement; other filters don't, and
+    an explicit value in the config wins."""
+    mp = {"type": "filters.make_periodic", "params": {"margin_cells": 2.5}}
+    assert runner.filter_params(runner.filters.make_periodic, mp, 3) == {
+        "margin_cells": 2.5,
+        "refinement": 3,
+    }
+    mf = {"type": "filters.mean_filter", "params": {"radius": 0.02}}
+    assert runner.filter_params(runner.filters.mean_filter, mf, 3) == {"radius": 0.02}
+    explicit = {"params": {"margin_cells": 2, "refinement": 0}}
+    assert runner.filter_params(runner.filters.make_periodic, explicit, 3)["refinement"] == 0

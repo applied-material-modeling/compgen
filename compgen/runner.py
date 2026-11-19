@@ -29,6 +29,7 @@ import os
 import uuid
 import queue
 import importlib
+import inspect
 import logging
 import time
 
@@ -634,10 +635,11 @@ def run_single(img, material_A, material_B, material_AB, config):
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
+    refinement = config.get("generator", {}).get("params", {}).get("refinement", 0)
     for filter_spec in config.get("filtering", []):
         try:
             filter_func = get_object_from_module(filter_spec.get("type"))
-            img = filter_func(img, **filter_spec.get("params", {}))
+            img = filter_func(img, **filter_params(filter_func, filter_spec, refinement))
         except _FATAL_FILTER_ERRORS as e:
             # Deterministic: bad params (TypeError) or an input the config fixes
             # for every draw. Redrawing fails identically, so abort rather than
@@ -828,6 +830,21 @@ def run_single(img, material_A, material_B, material_AB, config):
         logger.info("Problem %s: Completed computation successfully", uid)
 
     return res
+
+
+def filter_params(filter_func, filter_spec, refinement):
+    """The filter's config params, plus the generator's `refinement` when the
+    filter takes one (e.g. `make_periodic`, whose margin is in mesh cells) and
+    the config doesn't set it."""
+    params = dict(filter_spec.get("params", {}))
+    if "refinement" not in params:
+        try:
+            takes = "refinement" in inspect.signature(filter_func).parameters
+        except (TypeError, ValueError):
+            takes = False
+        if takes:
+            params["refinement"] = refinement
+    return params
 
 
 def setup_generator(config_input):
