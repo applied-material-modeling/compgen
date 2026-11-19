@@ -2,5 +2,9 @@
 simulations/*
 plotting/logs/
 visualizations/*.png
+visualizations/*.exo
+visualizations/mesh_tmp/
+visualizations/*working.exo
+visualizations/one_step/
 __pycache__/
 *.pyc

@@ -37,3 +37,30 @@ tail -f plot_cases_parallel.log
 
 The launcher exits successfully only when all requested cases finish. Press
 `Ctrl-C` in the foreground to stop the launcher and plotting processes.
+
+## Post-meshing verification
+
+To run the actual configured generator, filtering, and Exodus mesh-generation
+path without starting RACOON:
+
+```bash
+cd /home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture
+/home/bbrunsvik/.conda/envs/moose_genesis/bin/python \
+    plotting/plot_mesh_preview.py
+```
+
+This writes `visualizations/mesh_preview.png` and keeps the generated Exodus
+mesh at `visualizations/mesh_case1.exo` locally for inspection. The figure
+compares the filtered bitmap with the actual finite-element material blocks
+read back from Exodus and overlays the configured initial fracture.
+
+After a short diagnostic RACOON run, plot the actual phase-field damage with:
+
+```bash
+/home/bbrunsvik/.conda/envs/moose_genesis/bin/python \
+    plotting/plot_one_step_damage.py \
+    --exodus visualizations/one_step/tmp/<run-directory>/output_0_fracture0.e
+```
+
+The resulting figure reads the `d` field directly from the RACOON Exodus file;
+it does not draw a manually specified crack line.
