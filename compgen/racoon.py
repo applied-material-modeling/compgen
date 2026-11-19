@@ -147,6 +147,29 @@ def inject_cracks(fracture_file_path, cracks_data):
         f.writelines(lines)
 
 
+def inject_prefracture(fracture_file_path, prefracture):
+    """Set the single initial cohesive-damage segment in ``fracture.i``."""
+    with open(fracture_file_path, "r") as f:
+        lines = f.readlines()
+
+    replacements = {
+        "x1 =": prefracture["x1"],
+        "y1 =": prefracture["y1"],
+        "x2 =": prefracture["x2"],
+        "y2 =": prefracture["y2"],
+        "z1 =": "0",
+        "z2 =": "0",
+    }
+    for i, line in enumerate(lines):
+        for key, value in replacements.items():
+            if key in line:
+                lines[i] = f"      {key} '{value}'\n"
+                break
+
+    with open(fracture_file_path, "w") as f:
+        f.writelines(lines)
+
+
 def execute_racoon_simulations(
     physics, mesh, material_properties, settings={}, output_name="output"
 ):
@@ -170,23 +193,27 @@ def execute_racoon_simulations(
             shutil.copy(aux_src, os.path.join(tmpdir, aux_file))
             
             if aux_file == "fracture.i":
-                ncrack = settings.get("fracture", {}).get("ncrack", 8)
-                L_avg = settings.get("fracture", {}).get("L_avg", 0.1)
-                L_cov = settings.get("fracture", {}).get("L_cov", 0.3)
-                
-                domain = settings.get("L", [1.0, 1.0])
-                dimensions = len(domain)
-                if dimensions not in (2, 3):
-                    raise ValueError("Fracture domain must have 2 or 3 dimensions.")
-                cracks_data = generate_cracks(
-                    ncrack,
-                    0,
-                    domain[0] if dimensions == 2 else np.asarray(domain),
-                    L_avg,
-                    L_cov,
-                    dimensions=dimensions,
-                )
-                inject_cracks(os.path.join(tmpdir, aux_file), cracks_data)
+                prefracture = settings.get("prefracture")
+                if prefracture is not None:
+                    inject_prefracture(os.path.join(tmpdir, aux_file), prefracture)
+                else:
+                    ncrack = settings.get("fracture", {}).get("ncrack", 8)
+                    L_avg = settings.get("fracture", {}).get("L_avg", 0.1)
+                    L_cov = settings.get("fracture", {}).get("L_cov", 0.3)
+
+                    domain = settings.get("L", [1.0, 1.0])
+                    dimensions = len(domain)
+                    if dimensions not in (2, 3):
+                        raise ValueError("Fracture domain must have 2 or 3 dimensions.")
+                    cracks_data = generate_cracks(
+                        ncrack,
+                        0,
+                        domain[0] if dimensions == 2 else np.asarray(domain),
+                        L_avg,
+                        L_cov,
+                        dimensions=dimensions,
+                    )
+                    inject_cracks(os.path.join(tmpdir, aux_file), cracks_data)
 
         mat_subs = material_property_substitutions(
             material_properties,

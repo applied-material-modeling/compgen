@@ -8,6 +8,7 @@ REPO_DIR = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(REPO_DIR))
 
 from compgen.gen import EllipseGenerator
+from compgen.racoon import inject_prefracture
 
 
 def test_material_b_inclusion_preserves_material_a_vf_semantics():
@@ -81,3 +82,26 @@ def test_ellipses_do_not_touch_prefracture_corridor():
     # With B as the inclusion phase, True is the matrix phase reserved by the
     # corridor; no B ellipse may occupy any protected pixel.
     assert np.all(structure[corridor])
+
+
+def test_prefracture_injector_writes_configured_segment(tmp_path):
+    fracture_file = tmp_path / "fracture.i"
+    fracture_file.write_text(
+        "      x1 = '0'\n"
+        "      y1 = '0'\n"
+        "      x2 = '0'\n"
+        "      y2 = '0'\n"
+        "      z1 = '0'\n"
+        "      z2 = '0'\n"
+    )
+
+    inject_prefracture(
+        fracture_file,
+        {"x1": 0.0, "y1": 0.5, "x2": 0.4, "y2": 0.5},
+    )
+
+    text = fracture_file.read_text()
+    assert "x1 = '0.0'" in text
+    assert "y1 = '0.5'" in text
+    assert "x2 = '0.4'" in text
+    assert "y2 = '0.5'" in text

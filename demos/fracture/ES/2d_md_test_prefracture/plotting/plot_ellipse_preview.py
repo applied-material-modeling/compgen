@@ -9,6 +9,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -35,6 +36,7 @@ def main():
         )
 
     generator = EllipseGenerator(**generator_config["params"])
+    prefracture = config.get("prefracture")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     figure, axes = plt.subplots(2, 5, figsize=(12, 5), constrained_layout=True)
@@ -49,10 +51,27 @@ def main():
             linewidths=1.5,
             origin="lower",
         )
+        if prefracture is not None:
+            axis.plot(
+                [prefracture["x1"] * generator.nx, prefracture["x2"] * generator.nx],
+                [prefracture["y1"] * generator.ny, prefracture["y2"] * generator.ny],
+                color="black",
+                linewidth=3.0,
+                solid_capstyle="butt",
+            )
         axis.set_title(f"Structure {index}")
         axis.axis("off")
 
-    figure.suptitle("Ellipse structures with protected left-entering pre-fracture")
+    figure.suptitle("Ellipse structures with left-entering initial cohesive fracture")
+    figure.legend(
+        handles=[
+            Line2D([0], [0], color="black", linewidth=3, label="Initial fracture"),
+            Line2D([0], [0], color="crimson", linewidth=1.5, label="Ellipse exclusion corridor"),
+        ],
+        loc="lower center",
+        ncol=2,
+        frameon=False,
+    )
     figure.savefig(OUTPUT_FILE, dpi=200)
     plt.close(figure)
     print(f"Saved ellipse preview to {OUTPUT_FILE}")

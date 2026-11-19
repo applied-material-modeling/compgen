@@ -45,7 +45,7 @@
     },
     "executor": {
         "type": "racoon.execute_racoon_simulations",
-        "physics": "2d/fracture"
+        "physics": "2d/fracture_prefracture"
     },
     "material_A": {
         "type": "materials.FixedMaterialGenerator",
@@ -94,5 +94,11 @@
         "temp_dir": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case10/tmp",
         "delete_temp_dir": false
     },
-    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case10/logs/compgen.log"
+    "log_file": "/home/bbrunsvik/projects/ai4ns/compgen/demos/fracture/ES/2d_md_test_prefracture/simulations/case10/logs/compgen.log",
+    "prefracture": {
+        "x1": 0.0,
+        "y1": 0.5,
+        "x2": 0.4,
+        "y2": 0.5
+    }
 }

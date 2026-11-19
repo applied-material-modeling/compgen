@@ -35,8 +35,8 @@ phase is the Al matrix. The default remains `"A"` for other existing
 configurations.
 ## Pre-fracture geometry
 
-Cases 1, 5, and 10 reserve a horizontal pre-fracture corridor that enters from
- the left edge and extends 40% of the model width. The corridor is centered at
+Cases 1, 5, and 10 contain a horizontal initial cohesive fracture that enters
+from the left edge and extends 40% of the model width. The fracture is centered at
 `prefracture_y_fraction = 0.5` and is 10 pixels wide. During ellipse generation,
 any candidate ellipse that touches this corridor is discarded and another
 candidate is sampled, so the requested ellipse volume fraction remains the
@@ -51,11 +51,11 @@ The corridor parameters are generator parameters:
 ```
 
 `plotting/plot_ellipse_preview.py` creates a starting-geometry verification
-figure with the protected corridor outlined in red. This is currently a
-geometry reservation in the binary two-material image. The existing mesh and
-RACCOON input path has no third crack/void phase or initial-damage field, so an
-initially open/cohesive crack must be wired into the physics input separately;
-the reserved corridor ensures later ellipse placement cannot overlap it.
+figure with the ellipse exclusion corridor outlined in red and the initial
+cohesive fracture drawn as a thick black line. The fracture is initialized in
+the phase-field sub-application using `CohesiveDamageIC`; it is not represented
+as a third material in the binary mesh. The corridor ensures later ellipses
+cannot overlap the initial crack.
 
 To run the requested cases after reviewing the preview:
 
