@@ -45,7 +45,10 @@
     },
     "executor": {
         "type": "racoon.execute_racoon_simulations",
-        "physics": "2d/fracture_prefracture"
+        "physics": "2d/fracture_prefracture",
+        "params": {
+            "stop_fraction": 0.99
+        }
     },
     "material_A": {
         "type": "materials.FixedMaterialGenerator",

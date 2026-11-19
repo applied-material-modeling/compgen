@@ -60,6 +60,20 @@ configured model dimensions `L`:
 }
 ```
 
+The stopping criterion is also configurable per case through
+`executor.params.stop_fraction`. Cases 1, 5, and 10 use `0.99`, which expands
+the run to 99% of the peak reaction force before the `Terminator` stops it:
+
+```json
+"executor": {
+    "type": "racoon.execute_racoon_simulations",
+    "physics": "2d/fracture_prefracture",
+    "params": {"stop_fraction": 0.99}
+}
+```
+
+The default is `0.8` when the parameter is omitted.
+
 `plotting/plot_ellipse_preview.py` creates a starting-geometry verification
 figure with the ellipse exclusion corridor outlined in red and the initial
 cohesive fracture drawn as a thick black line. The fracture is initialized in

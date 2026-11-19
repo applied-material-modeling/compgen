@@ -16,6 +16,7 @@ GII_c = 0.00097
 N = 378.0
 T = 97.0
 eta = 1.5
+stop_fraction = 0.8
 
 [GlobalParams]
   displacements = 'disp_x disp_y'
@@ -292,7 +293,7 @@ eta = 1.5
 [UserObjects]
   [stop]
     type = Terminator
-    expression = 'R_y < R_y_max * 0.8'
+    expression = 'R_y < R_y_max * stop_fraction'
     fail_mode = HARD
     message = 'onset of softening has begun'
   []

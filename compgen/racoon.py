@@ -190,11 +190,19 @@ def prefracture_endpoints(prefracture, domain):
 
 
 def execute_racoon_simulations(
-    physics, mesh, material_properties, settings={}, output_name="output"
+    physics,
+    mesh,
+    material_properties,
+    settings={},
+    output_name="output",
+    stop_fraction=0.8,
 ):
     """
     Execute the RACOON simulations for a given physics template and mesh.
     """
+    if not 0 < stop_fraction <= 1:
+        raise ValueError("stop_fraction must be in the interval (0, 1].")
+
     template_input, physics_settings = get_physics(physics)
     
     with temp.TempDirectory(settings) as (cwd, tmpdir):
@@ -285,6 +293,7 @@ def execute_racoon_simulations(
                 [settings["racoon"]["executable"]]
                 + settings.get("racoon", {}).get("options", [])
                 + ["-i", "input.i"]
+                + [f"stop_fraction={stop_fraction}"]
                 + mat_subs
                 + target_subs
                 + output_subs
