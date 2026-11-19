@@ -63,9 +63,9 @@ def test_random_generator_shape_and_vf(shape, vf):
 @pytest.mark.parametrize(
     "shape,vf,l,bandwidth",
     [
-        ([128], 0.35, 16.0, 0.4),
-        ([64, 64], 0.4, 12.0, 0.35),
-        ([32, 32, 32], 0.3, 10.0, 0.3),
+        ([128], 0.35, 0.125, 0.4),
+        ([64, 64], 0.4, 0.1875, 0.35),
+        ([32, 32, 32], 0.3, 0.3125, 0.3),
     ],
 )
 def test_spinodal_generator_shape_and_vf(shape, vf, l, bandwidth):
@@ -416,7 +416,7 @@ def test_all_generators_return_bool():
     rng = np.random.default_rng(5)
     generators = [
         RandomGenerator([32, 32], 0.4, random_seed=0),
-        SpinodalGenerator([32, 32], 0.4, 8.0, 0.2, random_seed=0),
+        SpinodalGenerator([32, 32], 0.4, 0.25, 0.2, random_seed=0),
         TwoPointGenerator([32, 32], rng.random((32, 32)) > 0.6, random_seed=0),
         VoronoiGenerator([32, 32], 0.25, 0.2, random_seed=0),
         ParticleGenerator([32, 32], 0.3, "disks", {"size_m": 0.2}, random_seed=0),

@@ -28,7 +28,16 @@ import exodusii
 import numpy as np
 import pytest
 
-from compgen.mesh import extrude, write_mesh_2d, write_mesh_3d
+from compgen.mesh import (
+    MeshQualityError,
+    _validate_mesh,
+    extrude,
+    face_mismatch,
+    generate_mesh_3d,
+    snap_periodic_faces,
+    write_mesh_2d,
+    write_mesh_3d,
+)
 
 LX, LY, LZ = 2.0, 1.0, 0.1
 N = 3  # elements per side of the (square) test image
@@ -131,3 +140,153 @@ def test_write_mesh_3d_maps_voxels_to_elements(tmp_path, shape):
     write_mesh_3d(img, fname, lx=LX, ly=LY, lz=LZ)
 
     check_elements_match_image(fname, img, (LX, LY, LZ))
+
+
+def _grid_coords(n=4):
+    """Node coordinates of a regular n x n x n unit-cube grid."""
+    ax = np.linspace(0.0, 1.0, n + 1)
+    return np.stack(np.meshgrid(ax, ax, ax, indexing="ij"), -1).reshape(-1, 3)
+
+
+def _rewrite_coords(fname, func):
+    """Rewrite an exodus mesh in place with ``func(coords)`` as the coordinates."""
+    with exodusii.File(fname, mode="r") as exo:
+        coords = np.asarray(exo.get_coords(), dtype=float)
+        ids = [int(b) for b in exo.get_element_block_ids()]
+        conns = {b: np.asarray(exo.get_element_conn(b)) for b in ids}
+    coords = func(coords)
+    with exodusii.File(fname, mode="w") as exo:
+        nelem = sum(len(c) for c in conns.values())
+        exo.put_init("test", 3, len(coords), nelem, len(ids), 0, 0)
+        exo.put_coord(coords[:, 0], coords[:, 1], coords[:, 2])
+        for b in ids:
+            exo.put_element_block(b, "HEX", len(conns[b]), 8)
+            exo.put_element_conn(b, conns[b])
+
+
+def test_face_mismatch_zero_for_regular_grid():
+    """A structured grid has exactly matching opposite faces."""
+    assert face_mismatch(_grid_coords()) == 0.0
+
+
+def test_face_mismatch_reports_moved_face_node():
+    """Moving one face node in-plane shows up as that distance."""
+    coords = _grid_coords()
+    i = np.flatnonzero((coords[:, 2] == 1.0) & (coords[:, 0] == 0.5) & (coords[:, 1] == 0.5))
+    coords[i, 0] += 0.01
+    assert face_mismatch(coords) == pytest.approx(0.01)
+
+
+def test_face_mismatch_skips_flat_axis():
+    """A zero-extent axis (e.g. a 2D mesh stored in 3D) is ignored."""
+    coords = _grid_coords()
+    coords[:, 2] = 0.0
+    assert face_mismatch(coords) == 0.0
+
+
+def _read(fname):
+    with exodusii.File(fname, mode="r") as exo:
+        coords = np.asarray(exo.get_coords(), dtype=float)
+        conn = np.vstack([np.asarray(exo.get_element_conn(b)) - 1 for b in exo.get_element_block_ids()])
+    return coords, conn
+
+
+def _shift_top_center(c, dx=0.01):
+    """Move the center node of the z-max face of a unit 4x4x4 grid in x."""
+    c = c.copy()
+    top = np.isclose(c[:, 2], c[:, 2].max())
+    mid = np.isclose(c[:, 0], 0.5) & np.isclose(c[:, 1], 0.5)
+    c[top & mid, 0] += dx
+    return c
+
+
+CHECKER = np.indices((4, 4, 4)).sum(0) % 2 == 0  # two blocks, h = 0.25
+
+
+def test_validate_mesh_rejects_nan_coords_without_quality_check(tmp_path):
+    """Non-finite coordinates fail even with quality_check and snapping off."""
+    fname = str(tmp_path / "mesh.e")
+    write_mesh_3d(np.indices((2, 2, 2)).sum(0) % 2 == 0, fname)
+    _rewrite_coords(fname, lambda c: np.where(np.arange(len(c))[:, None] == 0, np.nan, c))
+
+    with pytest.raises(MeshQualityError, match="non-finite") as exc:
+        _validate_mesh(fname, False, None, (1, 1, 1), (2, 2, 2))
+    assert exc.value.reason == "non-finite"
+
+
+def test_validate_mesh_snaps_faces_in_place(tmp_path):
+    """A small face shift is snapped away; the file ends exactly periodic."""
+    fname = str(tmp_path / "mesh.e")
+    write_mesh_3d(CHECKER, fname)
+    _rewrite_coords(fname, _shift_top_center)
+    assert face_mismatch(_read(fname)[0]) == pytest.approx(0.01)
+
+    _validate_mesh(fname, False, 0.1, (1, 1, 1), (4, 4, 4))  # cap 0.025
+
+    assert face_mismatch(_read(fname)[0]) == 0.0
+
+
+def test_validate_mesh_rejects_move_above_cap(tmp_path):
+    """A shift larger than max_snap_move * h is rejected, file untouched."""
+    fname = str(tmp_path / "mesh.e")
+    write_mesh_3d(CHECKER, fname)
+    _rewrite_coords(fname, _shift_top_center)
+
+    with pytest.raises(MeshQualityError, match="need a move") as exc:
+        _validate_mesh(fname, False, 0.02, (1, 1, 1), (4, 4, 4))  # cap 0.005
+    assert exc.value.reason == "snap-move"
+    assert face_mismatch(_read(fname)[0]) == pytest.approx(0.01)
+
+
+def test_snap_rejects_non_flat_face(tmp_path):
+    """A face node pushed off the box plane makes the face non-flat."""
+    fname = str(tmp_path / "mesh.e")
+    write_mesh_3d(CHECKER, fname)
+    coords, conn = _read(fname)
+    top = np.flatnonzero(np.isclose(coords[:, 2], 1.0))
+    coords[top[5], 2] -= 0.05
+
+    with pytest.raises(MeshQualityError, match="not flat") as exc:
+        snap_periodic_faces(coords, conn, (4, 4, 4), 1.0)
+    assert exc.value.reason == "snap-flat"
+
+
+def test_snap_rejects_crossed_neighbors():
+    """A face node shifted past its partner's neighbor has no mutual nearest
+    neighbor, and the mesh is rejected rather than paired by a guess."""
+    ax = np.linspace(0.0, 1.0, 5)
+    coords = np.stack(np.meshgrid(ax, ax, ax, indexing="ij"), -1).reshape(-1, 3)
+    idx = lambda i, j, k: (i * 5 + j) * 5 + k  # noqa: E731
+    conn = np.array(
+        [
+            [idx(i, j, k), idx(i + 1, j, k), idx(i + 1, j + 1, k), idx(i, j + 1, k),
+             idx(i, j, k + 1), idx(i + 1, j, k + 1), idx(i + 1, j + 1, k + 1), idx(i, j + 1, k + 1)]
+            for i in range(4) for j in range(4) for k in range(4)
+        ]
+    )
+    moved = coords.copy()
+    moved[idx(4, 2, 2), 1] += 0.13  # y 0.5 -> 0.63: nearest min-face node is now y=0.75
+    with pytest.raises(MeshQualityError, match="no mutual nearest") as exc:
+        snap_periodic_faces(moved, conn, (4, 4, 4), 0.2)
+    assert exc.value.reason == "snap-pairing"
+
+
+def test_snap_2d_quad_mesh(tmp_path):
+    """The 2D path pairs face edges of a QUAD4 mesh."""
+    fname = str(tmp_path / "mesh.e")
+    write_mesh_2d(np.indices((4, 4)).sum(0) % 2 == 0, fname)
+    coords, conn = _read(fname)
+    right = np.flatnonzero(np.isclose(coords[:, 0], coords[:, 0].max()))
+    coords[right[2], 1] += 0.01
+
+    snapped = snap_periodic_faces(coords, conn, (4, 4), 0.05)
+
+    assert face_mismatch(snapped) == 0.0
+
+
+def test_generate_mesh_3d_snap_without_sculpt(tmp_path, monkeypatch):
+    """The unsculpted voxel mesh is exactly periodic, so a tiny cap passes."""
+    monkeypatch.chdir(tmp_path)
+    img = np.random.default_rng(0).random((3, 3, 3)) < 0.5
+    generate_mesh_3d(img, "mesh.e", run_sculpt=False, max_snap_move=1e-9)
+    assert (tmp_path / "mesh.e").exists()

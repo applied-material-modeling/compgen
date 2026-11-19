@@ -219,12 +219,19 @@ class TwoPointGenerator(GenerativeStructureGenerator):
 
     Keyword Args:
         random_seed (int): Seed for the random number generator. Defaults to None.
-        l_guess (float): Initial guess for the correlation length scale. Defaults to 5.0.
-        radial_mask (float): Maximum radius to consider for fitting. Defaults to None.
+        l_guess (float): Initial guess for the correlation length scale, as a
+            fraction of the shortest cell side ``min(N)``. Defaults to None
+            (one pixel, ``1 / min(N)``).
+        radial_mask (float): Maximum radius to consider for fitting, as a
+            fraction of ``min(N)``. Defaults to None.
+
+    Lengths are fractions of the shortest cell side ``min(N)`` (pixels are
+    square, so features stay isotropic); the fitted ``freq`` is in cycles and
+    ``damp`` in 1 per that length.
     """
 
     def __init__(
-        self, N, reference_image, random_seed=None, l_guess=5.0, radial_mask=None
+        self, N, reference_image, random_seed=None, l_guess=None, radial_mask=None
     ):
         super().__init__(N, random_seed=random_seed)
 
@@ -233,7 +240,8 @@ class TwoPointGenerator(GenerativeStructureGenerator):
                 "TwoPointGenerator only supports 2D structures for the moment."
             )
 
-        self.l_guess = l_guess
+        self.l_ref = min(self.N)  # reference length in pixels
+        self.l_guess = 1.0 / self.l_ref if l_guess is None else l_guess
         self.reference_image = standardize_image(reference_image, shape=N, dtype=bool)
         self.acov, self.mean, self.var = self.image_statistics(self.reference_image)
         self.r, self.c = self.radial_average_variogram(self.acov)
@@ -263,7 +271,7 @@ class TwoPointGenerator(GenerativeStructureGenerator):
             acov (np.ndarray): 2D autocovariance array.
 
         Returns:
-            tuple: Radii and corresponding averaged values.
+            tuple: Radii (fractions of ``min(N)``) and corresponding averaged values.
         """
         x, y = np.indices(acov.shape)
         center = np.array(acov.shape) // 2
@@ -274,17 +282,18 @@ class TwoPointGenerator(GenerativeStructureGenerator):
         nr = np.bincount(r.ravel())
         radialprofile = tbin / nr
         variogram = radialprofile[0] - radialprofile
-        return np.arange(r.max() + 1), variogram
+        return np.arange(r.max() + 1) / self.l_ref, variogram
 
     def fit_model(self, r, c, radial_mask=None):
         """Fit a damped-oscillation covariance model to the radial average.
 
         Args:
-            r (np.ndarray): Radii.
+            r (np.ndarray): Radii, as fractions of ``min(N)``.
             c (np.ndarray): Variogram values.
 
         Keyword Args:
-            radial_mask (float): Maximum radius to consider for fitting. Defaults to None.
+            radial_mask (float): Maximum radius to consider for fitting, as a
+                fraction of ``min(N)``. Defaults to None.
 
         Returns:
             gstools.CovModel: Fitted covariance model.
@@ -295,7 +304,13 @@ class TwoPointGenerator(GenerativeStructureGenerator):
             r = r[mask]
             c = c[mask]
 
-        model = DampedOscillationCovariance(dim=2)
+        # Initial frequency and damping: 0.1 per pixel, in units of min(N).
+        model = DampedOscillationCovariance(
+            dim=2,
+            len_scale=self.l_guess,
+            freq=0.1 * self.l_ref,
+            damp=0.1 * self.l_ref,
+        )
         model.fit(r, c)
 
         return model
@@ -306,8 +321,8 @@ class TwoPointGenerator(GenerativeStructureGenerator):
         Returns:
             np.ndarray: A 2D array of shape (nx, ny) with random bool values.
         """
-        x = np.arange(self.nx)
-        y = np.arange(self.ny)
+        x = np.arange(self.nx) / self.l_ref
+        y = np.arange(self.ny) / self.l_ref
         field = self.generator.structured([x, y], seed=self.rng.integers(0, 1e9))
 
         z = (field - np.mean(field)) / np.std(field)
@@ -324,8 +339,16 @@ class SpinodalGenerator(GenerativeStructureGenerator):
     Args:
         N (list): Size of the generated structures in each dimension.
         vf (float or list): Volume fraction of phase A or range for random samples.
-        l (float or list): Characteristic length scale or range for random samples.
-        bandwidth (float or list): Bandwidth of the spinodal structure or range for random samples.
+        l (float or list): Dominant wavelength as a fraction of the shortest
+            cell side ``min(N)``, or range for random samples. Pixels are
+            square, so features stay isotropic. ``l > 1`` concentrates all power
+            on the lowest modes (one period per cell).
+        bandwidth (float or list): Dimensionless width of the spectral ring,
+            relative to its radius, or range for random samples.
+
+    The spectrum is ``S(k) = exp(-(|k| - k0)**2 / (2 sigma**2))`` with
+    ``k0 = 2 pi / l`` and ``sigma = bandwidth * k0``, ``k`` in radians per
+    ``min(N)``.
 
     Keyword Args:
         random_seed (int): Seed for the random number generator. Defaults to None.
@@ -349,7 +372,8 @@ class SpinodalGenerator(GenerativeStructureGenerator):
         bandwidth = self._sample_value(self.bandwidth_input)
 
         # Build k-vectors for each dimension and compute spectral magnitude
-        ks = [2.0 * np.pi * np.fft.fftfreq(n) for n in self.N]
+        # Wavenumbers in radians per min(N): 2 pi m min(N) / n along each axis.
+        ks = [2.0 * np.pi * np.fft.fftfreq(n, d=1.0 / min(self.N)) for n in self.N]
         K_components = np.meshgrid(*ks, indexing="ij")
         K_mag = np.zeros_like(K_components[0])
         for K in K_components:

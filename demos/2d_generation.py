@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     print("Generating spinodal-like structures")
     generator = gen.SpinodalGenerator(
-        N=[n, n], vf=vf, l=100, bandwidth=3, random_seed=seed
+        N=[n, n], vf=vf, l=0.78, bandwidth=3, random_seed=seed
     )
     for i, structure in zip(range(5), generator):
         smoothed = utils.binary_smoother(
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     plt.show()
 
     generator = gen.TwoPointGenerator(
-        N=[n, n], reference_image=seg, random_seed=seed, radial_mask=50
+        N=[n, n], reference_image=seg, random_seed=seed, radial_mask=0.39
     )
 
     for i, structure in zip(range(5), generator):

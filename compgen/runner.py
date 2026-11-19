@@ -30,6 +30,7 @@ import uuid
 import queue
 import importlib
 import logging
+import time
 
 import numpy as np
 import multiprocess
@@ -40,18 +41,43 @@ logger = logging.getLogger(__name__)
 
 
 # Sentinels for the two failure modes run_single can report. MESH_FAILED
-# (sculpt / quality / mesh-prep) is backfilled by drawing a new structure;
+# (sculpt / post-mesh checks / mesh-prep) is backfilled by drawing a new structure;
 # EXEC_FAILED (executor, e.g. MOOSE) consumes a slot and is dropped.
 #
 # These must survive being pickled back from a multiprocess.Pool worker, so they
 # are class instances identified by a `.kind` attribute (NOT bare `object()`
 # compared with `is` -- identity does not survive pickling, which silently turned
 # parallel failures into phantom "successes").
-class _Failure:  # pylint: disable=too-few-public-methods
-    """Sentinel marking a failed run_single attempt (pickling-safe)."""
+# Readable names for failure stages in the run summary.
+_STAGE_LABELS = {
+    "filter": "filter error",
+    "sculpt": "Sculpt failed",
+    "mesher-other": "other mesher error",
+    "quality": "mesh check failed",
+    "non-finite": "NaN/inf node coordinates",
+    "jacobian": "min scaled Jacobian <= 0.1",
+    "snap-flat": "snap: face not flat",
+    "snap-count": "snap: node counts differ",
+    "snap-pairing": "snap: nodes not one-to-one",
+    "snap-topology": "snap: face sides differ",
+    "snap-move": "snap: move above cap",
+    "executor": "solver did not finish",
+    "extractor-setup": "grid extractor setup",
+    "grid-extraction": "grid extraction",
+    "write-output": "writing output",
+}
 
-    def __init__(self, kind):
+
+class _Failure:  # pylint: disable=too-few-public-methods
+    """Sentinel marking a failed run_single attempt (pickling-safe).
+
+    `stage` names the step that failed (e.g. "sculpt", "executor"); it only feeds
+    the end-of-run summary.
+    """
+
+    def __init__(self, kind, stage=None):
         self.kind = kind
+        self.stage = stage
 
 
 MESH_FAILED = _Failure("mesh")
@@ -72,8 +98,158 @@ def _is_exec_failure(r):
 
 
 def _run_single_star(args):
-    """Unpack a (img, matA, matB, matAB, config) tuple for use with Pool.imap."""
-    return run_single(*args)
+    """Unpack a (img, matA, matB, matAB, config) tuple for use with a Pool.
+
+    Returns:
+        tuple: (run_single result, wall time in seconds).
+    """
+    t0 = time.perf_counter()
+    res = run_single(*args)
+    return res, time.perf_counter() - t0
+
+
+def _fmt_seconds(sec):
+    """Format a duration as e.g. '1h 02m 03.4s', '2m 03.4s' or '3.4s'."""
+    h, rem = divmod(sec, 3600)
+    m, s = divmod(rem, 60)
+    if h >= 1:
+        return f"{int(h)}h {int(m):02d}m {s:04.1f}s"
+    if m >= 1:
+        return f"{int(m)}m {s:04.1f}s"
+    return f"{s:.1f}s"
+
+
+class _RunStats:  # pylint: disable=too-many-instance-attributes
+    """Counters and timings collected by run() for the end-of-run summary."""
+
+    def __init__(self, config_files):
+        self.config_files = config_files
+        self.t_start = time.perf_counter()
+        self.t_compute = None  # set when computations start
+        self.number = None
+        self.nthreads = None
+        self.cap = None
+        self.predefined = False
+        self.drawn = 0
+        self.gen_failures = 0
+        self.gen_time = 0.0
+        self.worker_errors = 0
+        self.failures = {"mesh": {}, "exec": {}}
+        self.success_times = []
+        self.attempt_time = 0.0
+        self.load_cases = 0
+
+    def record(self, result, elapsed):
+        """Record one finished run_single attempt."""
+        self.attempt_time += elapsed
+        if isinstance(result, _Failure):
+            stages = self.failures[result.kind]
+            stage = result.stage or "unspecified"
+            stages[stage] = stages.get(stage, 0) + 1
+        else:
+            self.success_times.append(elapsed)
+            try:
+                self.load_cases += len(result)
+            except TypeError:
+                pass
+
+    def n_failed(self, kind):
+        """Total failures of `kind` ("mesh" or "exec")."""
+        return sum(self.failures[kind].values())
+
+    def log_summary(self, config, error=None):
+        """Write the multi-line summary to the log."""
+        # pylint: disable=too-many-locals
+        now = time.perf_counter()
+        out = config.get("output", {})
+        succeeded = len(self.success_times)
+        attempts = succeeded + self.n_failed("mesh") + self.n_failed("exec")
+        attempts += self.worker_errors
+
+        # A slot is filled by a success or an executor failure (dropped, not
+        # redrawn); predefined runs fill one slot per structure whatever happens.
+        filled = attempts if self.predefined else succeeded + self.n_failed("exec")
+        lost = attempts - succeeded if self.predefined else self.n_failed("exec")
+        if error is not None:
+            status = f"ABORTED ({type(error).__name__}: {error})"
+        elif self.number is None or filled < self.number:
+            status = "INCOMPLETE (attempt cap reached or generator exhausted)"
+        elif lost:
+            status = f"COMPLETE ({lost} structure(s) failed, no result)"
+        else:
+            status = "COMPLETE"
+
+        def stage_lines(kind):
+            """One indented line per failure stage, most frequent first."""
+            stages = self.failures[kind]
+            rows = sorted(stages.items(), key=lambda kv: (-kv[1], kv[0]))
+            return [f"      {_STAGE_LABELS.get(k, k):<28}: {v}" for k, v in rows]
+
+        def share(n):
+            return f" of {attempts} ({100 * n / attempts:.0f}%)" if attempts and n else ""
+
+        lines = [
+            "=" * 64,
+            "compgen run summary",
+            "=" * 64,
+            f"Status              : {status}",
+            f"Config files        : {', '.join(self.config_files)}",
+            f"Generator           : {config.get('generator', {}).get('type')}",
+            f"Mesher              : {config.get('mesh', {}).get('type')}",
+            f"Executor            : {config.get('executor', {}).get('type')}",
+        ]
+        if out.get("write_files", True):
+            lines.append(
+                f"Output              : {out.get('output_dir', 'output')}/"
+                f"{out.get('output_prefix', 'result')}_*.h5"
+            )
+        else:
+            lines.append("Output              : not written (write_files = false)")
+        if self.number is not None:
+            mode = "predefined, positional" if self.predefined else "backfilled"
+            lines += [
+                f"Requested           : {self.number} structures ({mode})",
+                f"Threads             : {self.nthreads}",
+                f"Attempt cap         : {self.cap}",
+            ]
+        lines += [
+            "-" * 64,
+            f"Succeeded           : {succeeded}"
+            + (f"/{self.number}" if self.number is not None else "")
+            + f" ({self.load_cases} load-case results)",
+            f"Structures drawn    : {self.drawn}",
+            f"  generation failed : {self.gen_failures}",
+            f"  run attempts      : {attempts}",
+            f"  mesh failed       : {self.n_failed('mesh')}{share(self.n_failed('mesh'))}"
+            + ("" if self.predefined else " -> redrawn"),
+            *stage_lines("mesh"),
+            f"  executor failed   : {self.n_failed('exec')}{share(self.n_failed('exec'))}"
+            " -> dropped",
+            *stage_lines("exec"),
+            f"  worker errors     : {self.worker_errors}",
+            "-" * 64,
+            f"Total wall time     : {_fmt_seconds(now - self.t_start)}",
+        ]
+        if self.t_compute is not None:
+            wall = now - self.t_compute
+            lines += [
+                f"  setup             : {_fmt_seconds(self.t_compute - self.t_start)}",
+                f"  computations      : {_fmt_seconds(wall)}",
+                f"  structure gen.    : {_fmt_seconds(self.gen_time)}",
+            ]
+            if self.success_times:
+                st = self.success_times
+                lines.append(
+                    f"Per success         : mean {_fmt_seconds(sum(st) / len(st))}, "
+                    f"min {_fmt_seconds(min(st))}, max {_fmt_seconds(max(st))}"
+                )
+                lines.append(f"Wall time / success : {_fmt_seconds(wall / len(st))}")
+            if self.nthreads and self.nthreads > 1 and wall > 0:
+                busy = self.attempt_time / (wall * self.nthreads)
+                lines.append(f"Worker utilization  : {100 * busy:.0f}%")
+        lines.append("=" * 64)
+        for line in lines:
+            logger.info(line)
 
 
 def get_object_from_module(name, prefix="compgen"):
@@ -170,7 +346,20 @@ def run(*config_files):
     config = utils.load_json(config_files)
 
     log = setup_logging(config)
+    stats = _RunStats(config_files)
+    error = None
+    try:
+        return _run(config, config_files, log, stats)
+    except BaseException as e:
+        error = e
+        raise
+    finally:
+        if log:
+            stats.log_summary(config, error)
 
+
+def _run(config, config_files, log, stats):
+    """Body of run(); fills `stats` as it goes."""
     if log:
         logger.info("")
         logger.info(
@@ -228,6 +417,7 @@ def run(*config_files):
 
     if log:
         logger.info("Starting computations")
+    stats.t_compute = time.perf_counter()
 
     number = config["number"]
     nthreads = config.get("nthreads", 1)
@@ -236,6 +426,8 @@ def run(*config_files):
     # earlier structure. Draw each one exactly once instead.
     predefined = getattr(generator, "predefined", False)
     cap = number if predefined else config.get("max_attempts_factor", 3) * number
+    stats.number, stats.nthreads, stats.cap = number, nthreads, cap
+    stats.predefined = predefined
     if log:
         logger.info("Using %d threads for computation", nthreads)
 
@@ -249,11 +441,15 @@ def run(*config_files):
         drawn = 0
         while drawn < cap:
             drawn += 1
+            t0 = time.perf_counter()
             try:
                 img = next(generator)
             except StopIteration:
                 return
             except Exception as e:  # pylint: disable=broad-exception-caught
+                stats.drawn += 1
+                stats.gen_failures += 1
+                stats.gen_time += time.perf_counter() - t0
                 if log:
                     logger.error(
                         "Generation failed (attempt %d/%d), redrawing: %s",
@@ -262,6 +458,8 @@ def run(*config_files):
                         str(e),
                     )
                 continue
+            stats.drawn += 1
+            stats.gen_time += time.perf_counter() - t0
             try:
                 mat = next(mats)
             except StopIteration:
@@ -274,7 +472,8 @@ def run(*config_files):
     def consume(out_iter):
         collected = []
         succeeded = 0
-        for r in out_iter:
+        for r, elapsed in out_iter:
+            stats.record(r, elapsed)
             if _is_mesh_failure(r):
                 continue
             collected.append(r)
@@ -344,6 +543,11 @@ def run(*config_files):
             while in_flight > 0 and succeeded < number:
                 ok, payload = done_q.get()
                 in_flight -= 1
+                if ok:
+                    payload, elapsed = payload
+                    stats.record(payload, elapsed)
+                else:
+                    stats.worker_errors += 1
                 if ok and not _is_mesh_failure(payload):
                     # success or EXEC_FAILED (EXEC_FAILED consumes a slot, dropped later)
                     collected.append(payload)
@@ -386,7 +590,9 @@ def run(*config_files):
         else:
             with multiprocess.Pool(nthreads) as pool:
                 collected = pool.map(_run_single_star, list(tasks()))
-        return [-1 if isinstance(r, _Failure) else r for r in collected]
+        for r, elapsed in collected:
+            stats.record(r, elapsed)
+        return [-1 if isinstance(r, _Failure) else r for r, _ in collected]
 
     if nthreads == 1:
         collected = consume(_run_single_star(t) for t in tasks())
@@ -452,7 +658,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     filter_spec.get("type"),
                     str(e),
                 )
-            return MESH_FAILED
+            return _Failure("mesh", "filter")
     if log:
         logger.info("Problem %s: Filtering complete", uid)
 
@@ -477,15 +683,15 @@ def run_single(img, material_A, material_B, material_AB, config):
         except mesh.SculptError as e:
             if log:
                 logger.error("Problem %s: SCULPT failed: %s", uid, str(e))
-            return MESH_FAILED
+            return _Failure("mesh", "sculpt")
         except mesh.MeshQualityError as e:
             if log:
-                logger.error("Problem %s: QUALITY CHECK failed: %s", uid, str(e))
-            return MESH_FAILED
+                logger.error("Problem %s: MESH CHECK failed: %s", uid, str(e))
+            return _Failure("mesh", getattr(e, "reason", "quality"))
         except Exception as e:
             if log:
                 logger.error("Problem %s: mesh generation error: %s", uid, str(e))
-            return MESH_FAILED
+            return _Failure("mesh", "mesher-other")
         if log:
             logger.info("Problem %s: Mesh generation complete", uid)
 
@@ -515,7 +721,7 @@ def run_single(img, material_A, material_B, material_AB, config):
             # future improvement.
             if log:
                 logger.error("Problem %s: Error running executor: %s", uid, str(e))
-            return EXEC_FAILED
+            return _Failure("exec", "executor")
         if log:
             logger.info("Problem %s: Executor run complete", uid)
 
@@ -537,7 +743,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     config["output"]["grid_extractor"]["type"],
                     str(e),
                 )
-            return EXEC_FAILED
+            return _Failure("exec", "extractor-setup")
 
     if log:
         logger.info("Problem %s: Starting to write output files", uid)
@@ -571,7 +777,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                         idx,
                         str(e),
                     )
-                return EXEC_FAILED
+                return _Failure("exec", "grid-extraction")
 
         if config.get("output", {}).get("add_density", False):
             vf = np.sum(grid_img) / float(grid_img.size)
@@ -608,7 +814,7 @@ def run_single(img, material_A, material_B, material_AB, config):
                     idx,
                     str(e),
                 )
-            return EXEC_FAILED
+            return _Failure("exec", "write-output")
 
         if log:
             logger.info(

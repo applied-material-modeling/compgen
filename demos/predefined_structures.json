@@ -16,7 +16,7 @@
         {
             "type": "filters.mean_filter",
             "params": {
-                "radius": 3
+                "radius": 0.0117
             }
         },
         {

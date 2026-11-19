@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     for i in range(100):
         generator = gen.SpinodalGenerator(
-            N=[64, 64], vf=[0.01, 0.99], l=[50, 150], bandwidth=[1, 5]
+            N=[64, 64], vf=[0.01, 0.99], l=[0.78, 2.34], bandwidth=[1, 5]
         )
         structure = next(generator)
         smoothed = utils.binary_smoother(

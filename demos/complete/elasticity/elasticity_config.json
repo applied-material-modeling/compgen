@@ -22,8 +22,8 @@
                 0.99
             ],
             "l": [
-                50,
-                150
+                0.39,
+                1.17
             ],
             "bandwidth": [
                 1,
@@ -35,7 +35,7 @@
         {
             "type": "filters.mean_filter",
             "params": {
-                "radius": 3
+                "radius": 0.0234
             }
         },
         {

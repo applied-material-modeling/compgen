@@ -69,7 +69,7 @@ CONFIG = {
         },
     },
     "filtering": [
-        {"type": "filters.make_periodic", "params": {"margin": 8, "shift": True}},
+        {"type": "filters.make_periodic", "params": {"margin_cells": 64, "shift": True}},
     ],
     "mesh": {
         "type": "mesh.generate_mesh",

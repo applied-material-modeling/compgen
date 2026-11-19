@@ -82,12 +82,12 @@ def _config(filter_spec, nthreads):
         (True, {"type": "filters.mean_filter", "params": {"radiuz": 5}}, TypeError),
         (
             True,
-            {"type": "filters.make_periodic", "params": {"margin": 99}},
+            {"type": "filters.make_periodic", "params": {"margin_cells": 99}},
             runner.filters.FilterInputError,
         ),
         (
             False,
-            {"type": "filters.make_periodic", "params": {"margin": 2}},
+            {"type": "filters.make_periodic", "params": {"margin_cells": 2}},
             runner.filters.NonBinaryImageError,
         ),
     ],

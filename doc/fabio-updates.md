@@ -158,15 +158,12 @@ mesher the factor). Example from `../compgen-tests/elasticity/config.json` — a
 At refinement 2 the generator rasterizes at 512² (128·2²) and `downsample_vfrac`
 coarsens it to 128 fractional volume fractions for Sculpt's `-ims` path.
 
-> **Known limitation.** `refinement` scales `N` only. Parameters measured in
-> pixels are not scaled: `SpinodalGenerator.l`, `mean_filter.radius` and
-> `make_periodic.margin`. With the same config, features come out `2**refinement`
-> times smaller relative to the domain, so refinement changes the microstructure,
-> not just the interface smoothness. Until this is fixed, multiply those
-> parameters by `2**refinement` by hand when you turn refinement on. A future
-> version will scale them automatically. `refinement` also requires a generator
-> with an `N` parameter; using it with e.g. `FromNumpyGenerator` now raises an
-> error.
+> `refinement` scales `N` only. Length parameters (`SpinodalGenerator.l`,
+> `mean_filter.radius`, `defeature.min_size`) are fractions of the cell, so
+> they need no scaling. `make_periodic.margin_cells` is the exception: it counts
+> pixels of the generated (fine) image, so scale it with $2^r$ yourself. `refinement` also requires a
+> generator with an `N` parameter; using it with e.g. `FromNumpyGenerator` now
+> raises an error.
 
 **(b) Corrected mechanics constraints** (`compgen/physics/**/template.i`):
 
@@ -227,6 +224,24 @@ The reliability rework, spread across three modules.
   so meshing failures become retryable `MESH_FAILED`s.
 - **`mesh_quality(exofile, min_qual=0.1)`** — a post-mesh quality gate; a bad mesh
   is rejected before a solve is attempted (the "mesher retry mechanism").
+- **Non-finite coordinates are always rejected.** Sculpt occasionally emits NaN
+  nodes (which `normalize_mesh` spreads to the whole mesh) and the Jacobian
+  check doesn't catch them; such meshes are now redrawn instead of crashing MOOSE.
+- **Optional periodic face snapping** — `"mesh": {"params": {"max_snap_move": 0.3}}`.
+  Sculpt builds the same face mesh on opposite sides of the box, but its
+  smoothing shifts face nodes differently, and even a mismatch of $10^{-3}$ can
+  make MOOSE's periodic BCs fail to converge. With this option the max-face nodes
+  are moved onto their min-face partners, by at most `max_snap_move` × element
+  size, so the faces match exactly. A mesh is rejected (and redrawn) if a face
+  isn't flat, the faces have different node counts, some face node has no
+  mutual nearest partner, the side topology differs, or the move would exceed
+  the cap. The Jacobian check runs after snapping. Off by default. It needs
+  flat faces (Sculpt `-S 2` or `-S 3`) and a `make_periodic` margin of at least
+  2 mesh cells, i.e. `margin_cells` $\ge 2 \cdot 2^r$ fine pixels.
+  In tests at $N_\text{mesh} = 32$–$128$ this removed every executor failure
+  (0 of 116 structures, against 8 of 20 before).
+- **Run summary** lists mesh and executor failures by reason (Jacobian, each
+  snap check, Sculpt, …), with their share of attempts.
 
 **Solver execution** (`moose.py`, ~+120 lines):
 
@@ -285,14 +300,27 @@ Boolean (two-phase) images from end to end, enforced at every boundary.
   it (different filters would reduce it differently). Backed by two new
   exceptions: **`FilterInputError`** and **`NonBinaryImageError`**.
 - **`make_orthogonal`** and **`make_periodic`** — moved here from `gen.py`.
+  Its margin is now `margin_cells`: a whole number of pixel layers of the image
+  it receives (default 2).
   `make_periodic` gained an opt-in `shift=True` option that circular-shifts each
   axis to minimize the seam-overwrite cost before enforcing periodicity. The
   default is `shift=False`, so existing configs produce the same structures as
-  before.
+  before. An opt-in `center=True` copies the face layer (layer 0) instead of
+  layer `margin`. The block of identical layers around each face stays the same,
+  but the interface jump where it meets the interior is split over both ends of
+  the block, so each jump is smaller. Use it together with `shift=True`.
 - **`defeature`** — removes connected islands below a size threshold (both
   phases), with periodic (toroidal) connected-component labeling so a feature
-  that wraps the domain edge counts as one.
-- **`mean_filter`** — gained periodic (wrap-padded) smoothing.
+  that wraps the domain edge counts as one. `min_size` is the radius $r$ of a
+  disk (2D) or ball (3D), as a fraction of the shortest side $\min(N)$; islands
+  with fewer than $\lceil \pi R^2 \rceil$ or $\lceil \tfrac{4}{3} \pi R^3 \rceil$
+  cells are removed, with $R = r \min(N)$ in pixels.
+- **`mean_filter`** — gained periodic (wrap-padded) smoothing. `radius` is now
+  a fraction of $\min(N)$, rounded up to whole pixels (the old default of 3
+  pixels at $N = 128$ is `0.0234`). New optional `"method": "fft"` replaces
+  the default `"rank"` smoothing with an FFT convolution: exact averages and
+  7–30× faster, with cost independent of `radius`. Results match `"rank"` at
+  small radii and differ by under 1% of pixels at large ones.
 
 **Generators** (`gen.py`):
 

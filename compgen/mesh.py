@@ -41,7 +41,16 @@ class SculptError(RuntimeError):
 
 
 class MeshQualityError(RuntimeError):
-    """Raised when a generated mesh fails the quality check."""
+    """Raised when a generated mesh fails a post-mesh check.
+
+    ``reason`` is a short tag for the run summary: ``non-finite``,
+    ``jacobian``, ``snap-flat``, ``snap-count``, ``snap-pairing``,
+    ``snap-topology`` or ``snap-move``.
+    """
+
+    def __init__(self, message, reason="quality"):
+        super().__init__(message)
+        self.reason = reason
 
 
 def generate_mesh(img, fname, **kwargs):
@@ -58,6 +67,9 @@ def generate_mesh(img, fname, **kwargs):
         settings (dict): Global settings dict
         run_sculpt (bool): Whether to sculpt the mesh
         quality_check (bool): Whether to run a mesh quality check
+        max_snap_move (float or None): Snap opposite faces to exact
+            periodicity, moving nodes by at most this fraction of the element
+            size (see ``snap_periodic_faces``).
     """
     if len(img.shape) == 2:
         generate_mesh_2d(img, fname, **kwargs)
@@ -75,6 +87,7 @@ def generate_mesh_2d(
     refinement=0,
     run_sculpt=True,
     quality_check=True,
+    max_snap_move=None,
 ):
     """Run the entire process of generating a 2D mesh for an image and write it to an exodus file.
 
@@ -96,6 +109,10 @@ def generate_mesh_2d(
             ``img.shape / 2**refinement``.
         run_sculpt (bool): Whether to sculpt the mesh
         quality_check (bool): Whether to run a mesh quality check
+        max_snap_move (float or None): If set, make opposite faces match
+            exactly by moving the max-face nodes onto their min-face partners,
+            by at most this fraction of the element size; a mesh whose faces
+            cannot be paired this way is rejected. None (default) skips it.
     """
     assert len(img.shape) == 2, "Input image must be 2D."
     if settings is None:
@@ -131,8 +148,9 @@ def generate_mesh_2d(
             slice_mesh("sculpted_micro.e", prefix="sliced_")
             shutil.move("sliced_sculpted_micro.e", os.path.join(cwd, fname))
 
-    if quality_check and not mesh_quality(fname):
-        raise MeshQualityError("Generated mesh did not pass quality check.")
+    _validate_mesh(
+        fname, quality_check, max_snap_move, L, [n // factor for n in img.shape]
+    )
 
 
 def generate_mesh_3d(
@@ -143,6 +161,7 @@ def generate_mesh_3d(
     refinement=0,
     run_sculpt=True,
     quality_check=True,
+    max_snap_move=None,
 ):
     """Run the entire process of generating a 3D mesh for an image and write it to an exodus file.
 
@@ -162,6 +181,10 @@ def generate_mesh_3d(
             volume fractions and mesh with Sculpt's ``-ims`` input. No slice in 3D.
         run_sculpt (bool): Whether to sculpt the mesh
         quality_check (bool): Whether to run a mesh quality check
+        max_snap_move (float or None): If set, make opposite faces match
+            exactly by moving the max-face nodes onto their min-face partners,
+            by at most this fraction of the element size; a mesh whose faces
+            cannot be paired this way is rejected. None (default) skips it.
     """
     assert len(img.shape) == 3, "Input image must be 3D."
     if settings is None:
@@ -190,8 +213,9 @@ def generate_mesh_3d(
             normalize_mesh("sculpted_micro.e", (lx, ly, lz))  # unit-cell -> domain
             shutil.move("sculpted_micro.e", os.path.join(cwd, fname))
 
-    if quality_check and not mesh_quality(fname):
-        raise MeshQualityError("Generated mesh did not pass quality check.")
+    _validate_mesh(
+        fname, quality_check, max_snap_move, L, [n // factor for n in img.shape]
+    )
 
 
 def mesh_quality(exofile, min_qual=0.1):
@@ -206,6 +230,190 @@ def mesh_quality(exofile, min_qual=0.1):
     f = pyvista.read_exodus(exofile)
     qual = f.cell_quality(["scaled_jacobian"])
     return qual.get_data_range("scaled_jacobian")[0] > min_qual
+
+
+def _validate_mesh(fname, quality_check, max_snap_move, L, ncells):
+    """Post-mesh checks; raise MeshQualityError if the mesh is unusable.
+
+    In order: finite coordinates (always), periodic face snapping (when
+    ``max_snap_move`` is set), then the Jacobian check (when ``quality_check``),
+    so the Jacobian is measured on the mesh MOOSE will actually see.
+
+    The finite-coordinates check always runs: Sculpt can emit NaN nodes, which
+    ``normalize_mesh`` then spreads to every coordinate, and the Jacobian check
+    does not catch them.
+
+    Args:
+        fname (str): Exodus mesh, modified in place if snapped.
+        quality_check (bool): Run the scaled-Jacobian check.
+        max_snap_move (float or None): Largest allowed snap, as a fraction of
+            the smallest element size ``min(L / ncells)``.
+        L (sequence): Domain lengths.
+        ncells (sequence): Mesh cells per axis.
+    """
+    with exodusii.File(fname, mode="r") as exo:
+        coords = np.asarray(exo.get_coords(), dtype=float)
+        conn = np.vstack(
+            [np.asarray(exo.get_element_conn(b)) - 1 for b in exo.get_element_block_ids()]
+        )
+    if not np.all(np.isfinite(coords)):
+        raise MeshQualityError("Generated mesh has non-finite node coordinates.", "non-finite")
+    if max_snap_move is not None:
+        h = min(l / n for l, n in zip(L, ncells))
+        snapped = snap_periodic_faces(coords, conn, ncells, max_snap_move * h)
+        _write_coords(fname, snapped)
+    if quality_check and not mesh_quality(fname):
+        raise MeshQualityError("Generated mesh did not pass quality check.", "jacobian")
+
+
+# Local node indices of each element side, by nodes per element (exodus order).
+_SIDES = {
+    4: [[0, 1], [1, 2], [2, 3], [3, 0]],  # QUAD4 edges
+    8: [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [0, 4, 7, 3], [0, 3, 2, 1], [4, 5, 6, 7]],
+}
+
+
+def snap_periodic_faces(coords, conn, ncells, max_move, tol=1e-6):
+    """Make opposite domain faces match exactly; return the snapped coordinates.
+
+    Sculpt builds the same face mesh on opposite sides of the box but its
+    smoothing shifts the face nodes differently, which breaks periodic BCs. For
+    each axis this pairs every node on the max face with one on the min face
+    and moves it onto its partner's in-plane coordinates. The pairing is
+    mutual nearest neighbors, and every node must have one.
+
+    Raises MeshQualityError, naming the failed check, when a face is not flat
+    (fewer nodes on the box plane than a grid of ``ncells`` has), the faces
+    have different node counts, some node has no mutual nearest neighbor on the
+    opposite face, the paired faces don't have the same boundary
+    sides, or a node would move by more than ``max_move``.
+
+    Args:
+        coords (array): ``(n_nodes, dim)`` node coordinates.
+        conn (array): ``(n_elems, 4 or 8)`` zero-based connectivity (QUAD4/HEX8).
+        ncells (sequence): Mesh cells per axis (sets the flat-face node count).
+        max_move (float): Largest allowed move, in mesh length units.
+        tol (float): Relative tolerance for a node to lie on a face plane.
+    Returns:
+        array: Snapped copy of ``coords``.
+    """
+    coords = np.asarray(coords, dtype=float)
+    out = coords.copy()
+    dim = coords.shape[1]
+    faces = np.sort(conn[:, _SIDES[conn.shape[1]]].reshape(-1, len(_SIDES[conn.shape[1]][0])), 1)
+    uniq, count = np.unique(faces, axis=0, return_counts=True)
+    boundary = uniq[count == 1]
+    lo, hi = coords.min(axis=0), coords.max(axis=0)
+    for d in range(dim):
+        axis = "xyz"[d]
+        span = hi[d] - lo[d]
+        others = [k for k in range(dim) if k != d]
+        ia = np.flatnonzero(np.abs(coords[:, d] - lo[d]) <= tol * span)
+        ib = np.flatnonzero(np.abs(coords[:, d] - hi[d]) <= tol * span)
+        need = int(np.prod([ncells[k] + 1 for k in others]))
+        if min(len(ia), len(ib)) < need:
+            raise MeshQualityError(
+                f"Periodic snap: {axis} faces are not flat "
+                f"({min(len(ia), len(ib))} nodes on the box plane, expected >= {need}).",
+                "snap-flat",
+            )
+        if len(ia) != len(ib):
+            raise MeshQualityError(
+                f"Periodic snap: {axis} faces have {len(ia)} and {len(ib)} nodes.",
+                "snap-count",
+            )
+        # Pair on the already-snapped coordinates, so edge and corner nodes
+        # shared with earlier axes stay consistent.
+        pa, pb = out[np.ix_(ia, others)], out[np.ix_(ib, others)]
+        _, ab = sp.cKDTree(pb).query(pa)
+        _, ba = sp.cKDTree(pa).query(pb)
+        unpaired = int(np.count_nonzero(ba[ab] != np.arange(len(ia))))
+        if unpaired:
+            raise MeshQualityError(
+                f"Periodic snap: {unpaired} {axis}-face nodes have no mutual nearest "
+                "neighbor on the opposite face.",
+                "snap-pairing",
+            )
+        partner = ab  # index into ib for each node of ia
+        lut = np.full(len(coords), -1)
+        lut[ia] = ib[partner]
+        side_a = boundary[np.all(np.isin(boundary, ia), axis=1)]
+        side_b = boundary[np.all(np.isin(boundary, ib), axis=1)]
+        mapped = {tuple(r) for r in np.sort(lut[side_a], 1).tolist()}
+        if len(side_a) != len(side_b) or mapped != {tuple(r) for r in side_b.tolist()}:
+            raise MeshQualityError(
+                f"Periodic snap: {axis} faces have different side topology.", "snap-topology"
+            )
+        move = float(np.linalg.norm(pa - pb[partner], axis=1).max())
+        if move > max_move:
+            raise MeshQualityError(
+                f"Periodic snap: {axis} faces need a move of {move:.3g} > {max_move:.3g}.",
+                "snap-move",
+            )
+        for j, k in enumerate(others):
+            out[ib[partner], k] = pa[:, j]
+    return out
+
+
+def _write_coords(fname, coords):
+    """Rewrite an exodus mesh with new node coordinates, keeping its blocks.
+
+    Rewrites the whole file with exodusii, like ``normalize_mesh``: reopening
+    it with netCDF4 in the same process fails with an HDF error once exodusii
+    has read it. Meshes from ``generate_mesh_*`` carry no node or side sets;
+    a file that has them is refused rather than silently stripped.
+    """
+    with exodusii.File(fname, mode="r") as exo:
+        if exo.num_node_sets() or exo.num_side_sets():
+            raise ValueError(f"{fname}: cannot rewrite coordinates of a mesh with node/side sets")
+        blocks = []
+        for b in exo.get_element_block_ids():
+            info = exo.get_element_block(b)
+            blocks.append((int(b), str(info.elem_type), str(info.name), np.asarray(exo.get_element_conn(b))))
+    with exodusii.File(fname, mode="w") as exo:
+        nelem = sum(len(c) for *_, c in blocks)
+        exo.put_init("snapped", coords.shape[1], len(coords), nelem, len(blocks), 0, 0)
+        exo.put_coord(*(coords[:, i] for i in range(coords.shape[1])))
+        for b, etype, name, conn in blocks:
+            exo.put_element_block(b, etype, len(conn), conn.shape[1])
+            if name:
+                exo.put_element_block_name(b, name)
+            exo.put_element_conn(b, conn)
+
+
+def face_mismatch(coords, tol=1e-6):
+    """Largest distance between a face node and its periodic partner.
+
+    For each axis with nonzero extent, the nodes on the min and max faces (within
+    ``tol`` times the axis span) are compared in the remaining coordinates: the
+    result is the largest nearest-neighbor distance, taken both ways. Periodic
+    BCs need this to be ~0. Returns ``inf`` if a face is empty while its
+    opposite is not.
+
+    Args:
+        coords (array): ``(n_nodes, dim)`` node coordinates.
+        tol (float): Relative tolerance for a node to lie on a face.
+    Returns:
+        float: The largest mismatch over all axes (0.0 for matching faces).
+    """
+    coords = np.asarray(coords, dtype=float)
+    lo, hi = coords.min(axis=0), coords.max(axis=0)
+    worst = 0.0
+    for d in range(coords.shape[1]):
+        span = hi[d] - lo[d]
+        if span <= 0:
+            continue
+        a = coords[np.abs(coords[:, d] - lo[d]) <= tol * span]
+        b = coords[np.abs(coords[:, d] - hi[d]) <= tol * span]
+        a, b = np.delete(a, d, axis=1), np.delete(b, d, axis=1)
+        if len(a) == 0 or len(b) == 0:
+            if len(a) or len(b):
+                return np.inf
+            continue
+        dab = sp.cKDTree(b).query(a)[0].max()
+        dba = sp.cKDTree(a).query(b)[0].max()
+        worst = max(worst, dab, dba)
+    return float(worst)
 
 
 def sculpt(mesh, prefix="sculpted_", settings=None, sculpt_input="ice"):
@@ -585,7 +793,10 @@ def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
 
     Args:
         mesh_data (dict): Mesh data containing unstructured grid output
-        img (2D array): Binary image where 1 indicates material A
+        img (array): Generated binary image (1 = material A) at the output
+            grid resolution. Sets the grid shape and is kept as
+            ``material_generated`` for comparison; the exported ``material``
+            is projected from the mesh, like the stimuli and responses.
         L (tuple): Lengths of the domain in each direction.
 
     Keyword Args:
@@ -599,7 +810,21 @@ def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
 
     grid = {
         "cell_fields": {
-            "material": {"type": "scalar", "shape": tuple(), "data": img},
+            "material": {
+                "type": "scalar",
+                "shape": tuple(),
+                # Material of the mesh actually solved, on the same grid and
+                # with the same projection as the stimuli/responses below.
+                "data": project_element_field_to_grid(
+                    mesh_data["coords"],
+                    mesh_data["connectivity"],
+                    mesh_data["element_fields"]["material"],
+                    L,
+                    img.shape,
+                )["data"][0],
+            },
+            # The generated image, to check the mesh against what was meshed.
+            "material_generated": {"type": "scalar", "shape": tuple(), "data": img},
             "stimuli": {},
             "responses": {},
         }
@@ -623,14 +848,5 @@ def extract_grid_from_mesh(mesh_data, img, L, length_names=None):
             L,
             img.shape,
         )
-
-    # This is entirely to double check the material field projection
-    grid["cell_fields"]["material_reprojected"] = project_element_field_to_grid(
-        mesh_data["coords"],
-        mesh_data["connectivity"],
-        mesh_data["element_fields"]["material"],
-        L,
-        img.shape,
-    )
 
     return grid
