@@ -1,0 +1,53 @@
+{
+    "nthreads": 12,
+    "sculpt": {
+        "executable": "${CUBIT_DIR}/bin/psculpt",
+        "mpi": "${CUBIT_DIR}/bin/mpiexec",
+        "rank_command": "-np",
+        "epu": "${CUBIT_DIR}/bin/epu",
+        "environment": {
+            "OPAL_LIBDIR": "${CUBIT_DIR}/bin/mpi/lib",
+            "OPAL_PREFIX": "${CUBIT_DIR}/bin/mpi"
+        }
+    },
+    "mpi": {
+        "executable": "mpiexec",
+        "rank_command": "-n",
+        "ranks": 1,
+        "extra_args": []
+    },
+    "storage": {
+        "delete_temp_dir": false
+    },
+    "verbose": false,
+    "log_file": "demo.log",
+    "log_level": "INFO",
+    "moose": {
+        "mode": "gpu",
+        "device": "xpu"
+    },
+    "gpu": {
+        "devices_per_node": 12,
+        "ranks_per_run": 1,
+        "visible_devices_env": "ZE_AFFINITY_MASK",
+        "cpu_bind": [
+            "1-8",
+            "9-16",
+            "17-24",
+            "25-32",
+            "33-40",
+            "41-48",
+            "53-60",
+            "61-68",
+            "69-76",
+            "77-84",
+            "85-92",
+            "93-100"
+        ],
+        "environment": {
+            "ONEAPI_DEVICE_SELECTOR": "level_zero:gpu",
+            "OMP_NUM_THREADS": "1",
+            "ZES_ENABLE_SYSMAN": "1"
+        }
+    }
+}

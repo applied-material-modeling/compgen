@@ -65,4 +65,9 @@ dev = [
 include = ["compgen*"]
 
 [tool.setuptools.package-data]
-compgen = ["physics/**/*.i", "physics/**/*.json"]
+compgen = ["physics/**/*.i", "physics/**/*.json", "share/*.sh"]
+
+[tool.pytest.ini_options]
+markers = [
+    "gpu: CPU/GPU MOOSE equivalence tests; need a GPU build of MOOSE and COMPGEN_TEST_DEVICE",
+]

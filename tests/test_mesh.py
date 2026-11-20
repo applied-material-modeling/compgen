@@ -24,6 +24,8 @@
 
 """Tests for mesh-processing utilities in compgen.mesh."""
 
+import os
+
 import exodusii
 import numpy as np
 import pytest
@@ -401,3 +403,46 @@ def test_extract_grid_uses_output_resolution(tmp_path):
         grid["material"]["data"].astype(bool), grid["material_generated"]["data"]
     )
     assert grid["lx"] == grid["ly"] == 1.0 and "lz" not in grid
+
+
+def _hex_volumes(coords, conn):
+    """Signed volume estimate of hex elements (triple product at node 0)."""
+    p = coords[conn]
+    return np.einsum(
+        "ij,ij->i", np.cross(p[:, 1] - p[:, 0], p[:, 3] - p[:, 0]), p[:, 4] - p[:, 0]
+    )
+
+
+def test_voxel_meshes_have_positive_orientation(tmp_path):
+    """Quads are counter-clockwise and hexes (written and extruded) right-handed.
+
+    Inverted (clockwise) quads were tolerated by host libMesh but flip the sign of side
+    integrals in the Kokkos (GPU) assembly.
+    """
+    rng = np.random.default_rng(0)
+    img2 = rng.random((4, 3)) < 0.5
+    img3 = rng.random((3, 4, 2)) < 0.5
+    write_mesh_2d(img2, str(tmp_path / "m2.e"), lx=LX, ly=LY)
+    write_mesh_3d(img3, str(tmp_path / "m3.e"), lx=LX, ly=LY, lz=LZ)
+    cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        extrude("m2.e", lx=LX, ly=LY)
+    finally:
+        os.chdir(cwd)
+
+    with exodusii.File(str(tmp_path / "m2.e"), mode="r") as exo:
+        xy = np.asarray(exo.get_coords())
+        for block in (1, 2):
+            p = xy[np.asarray(exo.get_element_conn(block)) - 1]
+            area = 0.5 * sum(
+                p[:, i, 0] * p[:, (i + 1) % 4, 1] - p[:, (i + 1) % 4, 0] * p[:, i, 1]
+                for i in range(4)
+            )
+            assert np.all(area > 0)
+    for name in ("m3.e", "extruded_m2.e"):
+        with exodusii.File(str(tmp_path / name), mode="r") as exo:
+            xyz = np.asarray(exo.get_coords())
+            for block in (1, 2):
+                conn = np.asarray(exo.get_element_conn(block)) - 1
+                assert np.all(_hex_volumes(xyz, conn) > 0), name

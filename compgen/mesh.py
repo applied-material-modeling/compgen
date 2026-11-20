@@ -757,11 +757,14 @@ def write_mesh_2d(img, fname, lx=1.0, ly=1.0):
     mat_b = []
     for je in range(ny):
         for ie in range(nx):
+            # Counter-clockwise (positive Jacobian): (i, j), (i+1, j), (i+1, j+1), (i, j+1).
+            # Clockwise quads are inverted elements; host libMesh tolerates them, but Kokkos
+            # side integrals (e.g. Neumann BCs) then come out with the wrong sign.
             cell = [
                 ie * (ny + 1) + je + 1,
-                ie * (ny + 1) + je + 1 + 1,
-                (ie + 1) * (ny + 1) + je + 1 + 1,
                 (ie + 1) * (ny + 1) + je + 1,
+                (ie + 1) * (ny + 1) + je + 1 + 1,
+                ie * (ny + 1) + je + 1 + 1,
             ]
             if img[ie, je]:
                 mat_a.append(cell)

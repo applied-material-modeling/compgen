@@ -57,5 +57,10 @@
                 "strain_xy"
             ]
         }
+    },
+    "gpu": {
+        "target_substitution": "AuxKernels/temp/value",
+        "target_name": "1",
+        "zero_name": "0"
     }
 }

@@ -36,7 +36,7 @@ import time
 import numpy as np
 import multiprocess
 
-from compgen import temp, hdfwriter, utils, mesh, filters
+from compgen import temp, hdfwriter, utils, mesh, filters, moose
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,23 @@ def _is_mesh_failure(r):
 
 def _is_exec_failure(r):
     return isinstance(r, _Failure) and r.kind == "exec"
+
+
+def _init_worker_slot(slots):
+    """Pool initializer: give this worker a unique device slot for MOOSE gpu mode.
+
+    Each worker keeps its slot for its lifetime, so concurrent MOOSE runs use disjoint
+    device blocks (see ``moose.build_moose_command``).
+    """
+    os.environ[moose.GPU_SLOT_ENV] = str(slots.get())
+
+
+def _make_pool(nthreads):
+    """A worker pool where each worker has its own device slot (0 .. nthreads - 1)."""
+    slots = multiprocess.Queue()
+    for slot in range(nthreads):
+        slots.put(slot)
+    return multiprocess.Pool(nthreads, initializer=_init_worker_slot, initargs=(slots,))
 
 
 def _run_single_star(args):
@@ -446,6 +463,8 @@ def _run(config, config_files, log, stats):
 
     number = config["number"]
     nthreads = config.get("nthreads", 1)
+    # In MOOSE gpu mode every concurrent worker needs its own block of devices
+    moose.check_gpu_capacity(config, nthreads)
     # Predefined structures (e.g. FromNumpyGenerator) are a fixed list, not a
     # stream: redrawing after a mesh failure would wrap around and duplicate an
     # earlier structure. Draw each one exactly once instead.
@@ -534,7 +553,7 @@ def _run(config, config_files, log, stats):
         succeeded = 0
         in_flight = 0
         exhausted = False
-        pool = multiprocess.Pool(nthreads)
+        pool = _make_pool(nthreads)
 
         def submit_one():
             nonlocal in_flight, exhausted
@@ -613,7 +632,7 @@ def _run(config, config_files, log, stats):
         if nthreads == 1:
             collected = [_run_single_star(t) for t in tasks()]
         else:
-            with multiprocess.Pool(nthreads) as pool:
+            with _make_pool(nthreads) as pool:
                 collected = pool.map(_run_single_star, list(tasks()))
         for r, elapsed in collected:
             stats.record(r, elapsed)

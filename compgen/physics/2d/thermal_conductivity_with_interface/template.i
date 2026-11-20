@@ -34,10 +34,18 @@
     type = FileMeshGenerator
     file = 'mesh.exo'
   []
+  # Fixed block names (IDs unchanged) so the broken interface sides are always named a_b
+  # (block 1 side) and b_a (block 2 side). BreakMeshByBlockGenerator creates both sides; the
+  # penalty kernel uses one.
+  [names]
+    type = RenameBlockGenerator
+    input = base
+    old_block = '1 2'
+    new_block = 'a b'
+  []
   [bm]
     type = BreakMeshByBlockGenerator
-    input = base
-    interface_name = 'ab'
+    input = names
   []
 
   [sidesets]
@@ -88,7 +96,7 @@
     type = PenaltyInterfaceDiffusion
     variable = temp
     neighbor_var = temp
-    boundary = 'ab'
+    boundary = 'a_b'
     penalty = 50
   [../]
 []

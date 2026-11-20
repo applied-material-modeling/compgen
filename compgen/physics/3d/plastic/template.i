@@ -581,8 +581,8 @@ eq_strain_max = 0.02 # Should cause termination
     []
     [u]
       vars = 'disp_x disp_y disp_z'
-      petsc_options_iname = '-ksp_type -ksp_gmres_restart -pc_type -pc_gamg_type -pc_gamg_threshold -pc_gamg_aggressive_square_graph -pc_gamg_aggressive_coarsening -pc_gamg_coarse_eq_limit -pc_gamg_process_eq_limit -mg_levels_ksp_type -mg_levels_ksp_max_it -mg_levels_pc_type -mg_coarse_ksp_type -mg_coarse_pc_type -mg_coarse_pc_factor_mat_solver_type -ksp_atol -ksp_rtol'
-      petsc_options_value = 'fgmres 50 gamg agg 0.2 true 1 1000 5000 chebyshev 1 sor preonly lu superlu_dist 1e-3 1e-4'
+      petsc_options_iname = '-ksp_type -ksp_gmres_restart -pc_type -pc_gamg_type -pc_gamg_threshold -pc_gamg_aggressive_square_graph -pc_gamg_aggressive_coarsening -pc_gamg_coarse_eq_limit -pc_gamg_process_eq_limit -mg_levels_ksp_type -mg_levels_ksp_max_it -mg_levels_pc_type -mg_coarse_ksp_type -mg_coarse_pc_type -mg_coarse_redundant_pc_type -ksp_atol -ksp_rtol'
+      petsc_options_value = 'fgmres 50 gamg agg 0.2 true 1 1000 5000 chebyshev 1 sor preonly redundant lu 1e-3 1e-4'
     []
     [hvar]
       vars = 'hvar'

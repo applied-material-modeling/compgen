@@ -314,3 +314,31 @@ def test_run_single_orthogonal_keeps_domain_and_cell_references(monkeypatch, tmp
     assert seen["refs"] == (32, 8)
     assert seen["mesh"] == ((64, 64), 1.0, 16)
     assert seen["out"] == (1.0, 8)
+
+
+def test_worker_pool_assigns_unique_device_slots():
+    """Each pool worker gets its own MOOSE gpu-mode device slot for its lifetime."""
+
+    def whoami(_):
+        import os  # pylint: disable=import-outside-toplevel,redefined-outer-name,reimported
+
+        return os.getpid(), os.environ[runner.moose.GPU_SLOT_ENV]
+
+    with runner._make_pool(3) as pool:  # pylint: disable=protected-access
+        seen = pool.map(whoami, range(24), chunksize=1)
+    slot_of = {}
+    for pid, slot in seen:
+        assert slot_of.setdefault(pid, slot) == slot
+    assert len(set(slot_of.values())) == len(slot_of)
+    assert set(slot_of.values()) <= {"0", "1", "2"}
+
+
+def test_gpu_capacity_checked_before_running():
+    """Too many concurrent gpu runs for the node's devices is a config error."""
+    config = {
+        "moose": {"mode": "gpu", "device": "xpu"},
+        "gpu": {"devices_per_node": 12, "ranks_per_run": 4},
+    }
+    runner.moose.check_gpu_capacity(config, 3)
+    with pytest.raises(ValueError, match="devices_per_node"):
+        runner.moose.check_gpu_capacity(config, 4)

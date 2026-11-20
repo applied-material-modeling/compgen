@@ -521,8 +521,9 @@ eq_strain_max = 0.02 # Should cause termination
   solve_type = 'newton'
   line_search = none
 
-  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -ksp_type'
-  petsc_options_value = 'lu superlu_dist gmres'
+  # Redundant PETSc LU needs no external package (works in serial and parallel)
+  petsc_options_iname = '-pc_type -redundant_pc_type -ksp_type'
+  petsc_options_value = 'redundant lu gmres'
 
   end_time = 5.0
   dtmin = 1e-4

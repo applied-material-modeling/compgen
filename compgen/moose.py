@@ -42,23 +42,59 @@ from compgen.tensors import assemble_tensor
 logger = logging.getLogger(__name__)
 
 
-def get_physics(name, settings_name="settings.json", template_name="template.i"):
+MODES = ("cpu", "gpu")
+
+# Keys of a physics' "gpu" settings block that only make sense in gpu mode, so they are not
+# merged into the top-level settings.
+_GPU_ONLY_KEYS = ("template",)
+
+
+def get_physics(
+    name, settings_name="settings.json", template_name="template.i", mode="cpu"
+):
     """Return the absolute path to the template and the options set for a given physics
+
+    In ``"gpu"`` mode the physics' settings file must contain a ``"gpu"`` block. Its entries
+    override the top-level settings (its ``"template"`` entry, default ``template_gpu.i``,
+    names the GPU template).
 
     Args:
         name (str): Name of the physics template.  Can include / subdirectories.
 
     Keyword Args:
         settings_name (str): Name of the settings file within the physics directory.
-        template_name (str): Name of the template file within the physics directory.
+        template_name (str): Name of the template file within the physics directory (cpu mode).
+        mode (str): ``"cpu"`` (the original templates) or ``"gpu"`` (Kokkos/device PETSc
+            templates).
     """
     base = os.path.join(os.path.dirname(__file__), "physics", name)
     if not os.path.isdir(base):
         raise ValueError(f"Physics '{name}' not found.")
+    if mode not in MODES:
+        raise ValueError(f"Unknown MOOSE mode '{mode}'; expected one of {MODES}.")
 
-    return os.path.join(base, template_name), json.load(
-        open(os.path.join(base, settings_name), "r", encoding="utf-8")
-    )
+    with open(os.path.join(base, settings_name), "r", encoding="utf-8") as f:
+        settings = json.load(f)
+    gpu = settings.pop("gpu", None)
+
+    if mode == "gpu":
+        if gpu is None:
+            raise ValueError(
+                f"Physics '{name}' has no GPU version; run it with moose.mode = 'cpu'."
+            )
+        settings.update({k: v for k, v in gpu.items() if k not in _GPU_ONLY_KEYS})
+        template_name = gpu.get("template", "template_gpu.i")
+
+    return os.path.join(base, template_name), settings
+
+
+def supports_mode(name, mode):
+    """Whether a physics has a template for the given mode ("cpu" or "gpu")."""
+    try:
+        get_physics(name, mode=mode)
+    except ValueError:
+        return False
+    return True
 
 
 def material_property_substitutions(material_properties, physics_properties):
@@ -67,7 +103,16 @@ def material_property_substitutions(material_properties, physics_properties):
     Args:
         material_properties (dict): Dictionary defining material properties for materials A and B.
         physics_properties (dict): Dictionary defining physics properties.
+
+    Each substitution entry is either one input-file path or a list of paths that all receive
+    the same value.
     """
+
+    def _subs(paths, value):
+        if isinstance(paths, str):
+            paths = [paths]
+        return [f"{path}={value}" for path in paths]
+
     subs = []
     for ind, prop in enumerate(physics_properties["bulk_material_properties"]):
         if prop not in material_properties["A"]:
@@ -75,13 +120,13 @@ def material_property_substitutions(material_properties, physics_properties):
         if prop not in material_properties["B"]:
             raise ValueError(f"Material property '{prop}' not defined for material B.")
 
-        subs.append(
-            f"{physics_properties['material_A_substitutions'][ind]}="
-            f"{material_properties['A'][prop]}"
+        subs += _subs(
+            physics_properties["material_A_substitutions"][ind],
+            material_properties["A"][prop],
         )
-        subs.append(
-            f"{physics_properties['material_B_substitutions'][ind]}="
-            f"{material_properties['B'][prop]}"
+        subs += _subs(
+            physics_properties["material_B_substitutions"][ind],
+            material_properties["B"][prop],
         )
 
     for ind, prop in enumerate(
@@ -92,9 +137,9 @@ def material_property_substitutions(material_properties, physics_properties):
                 f"Material property '{prop}' not defined for material interface AB."
             )
 
-        subs.append(
-            f"{physics_properties['interface_substitutions'][ind]}="
-            f"{material_properties['AB'][prop]}"
+        subs += _subs(
+            physics_properties["interface_substitutions"][ind],
+            material_properties["AB"][prop],
         )
 
     return subs
@@ -112,7 +157,9 @@ def target_substitutions(
     Args:
         target (int): Target index.
         number_of_targets (int): Total number of targets.
-        target_substitution (str): Substitution template for the target.
+        target_substitution (str | list[str]): Input-file path receiving the space-separated
+            list of target values, or a list of ``number_of_targets`` paths that each receive
+            one value (e.g. top-level variables ``['exx', 'exy', 'eyy']``).
         target_name (str): Name of the target variable.
         zero_name (str): Name of the zero variable.
     """
@@ -123,7 +170,15 @@ def target_substitutions(
         else:
             subs.append(zero_name)
 
-    return [f"{target_substitution}='{' '.join(subs)}'"]
+    if isinstance(target_substitution, str):
+        return [f"{target_substitution}='{' '.join(subs)}'"]
+
+    if len(target_substitution) != number_of_targets:
+        raise ValueError(
+            f"Expected {number_of_targets} target substitution paths, "
+            f"got {len(target_substitution)}."
+        )
+    return [f"{path}={value}" for path, value in zip(target_substitution, subs)]
 
 
 def output_subsitutions(target, output_substitution, output_name):
@@ -304,6 +359,145 @@ def _run_moose_command(cmd, env, capture, timeout_s):
             )
 
 
+GPU_SLOT_ENV = "COMPGEN_GPU_SLOT"
+
+
+def moose_mode(settings):
+    """The MOOSE mode ("cpu" or "gpu") from ``settings["moose"]["mode"]`` (default "cpu")."""
+    mode = settings.get("moose", {}).get("mode", "cpu")
+    if mode not in MODES:
+        raise ValueError(f"Unknown MOOSE mode '{mode}'; expected one of {MODES}.")
+    return mode
+
+
+def moose_device(settings):
+    """The compute device for gpu mode, from ``settings["moose"]["device"]`` (e.g. "xpu")."""
+    device = settings.get("moose", {}).get("device")
+    if not device:
+        raise ValueError(
+            "MOOSE gpu mode needs a device: set moose.device (e.g. 'xpu' or 'cuda')."
+        )
+    return device
+
+
+def gpu_ranks_per_run(settings):
+    """MPI ranks (one per device) used by each MOOSE run in gpu mode."""
+    gpu = settings.get("gpu", {})
+    if "ranks_per_run" in gpu:
+        return int(gpu["ranks_per_run"])
+    if "mpi" in settings:
+        return int(settings["mpi"].get("ranks", 1))
+    return 1
+
+
+def check_gpu_capacity(settings, nthreads):
+    """Check that ``nthreads`` concurrent runs fit on the node's devices in gpu mode.
+
+    Args:
+        settings (dict): Global settings dict.
+        nthreads (int): Number of concurrent workers (each gets one device slot).
+    """
+    if moose_mode(settings) != "gpu":
+        return
+    moose_device(settings)
+    devices = settings.get("gpu", {}).get("devices_per_node")
+    if devices is None:
+        return
+    needed = nthreads * gpu_ranks_per_run(settings)
+    if needed > int(devices):
+        raise ValueError(
+            f"gpu mode: {nthreads} concurrent runs x {gpu_ranks_per_run(settings)} ranks "
+            f"need {needed} devices, but gpu.devices_per_node = {devices}."
+        )
+
+
+def gpu_bind_script():
+    """Path to the wrapper that gives each MPI rank its own device (see gpu_bind.sh)."""
+    return os.path.join(os.path.dirname(__file__), "share", "gpu_bind.sh")
+
+
+def build_moose_command(settings, args, slot=None):
+    """Form the command line and environment for one MOOSE run.
+
+    In cpu mode this is ``[mpi ...] moose <options> <args>``.
+
+    In gpu mode each run gets a block of ``ranks_per_run`` consecutive devices starting at
+    ``slot * ranks_per_run`` (the slot is unique per concurrent worker, see
+    ``runner.run``). Each rank is pinned to one device by ``gpu_bind.sh`` (or
+    ``gpu.wrapper``), which sets ``gpu.visible_devices_env`` (default ``ZE_AFFINITY_MASK``)
+    to ``offset + local rank``. If ``gpu.cpu_bind`` lists one CPU core range per device, the
+    ranks are also bound to the cores of their devices (``--cpu-bind=list:...``, as used by
+    Aurora's mpiexec). ``--compute-device=<moose.device>`` is added to the MOOSE options.
+
+    Args:
+        settings (dict): Global settings dict.
+        args (list[str]): MOOSE arguments (input file and substitutions).
+
+    Keyword Args:
+        slot (int): Device slot; defaults to the ``COMPGEN_GPU_SLOT`` environment variable
+            (set per worker by the runner) or 0.
+
+    Returns:
+        tuple: (command list, environment dict)
+    """
+    moose = settings["moose"]
+    cmd = [moose["executable"]] + moose.get("options", []) + list(args)
+    env = dict(os.environ) | moose.get("environment", {})
+    mpi = settings.get("mpi")
+
+    if moose_mode(settings) != "gpu":
+        if mpi is not None:
+            cmd = (
+                [mpi["executable"], mpi["rank_command"], str(mpi["ranks"])]
+                + mpi.get("extra_args", [])
+                + cmd
+            )
+        return cmd, env
+
+    cmd.append(f"--compute-device={moose_device(settings)}")
+
+    gpu = settings.get("gpu", {})
+    if slot is None:
+        slot = int(os.environ.get(GPU_SLOT_ENV, "0"))
+    ranks = gpu_ranks_per_run(settings)
+    first = slot * ranks
+    devices = gpu.get("devices_per_node")
+    if devices is not None and first + ranks > int(devices):
+        raise ValueError(
+            f"gpu mode: slot {slot} needs devices {first}..{first + ranks - 1}, but "
+            f"gpu.devices_per_node = {devices}."
+        )
+
+    env |= gpu.get("environment", {})
+    env["COMPGEN_DEVICE_OFFSET"] = str(first)
+    env["COMPGEN_VISIBLE_DEVICES_ENV"] = gpu.get(
+        "visible_devices_env", "ZE_AFFINITY_MASK"
+    )
+    wrapper = gpu.get("wrapper", ["bash", gpu_bind_script()])
+    if isinstance(wrapper, str):
+        wrapper = [wrapper]
+
+    if mpi is None:
+        if ranks != 1:
+            raise ValueError(
+                "gpu mode with more than one rank per run needs an 'mpi' section."
+            )
+        return wrapper + cmd, env
+
+    launch = [mpi["executable"], mpi["rank_command"], str(ranks)] + mpi.get(
+        "extra_args", []
+    )
+    cpu_bind = gpu.get("cpu_bind")
+    if cpu_bind:
+        if first + ranks > len(cpu_bind):
+            raise ValueError(
+                f"gpu.cpu_bind lists {len(cpu_bind)} core ranges but slot {slot} uses "
+                f"devices {first}..{first + ranks - 1}."
+            )
+        launch.append("--cpu-bind=list:" + ":".join(cpu_bind[first : first + ranks]))
+    return launch + wrapper + cmd, env
+
+
 def execute_moose_simulations(
     physics,
     mesh,
@@ -329,7 +523,8 @@ def execute_moose_simulations(
     if settings is None:
         settings = {}
 
-    template_input, physics_settings = get_physics(physics)
+    mode = moose_mode(settings)
+    template_input, physics_settings = get_physics(physics, mode=mode)
 
     # Temp storage
     with temp.TempDirectory(settings) as (cwd, tmpdir):
@@ -383,26 +578,15 @@ def execute_moose_simulations(
                 physics_settings["output_substitution"],
                 output_name,
             )
-            cmd = (
-                [settings["moose"]["executable"]]
-                + settings["moose"]["options"]
-                + ["-i", "input.i"]
-                + mat_subs
-                + target_subs
-                + output_subs
+            cmd, env = build_moose_command(
+                settings,
+                ["-i", "input.i"] + mat_subs + target_subs + output_subs,
             )
-            if "mpi" in settings:
-                cmd = (
-                    [settings["mpi"]["executable"]]
-                    + [settings["mpi"]["rank_command"], str(settings["mpi"]["ranks"])]
-                    + settings["mpi"].get("extra_args", [])
-                    + cmd
-                )
 
             try:
                 _run_moose_command(
                     cmd,
-                    env=dict(os.environ) | settings["moose"].get("environment", {}),
+                    env=env,
                     capture=(not settings.get("verbose", False)),
                     timeout_s=timeout_s,
                 )

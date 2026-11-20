@@ -30,6 +30,13 @@ compgen provides a simple API (`runner.run`) for doing all of this based on json
 
 There are examples of each file type to make up the 2D and 3D demos, described below.
 
+## GPU mode
+
+Every physics can also run on GPUs, with Kokkos assembly and materials and device PETSc.
+Select it per run with `"moose": {"mode": "gpu", "device": "xpu"}` in the system
+configuration. See [doc/gpu.md](doc/gpu.md) for the GPU templates, how runs are mapped to a
+node's devices, and an Aurora job script.
+
 ## Tests and demos
 
 First set environment variables:
@@ -38,7 +45,7 @@ First set environment variables:
 
 ## Run the tests
 
-Run the tests with `pytest`.  The general tests in the `tests` directory do not require MOOSE and are quick and cheap to run.  The verification tests in `tests/verification` are more expensive and require MOOSE.
+Run the tests with `pytest`.  The general tests in the `tests` directory do not require MOOSE and are quick and cheap to run.  The verification tests in `tests/verification` are more expensive and require MOOSE.  The CPU/GPU equivalence tests in `tests/gpu` need a GPU build of MOOSE and a GPU, and are skipped unless `COMPGEN_TEST_DEVICE` is set (see [doc/gpu.md](doc/gpu.md)).
 
 ## Run the demos
 
