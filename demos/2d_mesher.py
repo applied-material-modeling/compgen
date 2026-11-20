@@ -184,10 +184,11 @@ def main():
     print(f"  drew image of shape {img.shape} (mesh N={n_mesh})")
 
     # 2) Filters -- applied on the generated image, exactly as run_single does
-    #    (filter_params passes mesh.params.N to make_periodic).
+    #    (filter_params passes the unit-cell N_gen and N_mesh to the filters).
+    refs = runner.filter_refs(CONFIG, img.shape[0])
     for spec in CONFIG["filtering"]:
         filter_func = runner.get_object_from_module(spec["type"])
-        img = filter_func(img, **runner.filter_params(filter_func, spec, n_mesh))
+        img = filter_func(img, **runner.filter_params(filter_func, spec, refs))
         print(f"  applied {spec['type']}")
 
     # Save a preview of the material image at mesh resolution, so you can

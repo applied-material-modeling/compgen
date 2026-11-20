@@ -29,6 +29,7 @@ import numpy as np
 import pytest
 
 from compgen.mesh import (
+    read_coords_conn,
     MeshQualityError,
     _validate_mesh,
     downsample_vfrac,
@@ -177,7 +178,9 @@ def test_face_mismatch_zero_for_regular_grid():
 def test_face_mismatch_reports_moved_face_node():
     """Moving one face node in-plane shows up as that distance."""
     coords = _grid_coords()
-    i = np.flatnonzero((coords[:, 2] == 1.0) & (coords[:, 0] == 0.5) & (coords[:, 1] == 0.5))
+    i = np.flatnonzero(
+        (coords[:, 2] == 1.0) & (coords[:, 0] == 0.5) & (coords[:, 1] == 0.5)
+    )
     coords[i, 0] += 0.01
     assert face_mismatch(coords) == pytest.approx(0.01)
 
@@ -187,13 +190,6 @@ def test_face_mismatch_skips_flat_axis():
     coords = _grid_coords()
     coords[:, 2] = 0.0
     assert face_mismatch(coords) == 0.0
-
-
-def _read(fname):
-    with exodusii.File(fname, mode="r") as exo:
-        coords = np.asarray(exo.get_coords(), dtype=float)
-        conn = np.vstack([np.asarray(exo.get_element_conn(b)) - 1 for b in exo.get_element_block_ids()])
-    return coords, conn
 
 
 def _shift_top_center(c, dx=0.01):
@@ -212,7 +208,9 @@ def test_validate_mesh_rejects_nan_coords_without_quality_check(tmp_path):
     """Non-finite coordinates fail even with quality_check and snapping off."""
     fname = str(tmp_path / "mesh.e")
     write_mesh_3d(np.indices((2, 2, 2)).sum(0) % 2 == 0, fname)
-    _rewrite_coords(fname, lambda c: np.where(np.arange(len(c))[:, None] == 0, np.nan, c))
+    _rewrite_coords(
+        fname, lambda c: np.where(np.arange(len(c))[:, None] == 0, np.nan, c)
+    )
 
     with pytest.raises(MeshQualityError, match="non-finite") as exc:
         _validate_mesh(fname, False, None, 1.0, 2)
@@ -224,11 +222,11 @@ def test_validate_mesh_snaps_faces_in_place(tmp_path):
     fname = str(tmp_path / "mesh.e")
     write_mesh_3d(CHECKER, fname)
     _rewrite_coords(fname, _shift_top_center)
-    assert face_mismatch(_read(fname)[0]) == pytest.approx(0.01)
+    assert face_mismatch(read_coords_conn(fname)[0]) == pytest.approx(0.01)
 
     _validate_mesh(fname, False, 0.1, 1.0, 4)  # cap 0.025
 
-    assert face_mismatch(_read(fname)[0]) == 0.0
+    assert face_mismatch(read_coords_conn(fname)[0]) == 0.0
 
 
 def test_validate_mesh_rejects_move_above_cap(tmp_path):
@@ -240,14 +238,14 @@ def test_validate_mesh_rejects_move_above_cap(tmp_path):
     with pytest.raises(MeshQualityError, match="need a move") as exc:
         _validate_mesh(fname, False, 0.02, 1.0, 4)  # cap 0.005
     assert exc.value.reason == "snap-move"
-    assert face_mismatch(_read(fname)[0]) == pytest.approx(0.01)
+    assert face_mismatch(read_coords_conn(fname)[0]) == pytest.approx(0.01)
 
 
 def test_snap_rejects_non_flat_face(tmp_path):
     """A face node pushed off the box plane makes the face non-flat."""
     fname = str(tmp_path / "mesh.e")
     write_mesh_3d(CHECKER, fname)
-    coords, conn = _read(fname)
+    coords, conn = read_coords_conn(fname)
     top = np.flatnonzero(np.isclose(coords[:, 2], 1.0))
     coords[top[5], 2] -= 0.05
 
@@ -261,12 +259,25 @@ def test_snap_rejects_crossed_neighbors():
     neighbor, and the mesh is rejected rather than paired by a guess."""
     ax = np.linspace(0.0, 1.0, 5)
     coords = np.stack(np.meshgrid(ax, ax, ax, indexing="ij"), -1).reshape(-1, 3)
-    idx = lambda i, j, k: (i * 5 + j) * 5 + k  # noqa: E731
+
+    def idx(i, j, k):
+        return (i * 5 + j) * 5 + k
+
     conn = np.array(
         [
-            [idx(i, j, k), idx(i + 1, j, k), idx(i + 1, j + 1, k), idx(i, j + 1, k),
-             idx(i, j, k + 1), idx(i + 1, j, k + 1), idx(i + 1, j + 1, k + 1), idx(i, j + 1, k + 1)]
-            for i in range(4) for j in range(4) for k in range(4)
+            [
+                idx(i, j, k),
+                idx(i + 1, j, k),
+                idx(i + 1, j + 1, k),
+                idx(i, j + 1, k),
+                idx(i, j, k + 1),
+                idx(i + 1, j, k + 1),
+                idx(i + 1, j + 1, k + 1),
+                idx(i, j + 1, k + 1),
+            ]
+            for i in range(4)
+            for j in range(4)
+            for k in range(4)
         ]
     )
     moved = coords.copy()
@@ -280,7 +291,7 @@ def test_snap_2d_quad_mesh(tmp_path):
     """The 2D path pairs face edges of a QUAD4 mesh."""
     fname = str(tmp_path / "mesh.e")
     write_mesh_2d(np.indices((4, 4)).sum(0) % 2 == 0, fname)
-    coords, conn = _read(fname)
+    coords, conn = read_coords_conn(fname)
     right = np.flatnonzero(np.isclose(coords[:, 0], coords[:, 0].max()))
     coords[right[2], 1] += 0.01
 
@@ -302,7 +313,7 @@ def test_generate_mesh_2d_coarsens_without_sculpt(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     img = np.random.default_rng(1).random((12, 12)) < 0.5
     generate_mesh_2d(img, "mesh.e", N=5, run_sculpt=False, max_snap_move=1e-9)
-    coords, conn = _read(str(tmp_path / "mesh.e"))
+    coords, conn = read_coords_conn(str(tmp_path / "mesh.e"))
     assert len(conn) == 25 and coords.max() == pytest.approx(1.0)
 
 
@@ -313,7 +324,10 @@ def test_generate_mesh_rejects_mesh_finer_than_image(tmp_path, monkeypatch):
         generate_mesh_2d(np.zeros((8, 8), dtype=bool), "mesh.e", N=9, run_sculpt=False)
 
 
-@pytest.mark.parametrize("shape,factor", [((24, 24), 2), ((24, 24), 3), ((24, 24), 8), ((12, 12, 12), 4), ((12, 12, 12), 3)])
+@pytest.mark.parametrize(
+    "shape,factor",
+    [((24, 24), 2), ((24, 24), 3), ((24, 24), 8), ((12, 12, 12), 4), ((12, 12, 12), 3)],
+)
 def test_overlap_vfrac_matches_downsample_for_integer_ratio(shape, factor):
     """For an integer ratio the overlap operator is the block mean, exactly."""
     img = np.random.default_rng(2).random(shape) > 0.5
@@ -347,7 +361,7 @@ def test_project_element_field_to_grid_any_resolution(tmp_path):
     fname = str(tmp_path / "mesh.e")
     img = np.random.default_rng(5).random((6, 6)) > 0.5
     write_mesh_2d(img, fname)
-    coords, conn = _read(fname)
+    coords, conn = read_coords_conn(fname)
     with exodusii.File(fname, mode="r") as exo:
         n_a = len(exo.get_element_conn(1))
     material = np.zeros(len(conn))
@@ -363,9 +377,11 @@ def test_extract_grid_uses_output_resolution(tmp_path):
     """The grid has N_out cells per side; material_generated is the meshed
     image resampled to N_out."""
     fname = str(tmp_path / "mesh.e")
-    img = np.kron(np.random.default_rng(6).random((4, 4)) > 0.5, np.ones((3, 3), dtype=bool))
+    img = np.kron(
+        np.random.default_rng(6).random((4, 4)) > 0.5, np.ones((3, 3), dtype=bool)
+    )
     write_mesh_2d(img, fname)
-    coords, conn = _read(fname)
+    coords, conn = read_coords_conn(fname)
     with exodusii.File(fname, mode="r") as exo:
         n_a = len(exo.get_element_conn(1))
     material = np.zeros(len(conn))
@@ -381,5 +397,7 @@ def test_extract_grid_uses_output_resolution(tmp_path):
     }
     grid = extract_grid_from_mesh(mesh_data, img, 1.0, N=4)["cell_fields"]
     assert grid["material"]["data"].shape == (4, 4)
-    assert np.array_equal(grid["material"]["data"].astype(bool), grid["material_generated"]["data"])
+    assert np.array_equal(
+        grid["material"]["data"].astype(bool), grid["material_generated"]["data"]
+    )
     assert grid["lx"] == grid["ly"] == 1.0 and "lz" not in grid

@@ -99,20 +99,24 @@ def _fft_footprint_sum(x, footprint):
     return np.rint(out)  # counts are integers; drop FFT round-off
 
 
-def mean_filter(img, radius=0.0234, periodic=True, method="rank"):
+def mean_filter(img, radius=0.0234, periodic=True, method="rank", n_gen=None):
     """Apply a mean filter to an image.
 
     Args:
         img (np.ndarray): 2D or 3D image.
         radius (float): Radius of disk/ball footprint, as a fraction of the
-            shortest side ``min(img.shape)``, rounded up to whole pixels.
-            ``0`` is a no-op.
+            unreplicated cell side ``n_gen``, rounded up to whole pixels. ``0`` is a
+            no-op.
         periodic (bool): If True, use periodic wrapping at the boundaries.
         method (str): ``"rank"`` uses ``skimage.filters.rank.mean`` (uint8
             averages, slow for large radii). ``"fft"`` convolves with the
             footprint via FFT: exact averages and much faster, with cost
             independent of `radius`. Results can differ slightly at large
             radii, where the uint8 rounding of ``"rank"`` creates ties.
+        n_gen (int or None): Pixels per side of the unreplicated cell, the
+            reference for `radius`. None means ``min(img.shape)``. The runner
+            passes the generator's ``N``, so the radius stays the same after
+            ``make_orthogonal``.
 
     Returns:
         np.ndarray: Smoothed binary image (bool).
@@ -123,7 +127,7 @@ def mean_filter(img, radius=0.0234, periodic=True, method="rank"):
         )
     img = _as_binary(img, "mean_filter")
     ndim = img.ndim
-    radius = _ceil(radius * min(img.shape))
+    radius = _ceil(radius * (min(img.shape) if n_gen is None else n_gen))
     if radius == 0 and ndim in (2, 3):
         return img
 
@@ -174,8 +178,11 @@ def make_orthogonal(img):
     array with its flipped version along each axis (processing axes from
     last to first). Takes and returns a bool array.
 
-    A square/cubic input stays square/cubic, but every side doubles, so the
-    meshed image has ``N_gen = 2 * generator.params.N``.
+    Every side doubles: the result is a 2 x 2 (x 2) block of copies of the
+    input cell, meshed on the same domain ``[0, L]``. The generator parameters
+    and the filter lengths keep referring to the unreplicated cell (the runner
+    passes its ``n_gen`` to the filters); ``L``, ``mesh.params.N`` and the
+    output ``N`` refer to the whole domain.
     """
     arr = _as_binary(img, "make_orthogonal")
     for axis in reversed(range(arr.ndim)):
@@ -188,19 +195,22 @@ def make_periodic(
     margin_cells: float = 2,
     shift: bool = False,
     center: bool = False,
-    n_mesh: int | None = None,
+    n_mesh: float | None = None,
+    n_gen: int | None = None,
 ) -> np.ndarray:
     """
     Make periodic for Sculpt/MOOSE workflow.
 
-    `margin_cells` is in mesh cells. The input is the generator grid of
-    ``N_gen = img.shape[0]`` pixels per side, meshed with ``n_mesh`` cells per
-    side, so the margin is ``ceil(margin_cells * N_gen / n_mesh)`` pixel
-    layers; below, `margin` is that number. Floats are allowed (2.5 cells = 20
-    layers for 256 -> 32). Rounding up matters for a non-integer ratio: a mesh
-    cell that overlaps even one pixel outside the block gets a mixed volume
-    fraction. The runner passes ``mesh.params.N`` as `n_mesh` automatically;
-    None means ``n_mesh = N_gen``.
+    `margin_cells` is in mesh cells. A cell has ``n_gen`` pixels and
+    ``n_mesh`` mesh cells per side, so the margin is
+    ``ceil(margin_cells * n_gen / n_mesh)`` pixel layers; below, `margin` is
+    that number. Floats are allowed (2.5 cells = 20 layers for 256 -> 32).
+    Rounding up matters for a non-integer ratio: a mesh cell that overlaps
+    even one pixel outside the block gets a mixed volume fraction. The runner
+    passes both per unreplicated cell: the generator's ``N``, and
+    ``mesh.params.N`` divided by the ``make_orthogonal`` copies per side
+    (possibly fractional). None means ``n_gen = img.shape[0]`` and
+    ``n_mesh = n_gen``.
 
     Overwrite the first and last `margin` layers of each axis with the layer at
     index `margin`, for 2D or 3D arrays.
@@ -224,14 +234,25 @@ def make_periodic(
 
     if arr.ndim not in (2, 3):
         raise FilterInputError(f"Expected 2D or 3D array, got {arr.ndim}D")
-    if isinstance(margin_cells, bool) or not isinstance(margin_cells, (int, float)) or margin_cells <= 0:
-        raise FilterInputError(f"margin_cells must be a positive number, got {margin_cells}")
+    if (
+        isinstance(margin_cells, bool)
+        or not isinstance(margin_cells, (int, float))
+        or margin_cells <= 0
+    ):
+        raise FilterInputError(
+            f"margin_cells must be a positive number, got {margin_cells}"
+        )
     if len(set(arr.shape)) != 1:
-        raise FilterInputError(f"make_periodic needs a square/cubic image, got {arr.shape}")
-    n_gen = arr.shape[0]
+        raise FilterInputError(
+            f"make_periodic needs a square/cubic image, got {arr.shape}"
+        )
+    if n_gen is None:
+        n_gen = arr.shape[0]
     margin = _ceil(margin_cells * n_gen / (n_gen if n_mesh is None else n_mesh))
     if any(2 * margin >= s for s in arr.shape):
-        raise FilterInputError(f"margin of {margin} layers is too large for shape {arr.shape}")
+        raise FilterInputError(
+            f"margin of {margin} layers is too large for shape {arr.shape}"
+        )
 
     def slices(ax):
         master = [slice(None)] * arr.ndim
@@ -333,7 +354,7 @@ def _label_periodic(mask, structure, connectivity):
     return roots[lbl]
 
 
-def defeature(img, min_size, connectivity=1, periodic=True):
+def defeature(img, min_size, connectivity=1, periodic=True, n_gen=None):
     """Remove connected islands smaller than a disk/ball of radius ``min_size``.
 
     Each island below the threshold is reassigned to its surrounding phase. This
@@ -343,14 +364,17 @@ def defeature(img, min_size, connectivity=1, periodic=True):
     Args:
         img (np.ndarray): 2D or 3D binary image.
         min_size (float): Radius of the threshold disk/ball, as a fraction of
-            the shortest side ``min(img.shape)``. Islands with fewer than
+            the unreplicated cell side ``n_gen``. Islands with fewer than
             ``ceil(pi R**2)`` (2D) or ``ceil(4/3 pi R**3)`` (3D) cells are
-            removed, with ``R = min_size * min(img.shape)``. ``0`` is a no-op.
+            removed, with ``R = min_size * n_gen``. ``0`` is a no-op.
 
     Keyword Args:
         connectivity (int): Neighbour connectivity for labelling (1 = faces).
         periodic (bool): If True, islands that wrap across the domain edges are
             measured as one component (the labelling is roll-invariant).
+        n_gen (int or None): Pixels per side of the unreplicated cell, the reference
+            for `min_size`. None means ``min(img.shape)``; the runner passes
+            the generator's ``N``.
 
     Returns:
         np.ndarray: Boolean image with small islands removed.
@@ -358,7 +382,7 @@ def defeature(img, min_size, connectivity=1, periodic=True):
     arr = _as_binary(img, "defeature")
     if not min_size:
         return arr
-    r = min_size * min(arr.shape)
+    r = min_size * (min(arr.shape) if n_gen is None else n_gen)
     min_cells = _ceil(np.pi * r**2 if arr.ndim == 2 else 4 / 3 * np.pi * r**3)
     out = arr.copy()
     st = ndimage.generate_binary_structure(arr.ndim, connectivity)

@@ -26,6 +26,7 @@
 
 import pytest
 import numpy as np
+from scipy import ndimage
 from compgen.filters import (
     FilterInputError,
     NonBinaryImageError,
@@ -107,8 +108,6 @@ def test_mean_filter_rejects_non_2d_or_3d():
 @pytest.mark.parametrize("shape", [(40, 40), (16, 16, 16)])
 def test_mean_filter_fft_matches_rank(shape, periodic):
     """At small radii (no uint8 ties) the FFT path reproduces rank.mean."""
-    from scipy import ndimage
-
     noise = np.random.default_rng(4).random(shape)
     img = ndimage.gaussian_filter(noise, 2, mode="wrap") > 0.5
     ref = mean_filter(img, radius=0.1, periodic=periodic)
@@ -124,6 +123,7 @@ def test_mean_filter_fft_footprint_larger_than_image():
 
 
 def test_mean_filter_rejects_unknown_method():
+    """An unknown `method` is a config error."""
     with pytest.raises(FilterInputError, match="method"):
         mean_filter(np.zeros((8, 8), dtype=bool), method="median")
 
@@ -178,7 +178,9 @@ def test_defeature_periodic_wrapping_island():
     assert defeature(img, min_size=1.2 / 20, periodic=False).sum() == 0
 
 
-@pytest.mark.parametrize("shape,r_px,n_cells", [((20, 20), 1.2, 5), ((12, 12, 12), 1.27, 9)])
+@pytest.mark.parametrize(
+    "shape,r_px,n_cells", [((20, 20), 1.2, 5), ((12, 12, 12), 1.27, 9)]
+)
 def test_defeature_threshold_from_radius(shape, r_px, n_cells):
     """The cell threshold is ceil(pi R^2) or ceil(4/3 pi R^3), R in pixels."""
     min_size = r_px / min(shape)
@@ -224,34 +226,29 @@ def test_make_periodic_margins(margin):
     assert np.array_equal(out[:, :, :margin], out[:, :, -margin:])
 
 
-def _margin_layers(ndim, ax, margin, center=False):
-    """Index tuples of the master layer and the low/high margins along `ax`."""
-    master, lo, hi = ([slice(None)] * ndim for _ in range(3))
-    if center:
-        master[ax] = slice(0, 1)
-        lo[ax] = slice(1, margin + 1)
-    else:
-        master[ax] = slice(margin, margin + 1)
-        lo[ax] = slice(0, margin)
-    hi[ax] = slice(-margin, None)
-    return tuple(master), tuple(lo), tuple(hi)
+def _margin_layers(n, margin, center=False):
+    """Master layer and overwritten layers (low then high) along an axis of n."""
+    master = 0 if center else margin
+    low = np.arange(1, margin + 1) if center else np.arange(margin)
+    return master, np.concatenate([low, np.arange(n - margin, n)])
 
 
 def _make_periodic_reference(img, margin, shift, center=False):
     """The original make_periodic: try every circular shift one by one."""
     arr = img.astype(int)
     for ax in range(arr.ndim):
-        master, lo, hi = _margin_layers(arr.ndim, ax, margin, center)
+        master, layers = _margin_layers(arr.shape[ax], margin, center)
         if shift:
             costs = []
             for i in range(arr.shape[ax]):
                 a = np.roll(arr, shift=i, axis=ax)
-                costs.append(
-                    np.sum(np.abs(a[hi] - a[master]) + np.abs(a[lo] - a[master]))
-                )
+                ref = np.take(a, [master], axis=ax)
+                costs.append(np.sum(np.abs(np.take(a, layers, axis=ax) - ref)))
             arr = np.roll(arr, shift=int(np.argmin(costs)), axis=ax)
-        arr[lo] = arr[master]
-        arr[hi] = arr[master]
+        ref = np.take(arr, [master], axis=ax)
+        idx = [slice(None)] * arr.ndim
+        idx[ax] = layers
+        arr[tuple(idx)] = ref
     return arr.astype(bool)
 
 
@@ -291,7 +288,15 @@ def test_make_periodic_block(shape, center):
 
 @pytest.mark.parametrize(
     "cells,n_mesh,layers",
-    [(1, None, 1), (7, None, 7), (1.3, 60, 2), (2, 30, 4), (2.5, 15, 10), (2, 25, 5), (2.5, 50, 3)],
+    [
+        (1, None, 1),
+        (7, None, 7),
+        (1.3, 60, 2),
+        (2, 30, 4),
+        (2.5, 15, 10),
+        (2, 25, 5),
+        (2.5, 50, 3),
+    ],
 )
 def test_make_periodic_margin_cells_are_mesh_cells(cells, n_mesh, layers):
     """margin_cells counts mesh cells: ceil(cells * N_gen / n_mesh) pixel layers."""
@@ -311,7 +316,9 @@ def test_make_periodic_gives_constant_mesh_cells(n_gen, n_mesh, cells, center):
     from compgen.mesh import overlap_vfrac  # pylint: disable=import-outside-toplevel
 
     img = np.random.default_rng(7).random((n_gen, n_gen)) > 0.5
-    out = make_periodic(img, margin_cells=cells, shift=True, center=center, n_mesh=n_mesh)
+    out = make_periodic(
+        img, margin_cells=cells, shift=True, center=center, n_mesh=n_mesh
+    )
     vf = overlap_vfrac(out, n_mesh)
     k = int(np.floor(cells))
     for ax in range(2):
@@ -348,3 +355,20 @@ def test_deterministic_errors_are_filter_input_errors(filt, kwargs, img):
     """Shape/param rejections share one type so the runner can abort on them."""
     with pytest.raises(FilterInputError):
         filt(img, **kwargs)
+
+
+def test_length_filters_use_unit_cell_reference():
+    """With n_gen, lengths are fractions of the unit cell, not of the image:
+    on a 2 x 2 tiled image, r with n_gen=N matches r / 2 of the whole image."""
+    rng = np.random.default_rng(0)
+    img = make_orthogonal(rng.random((32, 32)) > 0.5)
+    assert np.array_equal(
+        mean_filter(img, radius=0.1, n_gen=32), mean_filter(img, radius=0.05)
+    )
+    assert np.array_equal(
+        defeature(img, min_size=0.06, n_gen=32), defeature(img, min_size=0.03)
+    )
+    assert np.array_equal(
+        make_periodic(img, margin_cells=2, n_gen=32, n_mesh=16),
+        make_periodic(img, margin_cells=2, n_mesh=32),
+    )

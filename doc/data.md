@@ -53,11 +53,11 @@ This subgroup has two (2D) or three (3D) attributes called `lx`, `ly`, and (for 
 
 ##### Material
 
-A boolean tensor giving the distribution of material A (value `True`/`1`) and B (value `False`/`0`).  Unlike the other fields, it has no time dimension: its shape is `(nx,ny)` in 2D or `(nx,ny,nz)` in 3D.
+A boolean tensor giving the distribution of material A (value `True`/`1`) and B (value `False`/`0`) in the mesh actually solved, projected onto the fixed grid like the responses and stimuli.  Unlike the other fields, it has no time dimension: its shape is `(nx,ny)` in 2D or `(nx,ny,nz)` in 3D.
 
-##### Material reprojected
+##### Material generated
 
-The same data as [material](#material), but reprojected onto the fixed grid from the unstructured grid data.  This field is only present if the [unstructured mesh](#unstructured-mesh) group is present, indicating the actual simulation used an unstructured mesh.  As the material distribution remains constant with time, the length of the first (time) dimension will be `1`.
+The generated structure (as meshed) reduced to the fixed grid: the material-A fraction of each grid cell, thresholded at 0.5.  Same shape as [material](#material); compare the two to see how closely the mesh follows the generated structure.  Only present when the results come from an unstructured mesh.
 
 ##### Responses
 

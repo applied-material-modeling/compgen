@@ -177,7 +177,9 @@ class GenerativeStructureGenerator(StructureGenerator):
         if len(N) < 1:
             raise ValueError("N must be a list with at least one dimension.")
         if len(set(N)) != 1:
-            raise ValueError(f"Only square/cubic structures are supported, got N={list(N)}.")
+            raise ValueError(
+                f"Only square/cubic structures are supported, got N={list(N)}."
+            )
         self.N = list(N)
         self.rng = np.random.default_rng(random_seed)
 

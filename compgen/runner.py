@@ -22,7 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# pylint: disable=broad-exception-caught, too-many-branches, too-many-statements, too-many-locals, too-many-return-statements
+# pylint: disable=broad-exception-caught, too-many-branches, too-many-statements, too-many-locals, too-many-return-statements, too-many-lines
 """High-level orchestration for generating structures, meshing, solving, and writing outputs."""
 
 import os
@@ -32,7 +32,6 @@ import importlib
 import inspect
 import logging
 import time
-import warnings
 
 import numpy as np
 import multiprocess
@@ -42,14 +41,6 @@ from compgen import temp, hdfwriter, utils, mesh, filters
 logger = logging.getLogger(__name__)
 
 
-# Sentinels for the two failure modes run_single can report. MESH_FAILED
-# (sculpt / post-mesh checks / mesh-prep) is backfilled by drawing a new structure;
-# EXEC_FAILED (executor, e.g. MOOSE) consumes a slot and is dropped.
-#
-# These must survive being pickled back from a multiprocess.Pool worker, so they
-# are class instances identified by a `.kind` attribute (NOT bare `object()`
-# compared with `is` -- identity does not survive pickling, which silently turned
-# parallel failures into phantom "successes").
 # Readable names for failure stages in the run summary.
 _STAGE_LABELS = {
     "filter": "filter error",
@@ -70,6 +61,14 @@ _STAGE_LABELS = {
 }
 
 
+# Sentinels for the two failure modes run_single can report. MESH_FAILED
+# (sculpt / post-mesh checks / mesh-prep) is backfilled by drawing a new structure;
+# EXEC_FAILED (executor, e.g. MOOSE) consumes a slot and is dropped.
+#
+# These must survive being pickled back from a multiprocess.Pool worker, so they
+# are class instances identified by a `.kind` attribute (NOT bare `object()`
+# compared with `is` -- identity does not survive pickling, which silently turned
+# parallel failures into phantom "successes").
 class _Failure:  # pylint: disable=too-few-public-methods
     """Sentinel marking a failed run_single attempt (pickling-safe).
 
@@ -188,7 +187,9 @@ class _RunStats:  # pylint: disable=too-many-instance-attributes
             return [f"      {_STAGE_LABELS.get(k, k):<28}: {v}" for k, v in rows]
 
         def share(n):
-            return f" of {attempts} ({100 * n / attempts:.0f}%)" if attempts and n else ""
+            return (
+                f" of {attempts} ({100 * n / attempts:.0f}%)" if attempts and n else ""
+            )
 
         lines = [
             "=" * 64,
@@ -391,7 +392,25 @@ def _run(config, config_files, log, stats):
 
     n_gen, n_mesh, n_out = check_resolutions(config, generator)
     if log:
-        logger.info("Resolutions: N_gen=%d -> N_mesh=%d -> N_out=%d", n_gen, n_mesh, n_out)
+        logger.info(
+            "Resolutions over the domain [0, L]: image N=%d -> N_mesh=%d -> N_out=%d",
+            n_gen,
+            n_mesh,
+            n_out,
+        )
+        copies = orthogonal_copies(config)
+        if copies > 1:
+            logger.info(
+                "make_orthogonal: the generated cell is mirrored into %d copies per "
+                "side that fill the domain [0, L=%g]. Generator parameters (N=%d and "
+                "every length) and filter lengths refer to the unreplicated cell, of "
+                "side L/%d = %g; L, mesh.params.N and output N refer to the domain.",
+                copies,
+                config["L"],
+                n_gen // copies,
+                copies,
+                config["L"] / copies,
+            )
 
     try:
         material_a = setup_material(config["material_A"])
@@ -640,12 +659,11 @@ def run_single(img, material_A, material_B, material_AB, config):
     # Filter
     if log:
         logger.info("Problem %s: Applying filters to image", uid)
-    # None (unset) lets make_periodic take N_mesh = N_gen from the image.
-    n_mesh_cfg = config.get("mesh", {}).get("params", {}).get("N")
+    refs = filter_refs(config, img.shape[0])
     for filter_spec in config.get("filtering", []):
         try:
             filter_func = get_object_from_module(filter_spec.get("type"))
-            img = filter_func(img, **filter_params(filter_func, filter_spec, n_mesh_cfg))
+            img = filter_func(img, **filter_params(filter_func, filter_spec, refs))
         except _FATAL_FILTER_ERRORS as e:
             # Deterministic: bad params (TypeError) or an input the config fixes
             # for every draw. Redrawing fails identically, so abort rather than
@@ -755,12 +773,12 @@ def run_single(img, material_A, material_B, material_AB, config):
         logger.info("Problem %s: Starting to write output files", uid)
 
     # The extractor projects onto N_out (default N_mesh) and resamples the
-    # meshed image `img` (at N_gen) to N_out itself.
+    # meshed image `img` to that grid itself.
     extractor_params = dict(
         config.get("output", {}).get("grid_extractor", {}).get("params", {})
     )
-    extractor_params.setdefault(
-        "N", output_resolution(config, mesh_resolution(config, img.shape[0]))
+    extractor_params["N"] = output_resolution(
+        config, mesh_resolution(config, img.shape[0])
     )
 
     # Actually write the output
@@ -841,19 +859,48 @@ def run_single(img, material_A, material_B, material_AB, config):
     return res
 
 
-def filter_params(filter_func, filter_spec, n_mesh):
-    """The filter's config params, plus `n_mesh` (``mesh.params.N``) when the
-    filter takes one (e.g. `make_periodic`, whose margin is in mesh cells) and
-    the config doesn't set it."""
+def filter_params(filter_func, filter_spec, refs):
+    """The filter's config params, plus each reference in `refs` (``n_gen``,
+    ``n_mesh``, per unreplicated cell) that the filter takes and the config
+    doesn't set.
+
+    ``n_gen`` is the reference for length fractions (`mean_filter`,
+    `defeature`), ``n_mesh`` for margins in mesh cells (`make_periodic`).
+    """
     params = dict(filter_spec.get("params", {}))
-    if "n_mesh" not in params:
-        try:
-            takes = "n_mesh" in inspect.signature(filter_func).parameters
-        except (TypeError, ValueError):
-            takes = False
-        if takes:
-            params["n_mesh"] = n_mesh
+    try:
+        accepted = inspect.signature(filter_func).parameters
+    except (TypeError, ValueError):
+        accepted = {}
+    for name, value in refs.items():
+        if name in accepted and name not in params:
+            params[name] = value
     return params
+
+
+def filter_refs(config, n_gen):
+    """References passed to the filters, per unreplicated (generated) cell of
+    `n_gen` pixels per side: ``{"n_gen": ..., "n_mesh": ...}``.
+
+    ``n_mesh`` is ``mesh.params.N`` (over the domain) divided by the
+    `make_orthogonal` copies per side, possibly fractional. Lengths and
+    margins then keep their size whether a filter runs before or after
+    `make_orthogonal`.
+    """
+    copies = orthogonal_copies(config)
+    n_mesh = mesh_resolution(config, copies * n_gen)
+    n_mesh_cell = n_mesh // copies if n_mesh % copies == 0 else n_mesh / copies
+    return {"n_gen": n_gen, "n_mesh": n_mesh_cell}
+
+
+def orthogonal_copies(config):
+    """Copies per side of the generated cell in the domain: 2 per
+    `make_orthogonal` in the config's `filtering`, else 1."""
+    n = sum(
+        str(f.get("type", "")).endswith("make_orthogonal")
+        for f in config.get("filtering", [])
+    )
+    return 2**n
 
 
 def mesh_resolution(config, n_gen):
@@ -878,36 +925,48 @@ def check_resolutions(config, generator):
     """Check ``dim``, ``L`` and the three resolutions at load time.
 
     ``N_gen`` comes from the generator (``generator.params.N``, or the data for
-    e.g. FromNumpyGenerator), ``N_mesh`` from ``mesh.params.N`` (default
-    ``N_gen``), ``N_out`` from ``output.grid_extractor.params.N`` (default
-    ``N_mesh``).
+    e.g. FromNumpyGenerator) times the ``make_orthogonal`` copies per side:
+    the pixels per side of the meshed image. ``N_mesh`` comes from
+    ``mesh.params.N`` (default ``N_gen``), ``N_out`` from
+    ``output.grid_extractor.params.N`` (default ``N_mesh``). The copies fill
+    the same domain ``[0, L]``: the generator parameters keep referring to the
+    unreplicated cell, while ``L``, ``N_mesh`` and ``N_out`` refer to the
+    domain.
 
     Raises:
         ValueError: bad ``dim``/``L``/``N``, a generator of another dimension,
             or ``N_gen < N_mesh``.
 
     Returns:
-        tuple: ``(n_gen, n_mesh, n_out)``.
+        tuple: ``(n_gen, n_mesh, n_out)`` over the domain (``n_gen`` includes
+        the ``make_orthogonal`` copies).
     """
     dim = config.get("dim")
     if dim not in (2, 3):
         raise ValueError(f"config `dim` must be 2 or 3, got {dim!r}")
     L = config.get("L")
     if isinstance(L, bool) or not isinstance(L, (int, float)) or L <= 0:
-        raise ValueError(f"config `L` must be a positive number (square/cubic cell), got {L!r}")
+        raise ValueError(
+            f"config `L` must be a positive number (square/cubic cell), got {L!r}"
+        )
     shape = list(getattr(generator, "N", None) or [])
     if len(shape) != dim:
-        raise ValueError(f"generator makes {len(shape)}D structures {shape}, config `dim` is {dim}")
-    n_gen = int(shape[0])
+        raise ValueError(
+            f"generator makes {len(shape)}D structures {shape}, config `dim` is {dim}"
+        )
+    n_gen = int(shape[0]) * orthogonal_copies(config)
     n_mesh = mesh_resolution(config, n_gen)
     n_out = output_resolution(config, n_mesh)
-    for name, n in (("mesh.params.N", n_mesh), ("output.grid_extractor.params.N", n_out)):
+    for name, n in (
+        ("mesh.params.N", n_mesh),
+        ("output.grid_extractor.params.N", n_out),
+    ):
         if n < 1:
             raise ValueError(f"{name} must be a positive integer, got {n}")
     if n_gen < n_mesh:
         raise ValueError(
-            f"generator N={n_gen} is below mesh N={n_mesh}: the mesh cannot be finer "
-            "than the generated image"
+            f"image N={n_gen} (generator N times make_orthogonal copies) is below "
+            f"mesh N={n_mesh}: the mesh cannot be finer than the image"
         )
     if n_out * _ALIAS_RATIO < n_mesh:
         msg = (
@@ -915,7 +974,6 @@ def check_resolutions(config, generator):
             "projection point-samples the mesh and will alias instead of averaging"
         )
         logger.warning(msg)
-        warnings.warn(msg)
     return n_gen, n_mesh, n_out
 
 
@@ -936,7 +994,9 @@ def setup_generator(config_input, dim=None):
     n = params.get("N")
     if n is not None:
         if not isinstance(n, int) or isinstance(n, bool):
-            raise ValueError(f"generator `N` must be an integer (square/cubic cell), got {n!r}")
+            raise ValueError(
+                f"generator `N` must be an integer (square/cubic cell), got {n!r}"
+            )
         if dim is None:
             raise ValueError("a scalar generator `N` needs the config's `dim`")
         params["N"] = [n] * dim

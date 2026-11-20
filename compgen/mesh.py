@@ -92,7 +92,9 @@ def _mesh_vfrac(img, N):
     n_gen = img.shape[0]
     n_mesh = n_gen if N is None else int(N)
     if n_mesh > n_gen:
-        raise ValueError(f"Mesh resolution N={n_mesh} exceeds the image resolution {n_gen}.")
+        raise ValueError(
+            f"Mesh resolution N={n_mesh} exceeds the image resolution {n_gen}."
+        )
     return overlap_vfrac(img, n_mesh), n_mesh
 
 
@@ -149,7 +151,7 @@ def generate_mesh_2d(
             )
             # -ims output is a unit-cell, origin-centred 3D slab; map to the domain
             # (this also puts the z-bottom at 0 so the unchanged slice works).
-            normalize_mesh("sculpted_micro.e", (L, L, L / n_mesh))
+            normalize_mesh("sculpted_micro.e", (L, L, L / n_mesh), (n_mesh, n_mesh, 1))
             slice_mesh("sculpted_micro.e", prefix="sliced_")
             shutil.move("sliced_sculpted_micro.e", os.path.join(cwd, fname))
 
@@ -205,7 +207,7 @@ def generate_mesh_3d(
             sculpt(
                 "micro.tec", prefix="sculpted_", settings=settings, sculpt_input="ims"
             )
-            normalize_mesh("sculpted_micro.e", (L, L, L))  # unit-cell -> domain
+            normalize_mesh("sculpted_micro.e", (L, L, L), (n_mesh,) * 3)  # unit-cell -> domain
             shutil.move("sculpted_micro.e", os.path.join(cwd, fname))
 
     _validate_mesh(fname, quality_check, max_snap_move, L, n_mesh)
@@ -244,13 +246,11 @@ def _validate_mesh(fname, quality_check, max_snap_move, L, n):
         L (float): Domain side length.
         n (int): Mesh cells per side.
     """
-    with exodusii.File(fname, mode="r") as exo:
-        coords = np.asarray(exo.get_coords(), dtype=float)
-        conn = np.vstack(
-            [np.asarray(exo.get_element_conn(b)) - 1 for b in exo.get_element_block_ids()]
-        )
+    coords, conn = read_coords_conn(fname)
     if not np.all(np.isfinite(coords)):
-        raise MeshQualityError("Generated mesh has non-finite node coordinates.", "non-finite")
+        raise MeshQualityError(
+            "Generated mesh has non-finite node coordinates.", "non-finite"
+        )
     if max_snap_move is not None:
         ncells = [n] * coords.shape[1]
         snapped = snap_periodic_faces(coords, conn, ncells, max_snap_move * L / n)
@@ -259,10 +259,31 @@ def _validate_mesh(fname, quality_check, max_snap_move, L, n):
         raise MeshQualityError("Generated mesh did not pass quality check.", "jacobian")
 
 
+def read_coords_conn(fname):
+    """Node coordinates ``(n_nodes, dim)`` and zero-based connectivity of all
+    element blocks of an exodus mesh."""
+    with exodusii.File(fname, mode="r") as exo:
+        coords = np.asarray(exo.get_coords(), dtype=float)
+        conn = np.vstack(
+            [
+                np.asarray(exo.get_element_conn(b)) - 1
+                for b in exo.get_element_block_ids()
+            ]
+        )
+    return coords, conn
+
+
 # Local node indices of each element side, by nodes per element (exodus order).
 _SIDES = {
     4: [[0, 1], [1, 2], [2, 3], [3, 0]],  # QUAD4 edges
-    8: [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [0, 4, 7, 3], [0, 3, 2, 1], [4, 5, 6, 7]],
+    8: [
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [0, 4, 7, 3],
+        [0, 3, 2, 1],
+        [4, 5, 6, 7],
+    ],
 }
 
 
@@ -290,10 +311,13 @@ def snap_periodic_faces(coords, conn, ncells, max_move, tol=1e-6):
     Returns:
         array: Snapped copy of ``coords``.
     """
+    # pylint: disable=too-many-locals
     coords = np.asarray(coords, dtype=float)
     out = coords.copy()
     dim = coords.shape[1]
-    faces = np.sort(conn[:, _SIDES[conn.shape[1]]].reshape(-1, len(_SIDES[conn.shape[1]][0])), 1)
+    faces = np.sort(
+        conn[:, _SIDES[conn.shape[1]]].reshape(-1, len(_SIDES[conn.shape[1]][0])), 1
+    )
     uniq, count = np.unique(faces, axis=0, return_counts=True)
     boundary = uniq[count == 1]
     lo, hi = coords.min(axis=0), coords.max(axis=0)
@@ -335,7 +359,8 @@ def snap_periodic_faces(coords, conn, ncells, max_move, tol=1e-6):
         mapped = {tuple(r) for r in np.sort(lut[side_a], 1).tolist()}
         if len(side_a) != len(side_b) or mapped != {tuple(r) for r in side_b.tolist()}:
             raise MeshQualityError(
-                f"Periodic snap: {axis} faces have different side topology.", "snap-topology"
+                f"Periodic snap: {axis} faces have different side topology.",
+                "snap-topology",
             )
         move = float(np.linalg.norm(pa - pb[partner], axis=1).max())
         if move > max_move:
@@ -358,11 +383,20 @@ def _write_coords(fname, coords):
     """
     with exodusii.File(fname, mode="r") as exo:
         if exo.num_node_sets() or exo.num_side_sets():
-            raise ValueError(f"{fname}: cannot rewrite coordinates of a mesh with node/side sets")
+            raise ValueError(
+                f"{fname}: cannot rewrite coordinates of a mesh with node/side sets"
+            )
         blocks = []
         for b in exo.get_element_block_ids():
             info = exo.get_element_block(b)
-            blocks.append((int(b), str(info.elem_type), str(info.name), np.asarray(exo.get_element_conn(b))))
+            blocks.append(
+                (
+                    int(b),
+                    str(info.elem_type),
+                    str(info.name),
+                    np.asarray(exo.get_element_conn(b)),
+                )
+            )
     with exodusii.File(fname, mode="w") as exo:
         nelem = sum(len(c) for *_, c in blocks)
         exo.put_init("snapped", coords.shape[1], len(coords), nelem, len(blocks), 0, 0)
@@ -540,22 +574,34 @@ def _write_micro(phi, fname):
         np.savetxt(f, data, fmt=["%d", "%d", "%d", "%.6f", "%.6f"])
 
 
-def normalize_mesh(exofile, L):
+def normalize_mesh(exofile, L, cells=None):
     """Rescale an exodus hex mesh's coords so each axis spans ``[0, L[axis]]``.
 
-    Used on Sculpt's ``-ims`` output, which is on a unit-cell, origin-centred grid.
-    Mapping ``[min, max] -> [0, L]`` per axis also puts the z-bottom at 0, so the
-    unchanged ``slice_mesh`` works for the 2D path. Coords only; blocks unchanged.
+    Used on Sculpt's ``-ims`` output, which is on a unit-cell grid with cell
+    centers at integer coordinates. With ``cells`` (cells per axis) the known grid
+    extent ``[-0.5, cells - 0.5]`` is mapped to ``[0, L]`` and the result clipped
+    to the box: Sculpt's smoothing can push a few nodes on box edges slightly
+    outside the grid, and mapping the raw ``[min, max]`` instead would pull every
+    face inward by that overshoot. Without ``cells``, ``[min, max] -> [0, L]``.
+    Either way the z-bottom lands at 0, so the unchanged ``slice_mesh`` works for
+    the 2D path. Coords only; blocks unchanged.
     """
     with exodusii.File(exofile, mode="r") as exo:
         coords = np.asarray(exo.get_coords())
         block_ids = [int(b) for b in exo.get_element_block_ids()]
         conns = {b: np.asarray(exo.get_element_conn(b)) for b in block_ids}
 
-    mn = coords.min(axis=0)
-    span = coords.max(axis=0) - mn
-    span[span == 0] = 1.0
-    coords = (coords - mn) / span * np.asarray(L, float)
+    L = np.asarray(L, float)
+    if cells is None:
+        mn = coords.min(axis=0)
+        span = coords.max(axis=0) - mn
+        span[span == 0] = 1.0
+    else:
+        mn = np.full(coords.shape[1], -0.5)
+        span = np.asarray(cells, float)
+    coords = (coords - mn) / span * L
+    if cells is not None:
+        coords = np.clip(coords, 0.0, L)
 
     names = {1: "mat_a", 2: "mat_b"}
     nelem = sum(len(c) for c in conns.values())

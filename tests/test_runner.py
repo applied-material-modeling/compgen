@@ -174,7 +174,12 @@ def test_from_numpy_generator_takes_size_from_data(tmp_path):
 
 
 def _res_config(n_mesh=None, n_out=None, dim=2):
-    config = {"dim": dim, "L": 1.0, "mesh": {"params": {}}, "output": {"grid_extractor": {}}}
+    config = {
+        "dim": dim,
+        "L": 1.0,
+        "mesh": {"params": {}},
+        "output": {"grid_extractor": {}},
+    }
     if n_mesh is not None:
         config["mesh"]["params"]["N"] = n_mesh
     if n_out is not None:
@@ -195,13 +200,16 @@ def test_check_resolutions_defaults_and_values():
 
 
 def test_check_resolutions_rejects_mesh_finer_than_generator():
+    """The mesh cannot be finer than the generated image."""
     with pytest.raises(ValueError, match="below mesh"):
         runner.check_resolutions(_res_config(128), _Shape(96))
 
 
-def test_check_resolutions_warns_on_aliasing_output():
-    with pytest.warns(UserWarning, match="alias"):
+def test_check_resolutions_warns_on_aliasing_output(caplog):
+    """N_out < N_mesh / 2 logs an aliasing warning."""
+    with caplog.at_level("WARNING", logger="compgen.runner"):
         runner.check_resolutions(_res_config(96, 32), _Shape(256))
+    assert "alias" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -214,19 +222,95 @@ def test_check_resolutions_warns_on_aliasing_output():
     ],
 )
 def test_check_resolutions_rejects_bad_dim_or_l(config):
+    """Bad dim, a list L or a generator of another dimension is rejected."""
     with pytest.raises(ValueError):
         runner.check_resolutions(config, _Shape(16))
 
 
-def test_filter_params_passes_n_mesh_only_where_taken():
-    """make_periodic gets mesh.params.N; other filters don't, and an explicit
-    value in the config wins."""
+def test_filter_params_passes_references_only_where_taken():
+    """Each filter gets the unit-cell references it takes; an explicit value in
+    the config wins."""
+    refs = {"n_gen": 256, "n_mesh": 96}
     mp = {"type": "filters.make_periodic", "params": {"margin_cells": 2.5}}
-    assert runner.filter_params(runner.filters.make_periodic, mp, 96) == {
+    assert runner.filter_params(runner.filters.make_periodic, mp, refs) == {
         "margin_cells": 2.5,
+        "n_gen": 256,
         "n_mesh": 96,
     }
     mf = {"type": "filters.mean_filter", "params": {"radius": 0.02}}
-    assert runner.filter_params(runner.filters.mean_filter, mf, 96) == {"radius": 0.02}
+    assert runner.filter_params(runner.filters.mean_filter, mf, refs) == {
+        "radius": 0.02,
+        "n_gen": 256,
+    }
+    assert not runner.filter_params(runner.filters.make_orthogonal, {}, refs)
     explicit = {"params": {"margin_cells": 2, "n_mesh": 32}}
-    assert runner.filter_params(runner.filters.make_periodic, explicit, 96)["n_mesh"] == 32
+    assert (
+        runner.filter_params(runner.filters.make_periodic, explicit, refs)["n_mesh"]
+        == 32
+    )
+
+
+def test_orthogonal_copies_and_resolutions():
+    """make_orthogonal mirrors the generated cell into 2 copies per side of the
+    domain: the image, and the default mesh/output N, double; mesh N may then
+    exceed the generator N."""
+    config = _res_config(64)
+    assert runner.orthogonal_copies(config) == 1
+    config["filtering"] = [{"type": "filters.make_orthogonal"}]
+    assert runner.orthogonal_copies(config) == 2
+    assert runner.check_resolutions(config, _Shape(32)) == (64, 64, 64)
+    assert runner.check_resolutions(
+        _res_config() | {"filtering": config["filtering"]}, _Shape(32)
+    ) == (64, 64, 64)
+
+
+def test_run_single_orthogonal_keeps_domain_and_cell_references(monkeypatch, tmp_path):
+    """With make_orthogonal the domain stays [0, L] and mesh/output N refer to
+    it, while the filters get the unreplicated cell's N_gen and N_mesh."""
+    seen = {}
+
+    def fake_filter(img, n_gen=None, n_mesh=None):
+        seen["refs"] = (n_gen, n_mesh)
+        return img
+
+    def fake_mesh(img, _fname, L, **params):
+        seen["mesh"] = (img.shape, L, params["N"])
+
+    def fake_exec(*_args, **_kwargs):
+        return [{"unstructured_mesh": None}]
+
+    def fake_extract(_mesh_data, _img, L, N):
+        seen["out"] = (L, N)
+        return {"cell_fields": {"material": {"data": np.ones((N, N), bool)}}}
+
+    objs = {
+        "fake.filter": fake_filter,
+        "fake.mesh": fake_mesh,
+        "fake.exec": fake_exec,
+        "fake.extract": fake_extract,
+    }
+    real_get = runner.get_object_from_module
+    monkeypatch.setattr(
+        runner,
+        "get_object_from_module",
+        lambda name, **kw: objs.get(name) or real_get(name, **kw),
+    )
+    config = {
+        "dim": 2,
+        "L": 1.0,
+        "mesh_file": "m.e",
+        "storage": {"temp_dir": str(tmp_path), "delete_temp_dir": True},
+        "filtering": [{"type": "filters.make_orthogonal"}, {"type": "fake.filter"}],
+        "mesh": {"type": "fake.mesh", "params": {"N": 16}},
+        "executor": {"type": "fake.exec", "physics": "x"},
+        "output": {
+            "write_files": False,
+            "grid_extractor": {"type": "fake.extract", "params": {"N": 8}},
+        },
+    }
+    img = np.zeros((32, 32), bool)
+    img[:5, :7] = True
+    runner.run_single(img, {}, {}, {}, config)
+    assert seen["refs"] == (32, 8)
+    assert seen["mesh"] == ((64, 64), 1.0, 16)
+    assert seen["out"] == (1.0, 8)
