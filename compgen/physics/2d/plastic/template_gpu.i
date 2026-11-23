@@ -73,6 +73,12 @@ eq_strain_max = 0.02 # Should cause termination
   []
 []
 
+[Problem]
+  # Give GAMG the 3 rigid body modes of the displacements as the near nullspace of the
+  # displacement split, along with block size 2
+  rigid_body_near_null_space_displacements = 'disp_x disp_y'
+[]
+
 [BCs]
   [Periodic]
     [x]
@@ -478,10 +484,16 @@ eq_strain_max = 0.02 # Should cause termination
 
 [Preconditioning]
   # The macro-gradient scalar variable couples to every displacement DOF. Split it off with a
-  # Schur complement (only a few unknowns) so the displacement block can use algebraic
-  # multigrid on the device. PETSc's GAMG is used for that block: BoomerAMG on the extracted
-  # displacement block was unreliable on the GPU. The displacement block applies one GAMG
-  # cycle (the outer FGMRES, with modified Gram-Schmidt and a long restart, does the rest).
+  # Schur complement (only a few unknowns). The displacement block is solved accurately (FGMRES
+  # to rtol 1e-4) so that the Schur complement action is nearly exact and the outer FGMRES needs
+  # only a few iterations; one GAMG cycle per outer iteration took ~100x more outer iterations
+  # and was slower overall. PETSc's GAMG preconditions the inner solve (BoomerAMG on the extracted
+  # displacement block was unreliable on the GPU and diverged under CG). GAMG gets the rigid
+  # body modes and the block size from [Problem]/rigid_body_near_null_space_displacements.
+  # Aggressive coarsening is off because it coarsens far too fast for elasticity with a large
+  # stiffness contrast. The inner Krylov method is FGMRES rather than the CG of the small
+  # strain templates because the large kinematics F-bar tangent is not symmetric. The rigid body
+  # modes are evaluated in the reference configuration.
   [FSP]
     type = FSP
     topsplit = 'u_hvar'
@@ -493,8 +505,8 @@ eq_strain_max = 0.02 # Should cause termination
     []
     [u]
       vars = 'disp_x disp_y'
-      petsc_options_iname = '-ksp_type -pc_type -pc_gamg_type -mg_levels_ksp_type -mg_levels_pc_type'
-      petsc_options_value = 'preonly gamg agg chebyshev jacobi'
+      petsc_options_iname = '-ksp_type -ksp_rtol -pc_type -pc_gamg_type -pc_gamg_aggressive_coarsening -mg_levels_ksp_type -mg_levels_pc_type -mg_levels_ksp_max_it'
+      petsc_options_value = 'fgmres 1e-4 gamg agg 0 chebyshev jacobi 3'
     []
     [hvar]
       vars = 'hvar'

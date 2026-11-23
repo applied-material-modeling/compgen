@@ -25,8 +25,15 @@ variable and its constraints are assembled on the device. The scalar variable co
 displacement degree of freedom, so the linear solver splits it off with a Schur-complement
 field split. The displacement block uses PETSc's GAMG: BoomerAMG on that block sometimes
 failed on Intel GPUs (the same input would converge on one run and fail with a NaN on the
-next). The displacement block applies one GAMG cycle per outer iteration, and the outer
-FGMRES uses modified Gram-Schmidt with a restart of 100. The thermal templates
+next). The displacement block is solved accurately in each outer iteration (CG to a relative
+tolerance of 1e-4, preconditioned by GAMG with aggressive coarsening off and 3 Chebyshev/Jacobi
+smoothing steps), so the outer FGMRES (modified Gram-Schmidt, restart 100) needs only a few
+iterations. Applying one GAMG cycle per outer iteration instead took hundreds of outer
+iterations and was about 2x slower. `[Problem]/rigid_body_near_null_space_displacements` gives
+GAMG the rigid body modes of the displacements as the near nullspace of the displacement split,
+along with its block size, which cuts the CG iterations by about 9x. The `plastic` templates
+use FGMRES instead of CG for the displacement block, because the large-kinematics F-bar tangent
+is not symmetric; if the inner CG of another template stalls, make the same change. The thermal templates
 use BoomerAMG on the whole system, with the same Krylov settings. The strain, stress and invariant outputs
 are computed by Kokkos materials and aux kernels. For the thermal templates, the fluxes and
 gradients written to the output are recomputed on the host from the converged temperature
