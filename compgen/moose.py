@@ -113,7 +113,7 @@ def material_property_substitutions(material_properties, physics_properties):
             paths = [paths]
         return [f"{path}={value}" for path in paths]
 
-    # The templates take Young's modulus and Poisson's ratio; convert Lame parameters.
+    # The templates take Young's modulus and Poisson's ratio; convert the other pairs.
     props_a = materials.resolve_elastic_constants(material_properties["A"])
     props_b = materials.resolve_elastic_constants(material_properties["B"])
 

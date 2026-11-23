@@ -33,6 +33,7 @@ from compgen.materials import (
     ContrastMaterialGenerator,
     FixedMaterialGenerator,
     RandomMaterialGenerator,
+    bulk_shear_to_engineering,
     lame_to_engineering,
     resolve_elastic_constants,
     sample_contrast_pair,
@@ -248,7 +249,7 @@ def test_resolve_elastic_constants():
 @pytest.mark.parametrize("cls", [FixedMaterialGenerator, RandomMaterialGenerator])
 def test_generators_reject_mixed_elastic_constants(cls):
     """E/nu and Lame parameters are mutually exclusive, and Lame needs both entries."""
-    with pytest.raises(ValueError, match="not both"):
+    with pytest.raises(ValueError, match="only one"):
         cls(youngs_modulus=[1.0, 2.0], lame_mu=[1.0, 2.0])
     with pytest.raises(ValueError, match="missing lame_mu"):
         cls(lame_lambda=[1.0, 2.0])
@@ -315,7 +316,7 @@ def test_contrast_generator_validation():
         ContrastMaterialGenerator(contrast={"k": {"interval": [1.0, 2.0], "beta": 1}})
     with pytest.raises(ValueError, match="both as a contrast"):
         ContrastMaterialGenerator(contrast={"k": [1.0, 2.0]}, A={"k": 1.0})
-    with pytest.raises(ValueError, match="not both"):
+    with pytest.raises(ValueError, match="only one"):
         ContrastMaterialGenerator(
             contrast={"youngs_modulus": [1.0, 2.0]},
             B={"lame_mu": 1.0, "lame_lambda": 1.0},
@@ -349,3 +350,49 @@ def test_contrast_generator_rejects_bad_max_contrast():
         ContrastMaterialGenerator(
             contrast={"k": {"interval": [1.0, 2.0], "max_contrast": 0.5}}
         )
+
+
+def test_bulk_shear_to_engineering_round_trip():
+    """Bulk/shear moduli computed from E/nu convert back to the same E/nu."""
+    E, nu = 100000.0, 0.3
+    K = E / (3 * (1 - 2 * nu))
+    G = E / (2 * (1 + nu))
+    E2, nu2 = bulk_shear_to_engineering(K, G)
+    assert E2 == pytest.approx(E)
+    assert nu2 == pytest.approx(nu)
+
+
+def test_bulk_shear_to_engineering_rejects_unphysical():
+    """Non-positive bulk or shear modulus is rejected."""
+    with pytest.raises(ValueError, match="must be positive"):
+        bulk_shear_to_engineering(0.0, 1.0)
+    with pytest.raises(ValueError, match="must be positive"):
+        bulk_shear_to_engineering(1.0, -1.0)
+
+
+def test_resolve_elastic_constants_bulk_shear():
+    """Bulk/shear props gain E/nu and keep the given entries."""
+    props = {"bulk_modulus": 83333.3333, "shear_modulus": 38461.5385}
+    resolved = resolve_elastic_constants(props)
+    assert resolved["youngs_modulus"] == pytest.approx(100000.0, rel=1e-6)
+    assert resolved["poissons_ratio"] == pytest.approx(0.3, rel=1e-6)
+    assert resolved["bulk_modulus"] == props["bulk_modulus"]
+
+
+@pytest.mark.parametrize(
+    "props,match",
+    [
+        (
+            {"bulk_modulus": 1.0, "shear_modulus": 1.0, "youngs_modulus": 1.0},
+            "only one",
+        ),
+        ({"bulk_modulus": 1.0, "shear_modulus": 1.0, "lame_mu": 1.0}, "only one"),
+        ({"bulk_modulus": 1.0}, "missing shear_modulus"),
+    ],
+)
+def test_generators_reject_bad_bulk_shear(props, match):
+    """Bulk/shear is exclusive with the other pairs and must be complete."""
+    with pytest.raises(ValueError, match=match):
+        FixedMaterialGenerator(**props)
+    with pytest.raises(ValueError, match=match):
+        RandomMaterialGenerator(**{k: [v, v] for k, v in props.items()})

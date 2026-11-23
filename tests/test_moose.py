@@ -229,6 +229,24 @@ def test_material_substitutions_convert_lame():
     assert values["Materials/elastic_tensor_2/poissons_ratio"] == "0.21"
 
 
+def test_material_substitutions_convert_bulk_shear():
+    """Bulk/shear moduli are converted to E/nu for the MOOSE templates."""
+    _, settings = moose.get_physics("3d/plastic", mode="gpu")
+    E, nu = 100000.0, 0.3
+    K = E / (3 * (1 - 2 * nu))
+    G = E / (2 * (1 + nu))
+    mat = {"bulk_modulus": K, "shear_modulus": G, "yield_strength": 1.0}
+    mat["hardening_modulus"] = 1.0
+    subs = moose.material_property_substitutions(
+        {"A": mat, "B": mat}, settings["material_properties"]
+    )
+    values = dict(s.split("=", 1) for s in subs)
+    for phase in (1, 2):
+        path = f"Materials/compute_stress_{phase}/"
+        assert float(values[path + "youngs_modulus"]) == pytest.approx(E)
+        assert float(values[path + "poissons_ratio"]) == pytest.approx(nu)
+
+
 def _gpu_settings(**gpu):
     return {
         "moose": {

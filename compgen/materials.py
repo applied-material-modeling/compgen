@@ -41,35 +41,42 @@ DISTRIBUTIONS = {
 
 PropertySpec = namedtuple("PropertySpec", ["low", "high", "distribution"])
 
-# The two (mutually exclusive) ways to specify isotropic elastic constants. MOOSE templates
-# always take the engineering constants, so Lame parameters are converted before use.
+# The (mutually exclusive) ways to specify isotropic elastic constants. MOOSE templates
+# always take the engineering constants, so the other pairs are converted before use.
 ENGINEERING = ("youngs_modulus", "poissons_ratio")
 LAME = ("lame_lambda", "lame_mu")
+BULK_SHEAR = ("bulk_modulus", "shear_modulus")
+ELASTIC_PAIRS = (ENGINEERING, LAME, BULK_SHEAR)
 
 
 def check_elastic_parameters(names):
     """Check that a set of property names specifies elastic constants consistently.
 
-    A material may give either ``youngs_modulus``/``poissons_ratio`` or
-    ``lame_lambda``/``lame_mu``, but not a mix of the two. Lame parameters must be given as a
-    pair. Materials with neither (e.g. thermal-only) are accepted.
+    A material may give exactly one of the pairs ``youngs_modulus``/``poissons_ratio``,
+    ``lame_lambda``/``lame_mu`` or ``bulk_modulus``/``shear_modulus``, never a mix. The
+    Lame and bulk/shear pairs must be given complete. Materials with none of these (e.g.
+    thermal-only) are accepted.
 
     Args:
         names (iterable): Property names of one material.
     """
     names = set(names)
-    eng = names.intersection(ENGINEERING)
-    lame = names.intersection(LAME)
-    if eng and lame:
+    used = [pair for pair in ELASTIC_PAIRS if names.intersection(pair)]
+    if len(used) > 1:
+        given = sorted(names.intersection(sum(used, ())))
+        options = " or ".join("/".join(pair) for pair in ELASTIC_PAIRS)
         raise ValueError(
-            "Elastic constants must be given either as youngs_modulus/poissons_ratio or as "
-            f"lame_lambda/lame_mu, not both (got {', '.join(sorted(eng | lame))})."
+            f"Elastic constants must be given as only one of {options} "
+            f"(got {', '.join(given)})."
         )
-    if lame and len(lame) != len(LAME):
-        missing = set(LAME) - lame
-        raise ValueError(
-            f"Lame parameters must be given as a pair; missing {', '.join(sorted(missing))}."
-        )
+    for pair in (LAME, BULK_SHEAR):
+        present = names.intersection(pair)
+        if present and len(present) != len(pair):
+            missing = set(pair) - present
+            raise ValueError(
+                f"Elastic constants {'/'.join(pair)} must be given as a pair; missing "
+                f"{', '.join(sorted(missing))}."
+            )
 
 
 def lame_to_engineering(lam, mu):
@@ -92,20 +99,45 @@ def lame_to_engineering(lam, mu):
     return E, nu
 
 
+def bulk_shear_to_engineering(K, G):
+    """Convert bulk and shear moduli to Young's modulus and Poisson's ratio.
+
+    Args:
+        K (float): Bulk modulus.
+        G (float): Shear modulus.
+
+    Returns:
+        tuple: ``(youngs_modulus, poissons_ratio)``.
+    """
+    if K <= 0.0 or G <= 0.0:
+        raise ValueError(
+            "Bulk and shear moduli must be positive, got "
+            f"bulk_modulus={K}, shear_modulus={G}."
+        )
+    E = 9.0 * K * G / (3.0 * K + G)
+    nu = (3.0 * K - 2.0 * G) / (2.0 * (3.0 * K + G))
+    return E, nu
+
+
+_CONVERSIONS = ((LAME, lame_to_engineering), (BULK_SHEAR, bulk_shear_to_engineering))
+
+
 def resolve_elastic_constants(props):
     """Return material properties with Young's modulus and Poisson's ratio available.
 
-    If ``props`` gives Lame parameters, return a copy with ``youngs_modulus`` and
-    ``poissons_ratio`` added (the Lame entries are kept). Otherwise return ``props`` as is.
+    If ``props`` gives Lame parameters or bulk/shear moduli, return a copy with
+    ``youngs_modulus`` and ``poissons_ratio`` added (the given entries are kept).
+    Otherwise return ``props`` as is.
 
     Args:
         props (dict): Property values of one material.
     """
     check_elastic_parameters(props)
-    if not all(k in props for k in LAME):
-        return props
-    E, nu = lame_to_engineering(props["lame_lambda"], props["lame_mu"])
-    return {**props, "youngs_modulus": E, "poissons_ratio": nu}
+    for pair, convert in _CONVERSIONS:
+        if all(k in props for k in pair):
+            E, nu = convert(*(props[k] for k in pair))
+            return {**props, "youngs_modulus": E, "poissons_ratio": nu}
+    return props
 
 
 def _parse_interval(prop, interval):
@@ -250,8 +282,9 @@ class FixedMaterialGenerator(MaterialGenerator):
     """
     Just return a fixed dictionary of material properties.
 
-    Isotropic elastic constants may be given either as ``youngs_modulus`` and
-    ``poissons_ratio`` or as ``lame_lambda`` and ``lame_mu``, but not both.
+    Isotropic elastic constants may be given as ``youngs_modulus`` and
+    ``poissons_ratio``, as ``lame_lambda`` and ``lame_mu``, or as ``bulk_modulus`` and
+    ``shear_modulus`` (only one pair).
 
     Args:
         props (dict): A dictionary of material properties.
@@ -286,9 +319,9 @@ class RandomMaterialGenerator(MaterialGenerator):
     The available distributions are ``uniform`` (the default) and ``loguniform``, which
     requires a strictly positive interval.
 
-    Isotropic elastic constants may be given either as ``youngs_modulus`` and
-    ``poissons_ratio`` or as ``lame_lambda`` and ``lame_mu`` (each sampled independently),
-    but not both.
+    Isotropic elastic constants may be given as ``youngs_modulus`` and
+    ``poissons_ratio``, as ``lame_lambda`` and ``lame_mu``, or as ``bulk_modulus`` and
+    ``shear_modulus`` (only one pair; each value sampled independently).
 
     Args:
         prop_ranges (dict): A dictionary where keys are property names and values are
