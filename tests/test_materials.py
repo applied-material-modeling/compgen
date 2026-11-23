@@ -28,7 +28,12 @@ import random
 
 import pytest
 
-from compgen.materials import FixedMaterialGenerator, RandomMaterialGenerator
+from compgen.materials import (
+    FixedMaterialGenerator,
+    RandomMaterialGenerator,
+    lame_to_engineering,
+    resolve_elastic_constants,
+)
 
 
 def test_fixed_material_generator_returns_same_values_each_time():
@@ -202,3 +207,52 @@ def test_random_material_generator_rejects_non_sequence_spec():
     """Test that a bare scalar is not accepted as a property specification."""
     with pytest.raises(ValueError, match="conductivity.*list of two numbers or a dict"):
         RandomMaterialGenerator(conductivity=12.5)
+
+
+def test_lame_to_engineering_round_trip():
+    """Lame parameters computed from E/nu convert back to the same E/nu."""
+    E, nu = 100000.0, 0.3
+    lam = E * nu / ((1 + nu) * (1 - 2 * nu))
+    mu = E / (2 * (1 + nu))
+    E2, nu2 = lame_to_engineering(lam, mu)
+    assert E2 == pytest.approx(E)
+    assert nu2 == pytest.approx(nu)
+
+
+def test_lame_to_engineering_rejects_unphysical():
+    """Non-positive shear or bulk modulus is rejected."""
+    with pytest.raises(ValueError, match="positive shear and bulk"):
+        lame_to_engineering(1.0, 0.0)
+    with pytest.raises(ValueError, match="positive shear and bulk"):
+        lame_to_engineering(-2.0, 1.0)
+
+
+def test_resolve_elastic_constants():
+    """Lame props gain E/nu; other props are returned untouched."""
+    props = {"lame_lambda": 57692.3, "lame_mu": 38461.5, "density": 2.7}
+    resolved = resolve_elastic_constants(props)
+    assert resolved["youngs_modulus"] == pytest.approx(100000.0, rel=1e-5)
+    assert resolved["poissons_ratio"] == pytest.approx(0.3, rel=1e-5)
+    assert resolved["lame_lambda"] == props["lame_lambda"]
+    assert "youngs_modulus" not in props  # input not mutated
+
+    eng = {"youngs_modulus": 1.0, "poissons_ratio": 0.2}
+    assert resolve_elastic_constants(eng) is eng
+    thermal = {"conductivity": 1.0}
+    assert resolve_elastic_constants(thermal) is thermal
+
+
+@pytest.mark.parametrize("cls", [FixedMaterialGenerator, RandomMaterialGenerator])
+def test_generators_reject_mixed_elastic_constants(cls):
+    """E/nu and Lame parameters are mutually exclusive, and Lame needs both entries."""
+    with pytest.raises(ValueError, match="not both"):
+        cls(youngs_modulus=[1.0, 2.0], lame_mu=[1.0, 2.0])
+    with pytest.raises(ValueError, match="missing lame_mu"):
+        cls(lame_lambda=[1.0, 2.0])
+
+
+def test_random_generator_samples_lame():
+    """Lame parameters are sampled like any other property."""
+    props = RandomMaterialGenerator(lame_lambda=[1.0, 2.0], lame_mu=[3.0, 4.0]).next()
+    assert 1.0 <= props["lame_lambda"] <= 2.0
+    assert 3.0 <= props["lame_mu"] <= 4.0

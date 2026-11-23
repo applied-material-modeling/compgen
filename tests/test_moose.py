@@ -205,6 +205,30 @@ def test_material_substitutions_accept_path_lists():
     assert subs == ["k1=1", "Materials/a/k=1", "k2=2"]
 
 
+def test_material_substitutions_convert_lame():
+    """Lame parameters are converted to E/nu for the MOOSE templates."""
+    _, settings = moose.get_physics("2d/elastic")
+    E, nu = 100000.0, 0.25
+    lam = E * nu / ((1 + nu) * (1 - 2 * nu))
+    mu = E / (2 * (1 + nu))
+    subs = moose.material_property_substitutions(
+        {
+            "A": {"lame_lambda": lam, "lame_mu": mu},
+            "B": {"youngs_modulus": 120000.0, "poissons_ratio": 0.21},
+        },
+        settings["material_properties"],
+    )
+    values = dict(s.split("=", 1) for s in subs)
+    assert float(values["Materials/elastic_tensor_1/youngs_modulus"]) == pytest.approx(
+        E
+    )
+    assert float(values["Materials/elastic_tensor_1/poissons_ratio"]) == pytest.approx(
+        nu
+    )
+    assert values["Materials/elastic_tensor_2/youngs_modulus"] == "120000.0"
+    assert values["Materials/elastic_tensor_2/poissons_ratio"] == "0.21"
+
+
 def _gpu_settings(**gpu):
     return {
         "moose": {

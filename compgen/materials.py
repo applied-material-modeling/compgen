@@ -41,6 +41,72 @@ DISTRIBUTIONS = {
 
 PropertySpec = namedtuple("PropertySpec", ["low", "high", "distribution"])
 
+# The two (mutually exclusive) ways to specify isotropic elastic constants. MOOSE templates
+# always take the engineering constants, so Lame parameters are converted before use.
+ENGINEERING = ("youngs_modulus", "poissons_ratio")
+LAME = ("lame_lambda", "lame_mu")
+
+
+def check_elastic_parameters(names):
+    """Check that a set of property names specifies elastic constants consistently.
+
+    A material may give either ``youngs_modulus``/``poissons_ratio`` or
+    ``lame_lambda``/``lame_mu``, but not a mix of the two. Lame parameters must be given as a
+    pair. Materials with neither (e.g. thermal-only) are accepted.
+
+    Args:
+        names (iterable): Property names of one material.
+    """
+    names = set(names)
+    eng = names.intersection(ENGINEERING)
+    lame = names.intersection(LAME)
+    if eng and lame:
+        raise ValueError(
+            "Elastic constants must be given either as youngs_modulus/poissons_ratio or as "
+            f"lame_lambda/lame_mu, not both (got {', '.join(sorted(eng | lame))})."
+        )
+    if lame and len(lame) != len(LAME):
+        missing = set(LAME) - lame
+        raise ValueError(
+            f"Lame parameters must be given as a pair; missing {', '.join(sorted(missing))}."
+        )
+
+
+def lame_to_engineering(lam, mu):
+    """Convert Lame parameters to Young's modulus and Poisson's ratio.
+
+    Args:
+        lam (float): Lame's first parameter, lambda.
+        mu (float): Lame's second parameter (shear modulus), mu.
+
+    Returns:
+        tuple: ``(youngs_modulus, poissons_ratio)``.
+    """
+    if mu <= 0.0 or 3.0 * lam + 2.0 * mu <= 0.0:
+        raise ValueError(
+            "Lame parameters must give positive shear and bulk moduli (mu > 0 and "
+            f"3 lambda + 2 mu > 0), got lame_lambda={lam}, lame_mu={mu}."
+        )
+    E = mu * (3.0 * lam + 2.0 * mu) / (lam + mu)
+    nu = lam / (2.0 * (lam + mu))
+    return E, nu
+
+
+def resolve_elastic_constants(props):
+    """Return material properties with Young's modulus and Poisson's ratio available.
+
+    If ``props`` gives Lame parameters, return a copy with ``youngs_modulus`` and
+    ``poissons_ratio`` added (the Lame entries are kept). Otherwise return ``props`` as is.
+
+    Args:
+        props (dict): Property values of one material.
+    """
+    check_elastic_parameters(props)
+    if not all(k in props for k in LAME):
+        return props
+    E, nu = lame_to_engineering(props["lame_lambda"], props["lame_mu"])
+    return {**props, "youngs_modulus": E, "poissons_ratio": nu}
+
 
 def _parse_interval(prop, interval):
     """Validate and unpack an ``[min, max]`` interval.
@@ -184,11 +250,15 @@ class FixedMaterialGenerator(MaterialGenerator):
     """
     Just return a fixed dictionary of material properties.
 
+    Isotropic elastic constants may be given either as ``youngs_modulus`` and
+    ``poissons_ratio`` or as ``lame_lambda`` and ``lame_mu``, but not both.
+
     Args:
         props (dict): A dictionary of material properties.
     """
 
     def __init__(self, **props):
+        check_elastic_parameters(props)
         self.props = props
 
     def next(self):
@@ -216,12 +286,17 @@ class RandomMaterialGenerator(MaterialGenerator):
     The available distributions are ``uniform`` (the default) and ``loguniform``, which
     requires a strictly positive interval.
 
+    Isotropic elastic constants may be given either as ``youngs_modulus`` and
+    ``poissons_ratio`` or as ``lame_lambda`` and ``lame_mu`` (each sampled independently),
+    but not both.
+
     Args:
         prop_ranges (dict): A dictionary where keys are property names and values are
             either (min, max) intervals or specification dictionaries as described above.
     """
 
     def __init__(self, **prop_ranges):
+        check_elastic_parameters(prop_ranges)
         self.prop_ranges = {
             prop: _parse_spec(prop, spec) for prop, spec in prop_ranges.items()
         }

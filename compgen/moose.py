@@ -35,7 +35,7 @@ import logging
 import numpy as np
 import exodusii
 
-from compgen import temp
+from compgen import materials, temp
 from compgen.exoutil import get_element_field
 from compgen.tensors import assemble_tensor
 
@@ -113,20 +113,24 @@ def material_property_substitutions(material_properties, physics_properties):
             paths = [paths]
         return [f"{path}={value}" for path in paths]
 
+    # The templates take Young's modulus and Poisson's ratio; convert Lame parameters.
+    props_a = materials.resolve_elastic_constants(material_properties["A"])
+    props_b = materials.resolve_elastic_constants(material_properties["B"])
+
     subs = []
     for ind, prop in enumerate(physics_properties["bulk_material_properties"]):
-        if prop not in material_properties["A"]:
+        if prop not in props_a:
             raise ValueError(f"Material property '{prop}' not defined for material A.")
-        if prop not in material_properties["B"]:
+        if prop not in props_b:
             raise ValueError(f"Material property '{prop}' not defined for material B.")
 
         subs += _subs(
             physics_properties["material_A_substitutions"][ind],
-            material_properties["A"][prop],
+            props_a[prop],
         )
         subs += _subs(
             physics_properties["material_B_substitutions"][ind],
-            material_properties["B"][prop],
+            props_b[prop],
         )
 
     for ind, prop in enumerate(
@@ -498,7 +502,7 @@ def build_moose_command(settings, args, slot=None):
     return launch + wrapper + cmd, env
 
 
-def execute_moose_simulations(
+def execute_moose_simulations(  # pylint: disable=too-many-locals
     physics,
     mesh,
     material_properties,
