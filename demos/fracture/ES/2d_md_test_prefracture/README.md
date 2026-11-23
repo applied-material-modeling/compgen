@@ -60,26 +60,26 @@ configured model dimensions `L`:
 }
 ```
 
-The stopping criterion is also configurable per case through
-`executor.params.stop_fraction`. Cases 1, 5, and 10 use `0.99`, which expands
-the run to 99% of the peak reaction force before the `Terminator` stops it:
+The stopping criterion is configurable per case through
+`executor.params.stop_fraction`. The prefracture cases use `0.8`, so the
+`Terminator` stops after the reaction force falls to 80% of its peak:
 
 ```json
 "executor": {
     "type": "racoon.execute_racoon_simulations",
     "physics": "2d/fracture_prefracture",
-    "params": {"stop_fraction": 0.99}
+    "params": {"stop_fraction": 0.8}
 }
 ```
 
 The default is `0.8` when the parameter is omitted.
 
 `plotting/plot_ellipse_preview.py` creates a starting-geometry verification
-figure with the ellipse exclusion corridor outlined in red and the initial
-cohesive fracture drawn as a thick black line. The fracture is initialized in
-the phase-field sub-application using `CohesiveDamageIC`; it is not represented
-as a third material in the binary mesh. The corridor ensures later ellipses
-cannot overlap the initial crack.
+figure. The red outline is the 10-pixel-wide ellipse-exclusion corridor, not a
+damaged or fractured region. The black line is the only initialized cohesive
+fracture. It is initialized in the phase-field sub-application using
+`CohesiveDamageIC`, not as a third material in the binary mesh; the corridor
+only prevents later ellipses from overlapping that line.
 
 To run the requested cases after reviewing the preview:
 

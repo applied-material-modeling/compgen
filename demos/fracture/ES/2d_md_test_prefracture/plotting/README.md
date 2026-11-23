@@ -53,14 +53,3 @@ This writes `visualizations/mesh_preview.png` and keeps the generated Exodus
 mesh at `visualizations/mesh_case1.exo` locally for inspection. The figure
 compares the filtered bitmap with the actual finite-element material blocks
 read back from Exodus and overlays the configured initial fracture.
-
-After a short diagnostic RACOON run, plot the actual phase-field damage with:
-
-```bash
-/home/bbrunsvik/.conda/envs/moose_genesis/bin/python \
-    plotting/plot_one_step_damage.py \
-    --exodus visualizations/one_step/tmp/<run-directory>/output_0_fracture0.e
-```
-
-The resulting figure reads the `d` field directly from the RACOON Exodus file;
-it does not draw a manually specified crack line.

@@ -47,7 +47,7 @@
         "type": "racoon.execute_racoon_simulations",
         "physics": "2d/fracture_prefracture",
         "params": {
-            "stop_fraction": 0.99
+            "stop_fraction": 0.8
         }
     },
     "material_A": {
