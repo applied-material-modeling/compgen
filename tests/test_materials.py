@@ -320,3 +320,32 @@ def test_contrast_generator_validation():
             contrast={"youngs_modulus": [1.0, 2.0]},
             B={"lame_mu": 1.0, "lame_lambda": 1.0},
         )
+
+
+def test_sample_contrast_pair_max_contrast_log_uniform():
+    """With alpha = 0 and max_contrast, |log contrast| is uniform on [0, log(max)]."""
+    random.seed(4)
+    M = math.log(1.0e3)
+    pairs = [sample_contrast_pair(1.0e-3, 5.0e5, 0.0, 1.0e3) for _ in range(20000)]
+    c = [abs(math.log(a / b)) for a, b in pairs]
+    assert max(c) <= M * (1 + 1e-12)
+    assert sum(c) / len(c) == pytest.approx(M / 2, rel=0.03)
+    assert all(1.0e-3 <= v <= 5.0e5 for pair in pairs for v in pair)
+
+
+def test_sample_contrast_pair_max_contrast_narrowed():
+    """A max_contrast the interval can't reach narrows to high / low."""
+    random.seed(5)
+    pairs = [sample_contrast_pair(0.5, 23.0, 0.0, 1.0e3) for _ in range(5000)]
+    assert all(0.5 <= v <= 23.0 for pair in pairs for v in pair)
+    c = [abs(math.log(a / b)) for a, b in pairs]
+    assert max(c) <= math.log(46.0) * (1 + 1e-12)
+    assert sum(c) / len(c) == pytest.approx(math.log(46.0) / 2, rel=0.05)
+
+
+def test_contrast_generator_rejects_bad_max_contrast():
+    """max_contrast must be a number >= 1."""
+    with pytest.raises(ValueError, match="max_contrast"):
+        ContrastMaterialGenerator(
+            contrast={"k": {"interval": [1.0, 2.0], "max_contrast": 0.5}}
+        )

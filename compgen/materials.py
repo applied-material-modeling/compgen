@@ -306,7 +306,7 @@ class RandomMaterialGenerator(MaterialGenerator):
         return {prop: _sample(spec) for prop, spec in self.prop_ranges.items()}
 
 
-def sample_contrast_pair(low, high, alpha=0.5):
+def sample_contrast_pair(low, high, alpha=0.5, max_contrast=None):
     """Sample a pair of property values ``(p_A, p_B)`` with log-distributed contrast.
 
     Both values lie in ``[low, high]``. Working in log space, ``c = log(p_A / p_B)`` has
@@ -318,17 +318,26 @@ def sample_contrast_pair(low, high, alpha=0.5):
     toward the middle of the interval); ``alpha = 1`` makes ``(log p_A, log p_B)``
     uniform over the square (each value log-uniform, but large contrasts rare).
 
+    ``max_contrast`` truncates ``|c|`` to ``[0, log(max_contrast)]`` (so with ``alpha = 0``
+    the contrast magnitude is log-uniform on ``[1, max_contrast]``). If the interval is
+    too narrow for that contrast, the window narrows to the largest one that fits,
+    ``high / low``.
+
     Args:
         low (float): Lower bound of both values, > 0.
         high (float): Upper bound of both values, >= low.
         alpha (float): Shape exponent, > -1.
+        max_contrast (float): Largest contrast magnitude, >= 1. None means ``high / low``.
 
     Returns:
         tuple: ``(p_A, p_B)``; the contrast is ``p_A / p_B``.
     """
     lo, hi = math.log(low), math.log(high)
     L = hi - lo
-    s = L * (1.0 - random.random() ** (1.0 / (alpha + 1.0)))
+    # Inverse CDF of |c| (density ~ (L - |c|)**alpha), truncated to [0, M].
+    M = L if max_contrast is None else min(math.log(max_contrast), L)
+    F_M = 1.0 - ((L - M) / L) ** (alpha + 1.0) if L > 0.0 else 1.0
+    s = L * (1.0 - (1.0 - random.random() * F_M) ** (1.0 / (alpha + 1.0)))
     c = s * random.choice((-1.0, 1.0))
     u2 = random.uniform(lo + max(0.0, -c), hi - max(0.0, c))
     u1 = u2 + c
@@ -338,22 +347,25 @@ def sample_contrast_pair(low, high, alpha=0.5):
     return min(max(math.exp(u1), low), high), min(max(math.exp(u2), low), high)
 
 
-ContrastSpec = namedtuple("ContrastSpec", ["low", "high", "alpha"])
+ContrastSpec = namedtuple("ContrastSpec", ["low", "high", "alpha", "max_contrast"])
 
 
 def _parse_contrast_spec(prop, spec):
     """Normalize one contrast property specification into a ContrastSpec.
 
     A specification is either a plain ``[min, max]`` sequence (default ``alpha``) or a
-    dictionary with a required ``interval`` key and an optional ``alpha`` key.
+    dictionary with a required ``interval`` key and optional ``alpha`` and
+    ``max_contrast`` keys.
     """
     alpha = 0.5
+    max_contrast = None
     if isinstance(spec, dict):
-        unknown = set(spec) - {"interval", "alpha"}
+        unknown = set(spec) - {"interval", "alpha", "max_contrast"}
         if unknown:
             raise ValueError(
                 f"Unknown key(s) {', '.join(repr(k) for k in sorted(unknown))} for "
-                f"contrast property '{prop}'. Accepted keys are: 'alpha', 'interval'."
+                f"contrast property '{prop}'. Accepted keys are: 'alpha', 'interval', "
+                f"'max_contrast'."
             )
         if "interval" not in spec:
             raise ValueError(
@@ -362,6 +374,7 @@ def _parse_contrast_spec(prop, spec):
             )
         interval = spec["interval"]
         alpha = spec.get("alpha", alpha)
+        max_contrast = spec.get("max_contrast")
     else:
         interval = spec
     low, high = _parse_interval(prop, interval)
@@ -374,7 +387,18 @@ def _parse_contrast_spec(prop, spec):
         raise ValueError(
             f"'alpha' for contrast property '{prop}' must be a number > -1, got {alpha!r}."
         )
-    return ContrastSpec(low, high, float(alpha))
+    if max_contrast is not None and (
+        isinstance(max_contrast, bool)
+        or not isinstance(max_contrast, (int, float))
+        or max_contrast < 1.0
+    ):
+        raise ValueError(
+            f"'max_contrast' for contrast property '{prop}' must be a number >= 1, "
+            f"got {max_contrast!r}."
+        )
+    return ContrastSpec(
+        low, high, float(alpha), None if max_contrast is None else float(max_contrast)
+    )
 
 
 class ContrastMaterialGenerator(MaterialGenerator):
@@ -384,11 +408,13 @@ class ContrastMaterialGenerator(MaterialGenerator):
     Each ``contrast`` property is sampled for both phases at once with
     :func:`sample_contrast_pair`, so the contrast ``A / B`` covers many orders of magnitude
     while both values stay inside the given (physical) interval. A contrast property is a
-    plain ``[min, max]`` sequence or a dictionary with a required ``interval`` and an
-    optional ``alpha`` (default 0.5)::
+    plain ``[min, max]`` sequence or a dictionary with a required ``interval``, an
+    optional ``alpha`` (default 0.5) and an optional ``max_contrast`` (default
+    ``max / min``; narrowed to that when the interval cannot reach it)::
 
         "contrast": {
             "youngs_modulus": {"interval": [1.0e3, 1.0e6], "alpha": 0.5},
+            "lame_mu": {"interval": [1.0e-3, 5.0e5], "alpha": 0.0, "max_contrast": 1.0e3},
             "density": [1.0, 10.0]
         }
 
@@ -442,5 +468,7 @@ class ContrastMaterialGenerator(MaterialGenerator):
         """Generate the next ``(A, B)`` pair of material property dicts."""
         a, b = ({**fixed, **rand.next()} for fixed, rand in self.phases)
         for prop, spec in self.contrast.items():
-            a[prop], b[prop] = sample_contrast_pair(spec.low, spec.high, spec.alpha)
+            a[prop], b[prop] = sample_contrast_pair(
+                spec.low, spec.high, spec.alpha, spec.max_contrast
+            )
         return a, b
