@@ -483,9 +483,21 @@ def sculpt(mesh, prefix="sculpted_", settings=None, sculpt_input="ice"):
 
     try:
         subprocess.run(cmd, check=True, env=env, capture_output=capture)
-        subprocess.run(epu_cmd, check=True, env=env, capture_output=capture)
+        if ranks == 1:
+            # epu exits 0 without writing anything for a single part
+            # ("no concatenation needed"), so just rename the one part.
+            part = outfile + ".e.1.0"
+            if os.path.exists(part):
+                shutil.move(part, outfile + ".e")
+        else:
+            subprocess.run(epu_cmd, check=True, env=env, capture_output=capture)
     except subprocess.CalledProcessError as e:
         raise SculptError(f"sculpt ({sculpt_input}) failed: {e}") from e
+    if not os.path.exists(outfile + ".e"):
+        raise SculptError(
+            f"sculpt ({sculpt_input}) produced no {outfile}.e "
+            f"(files present: {sorted(os.listdir('.'))})"
+        )
 
 
 def downsample_vfrac(img, factor):
