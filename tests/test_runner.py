@@ -342,3 +342,31 @@ def test_gpu_capacity_checked_before_running():
     runner.moose.check_gpu_capacity(config, 3)
     with pytest.raises(ValueError, match="devices_per_node"):
         runner.moose.check_gpu_capacity(config, 4)
+
+
+def test_joint_materials_generator(monkeypatch):
+    """A 'materials' generator supplies A and B together; it excludes material_A/B."""
+    gen = _PredefinedGenerator()
+    config = _config({"type": "filters.mean_filter", "params": {}}, 1)
+    del config["material_A"], config["material_B"]
+    config["materials"] = {
+        "type": "materials.ContrastMaterialGenerator",
+        "params": {"contrast": {"k": [1.0, 100.0]}},
+    }
+    seen = []
+
+    def fake_run_single(img, mat_a, mat_b, *_args):
+        seen.append((mat_a, mat_b))
+        return int(img[0, 0])
+
+    monkeypatch.setattr(runner.utils, "load_json", lambda _files: config)
+    monkeypatch.setattr(runner, "setup_generator", lambda *_a: gen)
+    monkeypatch.setattr(runner, "run_single", fake_run_single)
+
+    assert runner.run("unused.json") == list(range(NUMBER))
+    assert len(seen) == NUMBER
+    assert all(set(a) == {"k"} and set(b) == {"k"} for a, b in seen)
+
+    config["material_A"] = {}
+    with pytest.raises(ValueError, match="not both"):
+        runner.run("unused.json")

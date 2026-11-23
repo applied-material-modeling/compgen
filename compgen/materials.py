@@ -304,3 +304,143 @@ class RandomMaterialGenerator(MaterialGenerator):
     def next(self):
         """Generate a random sample of material properties within the specified ranges."""
         return {prop: _sample(spec) for prop, spec in self.prop_ranges.items()}
+
+
+def sample_contrast_pair(low, high, alpha=0.5):
+    """Sample a pair of property values ``(p_A, p_B)`` with log-distributed contrast.
+
+    Both values lie in ``[low, high]``. Working in log space, ``c = log(p_A / p_B)`` has
+    ``|c|`` distributed with density proportional to ``(L - |c|)**alpha`` on ``[0, L]``,
+    ``L = log(high / low)``, and a random sign. Given ``c``, ``log(p_B)`` is uniform over
+    the range that keeps both values inside the interval.
+
+    ``alpha = 0`` gives a log-uniform contrast (but concentrates the individual values
+    toward the middle of the interval); ``alpha = 1`` makes ``(log p_A, log p_B)``
+    uniform over the square (each value log-uniform, but large contrasts rare).
+
+    Args:
+        low (float): Lower bound of both values, > 0.
+        high (float): Upper bound of both values, >= low.
+        alpha (float): Shape exponent, > -1.
+
+    Returns:
+        tuple: ``(p_A, p_B)``; the contrast is ``p_A / p_B``.
+    """
+    lo, hi = math.log(low), math.log(high)
+    L = hi - lo
+    s = L * (1.0 - random.random() ** (1.0 / (alpha + 1.0)))
+    c = s * random.choice((-1.0, 1.0))
+    u2 = random.uniform(lo + max(0.0, -c), hi - max(0.0, c))
+    u1 = u2 + c
+    if L == 0.0:
+        return low, low
+    # Clamp to absorb exp(log(x)) round-off at the interval ends.
+    return min(max(math.exp(u1), low), high), min(max(math.exp(u2), low), high)
+
+
+ContrastSpec = namedtuple("ContrastSpec", ["low", "high", "alpha"])
+
+
+def _parse_contrast_spec(prop, spec):
+    """Normalize one contrast property specification into a ContrastSpec.
+
+    A specification is either a plain ``[min, max]`` sequence (default ``alpha``) or a
+    dictionary with a required ``interval`` key and an optional ``alpha`` key.
+    """
+    alpha = 0.5
+    if isinstance(spec, dict):
+        unknown = set(spec) - {"interval", "alpha"}
+        if unknown:
+            raise ValueError(
+                f"Unknown key(s) {', '.join(repr(k) for k in sorted(unknown))} for "
+                f"contrast property '{prop}'. Accepted keys are: 'alpha', 'interval'."
+            )
+        if "interval" not in spec:
+            raise ValueError(
+                f"Specification for contrast property '{prop}' is missing the required "
+                f"'interval' key."
+            )
+        interval = spec["interval"]
+        alpha = spec.get("alpha", alpha)
+    else:
+        interval = spec
+    low, high = _parse_interval(prop, interval)
+    if low <= 0.0:
+        raise ValueError(
+            f"Interval for contrast property '{prop}' must be strictly positive, "
+            f"got [{low}, {high}]."
+        )
+    if isinstance(alpha, bool) or not isinstance(alpha, (int, float)) or alpha <= -1:
+        raise ValueError(
+            f"'alpha' for contrast property '{prop}' must be a number > -1, got {alpha!r}."
+        )
+    return ContrastSpec(low, high, float(alpha))
+
+
+class ContrastMaterialGenerator(MaterialGenerator):
+    """
+    Jointly generate the properties of phases A and B, sampling property contrasts.
+
+    Each ``contrast`` property is sampled for both phases at once with
+    :func:`sample_contrast_pair`, so the contrast ``A / B`` covers many orders of magnitude
+    while both values stay inside the given (physical) interval. A contrast property is a
+    plain ``[min, max]`` sequence or a dictionary with a required ``interval`` and an
+    optional ``alpha`` (default 0.5)::
+
+        "contrast": {
+            "youngs_modulus": {"interval": [1.0e3, 1.0e6], "alpha": 0.5},
+            "density": [1.0, 10.0]
+        }
+
+    Further properties of each phase, sampled independently, go in ``A`` and ``B``. Each
+    value is either a fixed number or a :class:`RandomMaterialGenerator` specification::
+
+        "A": {"poissons_ratio": [0.2, 0.4]},
+        "B": {"poissons_ratio": 0.3}
+
+    Unlike the other generators this one yields ``(A, B)`` pairs of property dicts, so in a
+    run configuration it goes under the ``materials`` key in place of ``material_A`` and
+    ``material_B``.
+
+    Keyword Args:
+        contrast (dict): Properties sampled jointly for both phases.
+        A (dict): Further properties of phase A.
+        B (dict): Further properties of phase B.
+    """
+
+    def __init__(self, contrast=None, A=None, B=None):
+        contrast = contrast or {}
+        A = A or {}
+        B = B or {}
+        for phase, extra in (("A", A), ("B", B)):
+            overlap = set(contrast) & set(extra)
+            if overlap:
+                raise ValueError(
+                    f"Propert(y/ies) {', '.join(sorted(overlap))} given both as a contrast "
+                    f"property and for phase {phase}."
+                )
+            check_elastic_parameters(set(contrast) | set(extra))
+        self.contrast = {
+            prop: _parse_contrast_spec(prop, spec) for prop, spec in contrast.items()
+        }
+        self.phases = [self._phase_generator(A), self._phase_generator(B)]
+
+    @staticmethod
+    def _phase_generator(props):
+        """Split one phase's properties into fixed values and a random generator."""
+        fixed = {
+            k: v
+            for k, v in props.items()
+            if isinstance(v, (int, float)) and not isinstance(v, bool)
+        }
+        rand = RandomMaterialGenerator(
+            **{k: v for k, v in props.items() if k not in fixed}
+        )
+        return fixed, rand
+
+    def next(self):
+        """Generate the next ``(A, B)`` pair of material property dicts."""
+        a, b = ({**fixed, **rand.next()} for fixed, rand in self.phases)
+        for prop, spec in self.contrast.items():
+            a[prop], b[prop] = sample_contrast_pair(spec.low, spec.high, spec.alpha)
+        return a, b

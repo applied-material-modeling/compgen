@@ -430,8 +430,19 @@ def _run(config, config_files, log, stats):
             )
 
     try:
-        material_a = setup_material(config["material_A"])
-        material_b = setup_material(config["material_B"])
+        # Either one joint generator yielding (A, B) pairs (e.g. sampled contrasts),
+        # or separate, independent generators for A and B.
+        if "materials" in config:
+            if "material_A" in config or "material_B" in config:
+                raise ValueError(
+                    "Give either 'materials' or 'material_A'/'material_B', not both."
+                )
+            material_pairs = setup_material(config["materials"])
+        else:
+            material_pairs = zip(
+                setup_material(config["material_A"]),
+                setup_material(config["material_B"]),
+            )
         # The interface material is only used by interface physics; default to an
         # empty one so other configs can omit it.
         material_ab = setup_material(
@@ -479,7 +490,7 @@ def _run(config, config_files, log, stats):
     # Materials are pulled in lockstep, only when a task is emitted. Generation
     # failures are swallowed and still count against the shared cap, so a flaky
     # generator can't loop forever.
-    mats = zip(material_a, material_b, material_ab)
+    mats = ((a, b, ab) for (a, b), ab in zip(material_pairs, material_ab))
 
     def tasks():
         drawn = 0

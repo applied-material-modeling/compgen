@@ -24,15 +24,18 @@
 
 """Tests for fixed and random material property generator behavior."""
 
+import math
 import random
 
 import pytest
 
 from compgen.materials import (
+    ContrastMaterialGenerator,
     FixedMaterialGenerator,
     RandomMaterialGenerator,
     lame_to_engineering,
     resolve_elastic_constants,
+    sample_contrast_pair,
 )
 
 
@@ -256,3 +259,64 @@ def test_random_generator_samples_lame():
     props = RandomMaterialGenerator(lame_lambda=[1.0, 2.0], lame_mu=[3.0, 4.0]).next()
     assert 1.0 <= props["lame_lambda"] <= 2.0
     assert 3.0 <= props["lame_mu"] <= 4.0
+
+
+@pytest.mark.parametrize("alpha", [0.0, 0.5, 1.0])
+def test_sample_contrast_pair_in_bounds(alpha):
+    """Both values stay in the interval and contrasts span both signs."""
+    random.seed(1)
+    pairs = [sample_contrast_pair(1.0, 1.0e4, alpha) for _ in range(2000)]
+    assert all(1.0 <= a <= 1.0e4 and 1.0 <= b <= 1.0e4 for a, b in pairs)
+    assert any(a > b for a, b in pairs) and any(a < b for a, b in pairs)
+
+
+def test_sample_contrast_pair_alpha_zero_log_uniform_contrast():
+    """With alpha = 0 the log-contrast is uniform on [-L, L]."""
+    random.seed(2)
+    L = math.log(1.0e4)
+    c = [
+        math.log(a / b)
+        for a, b in (sample_contrast_pair(1.0, 1.0e4, 0.0) for _ in range(20000))
+    ]
+    # Uniform on [-L, L]: mean 0, mean |c| = L/2.
+    assert abs(sum(c) / len(c)) < 0.05 * L
+    assert sum(abs(x) for x in c) / len(c) == pytest.approx(L / 2, rel=0.03)
+
+
+def test_sample_contrast_pair_degenerate_interval():
+    """A zero-width interval returns the bound for both phases."""
+    assert sample_contrast_pair(5.0, 5.0) == (5.0, 5.0)
+
+
+def test_contrast_generator_pairs():
+    """Contrast, random and fixed per-phase properties all land in the right phase."""
+    random.seed(3)
+    gen = ContrastMaterialGenerator(
+        contrast={"youngs_modulus": {"interval": [1.0e3, 1.0e6], "alpha": 0.0}},
+        A={"poissons_ratio": [0.2, 0.4]},
+        B={"poissons_ratio": 0.3, "density": 2.0},
+    )
+    a, b = next(gen)
+    assert set(a) == {"youngs_modulus", "poissons_ratio"}
+    assert set(b) == {"youngs_modulus", "poissons_ratio", "density"}
+    assert 1.0e3 <= a["youngs_modulus"] <= 1.0e6
+    assert 1.0e3 <= b["youngs_modulus"] <= 1.0e6
+    assert 0.2 <= a["poissons_ratio"] <= 0.4
+    assert b["poissons_ratio"] == 0.3 and b["density"] == 2.0
+
+
+def test_contrast_generator_validation():
+    """Bad specifications are rejected at construction."""
+    with pytest.raises(ValueError, match="strictly positive"):
+        ContrastMaterialGenerator(contrast={"k": [0.0, 1.0]})
+    with pytest.raises(ValueError, match="alpha"):
+        ContrastMaterialGenerator(contrast={"k": {"interval": [1.0, 2.0], "alpha": -1}})
+    with pytest.raises(ValueError, match="Unknown key"):
+        ContrastMaterialGenerator(contrast={"k": {"interval": [1.0, 2.0], "beta": 1}})
+    with pytest.raises(ValueError, match="both as a contrast"):
+        ContrastMaterialGenerator(contrast={"k": [1.0, 2.0]}, A={"k": 1.0})
+    with pytest.raises(ValueError, match="not both"):
+        ContrastMaterialGenerator(
+            contrast={"youngs_modulus": [1.0, 2.0]},
+            B={"lame_mu": 1.0, "lame_lambda": 1.0},
+        )
