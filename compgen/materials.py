@@ -24,6 +24,7 @@
 
 """Material property generators for fixed and randomized simulation inputs."""
 
+import importlib
 import math
 import random
 from collections import namedtuple
@@ -505,3 +506,92 @@ class ContrastMaterialGenerator(MaterialGenerator):
                 spec.low, spec.high, spec.alpha, spec.max_contrast
             )
         return a, b
+
+
+class FilteredMaterialGenerator(MaterialGenerator):
+    """
+    Wrap another material generator and reject samples outside given bounds.
+
+    Each draw of the wrapped generator (a single property dict, or an ``(A, B)`` pair as
+    from :class:`ContrastMaterialGenerator`) is accepted only if every phase passes all
+    the bounds; otherwise the wrapped generator is drawn again. The accepted samples
+    therefore follow the wrapped distribution conditioned on the bounds.
+
+    Bounds apply to the resolved elastic constants, so ``poissons_ratio`` (and
+    ``youngs_modulus``) can be bounded even when the wrapped generator samples bulk and
+    shear moduli or Lame parameters. Any other property a phase carries can be bounded
+    too. For example, to keep phases away from the nearly incompressible limit::
+
+        "materials": {
+            "type": "materials.FilteredMaterialGenerator",
+            "params": {
+                "generator": {"type": "materials.ContrastMaterialGenerator",
+                              "params": {"contrast": {...}}},
+                "bounds": {"poissons_ratio": [null, 0.45]}
+            }
+        }
+
+    Keyword Args:
+        generator (dict): ``type`` (``module.Class`` within compgen) and ``params`` of
+            the wrapped generator.
+        bounds (dict): Property name -> ``[min, max]``; either end may be ``None`` (JSON
+            ``null``) for no bound. Both ends are inclusive.
+        max_attempts (int): Draws allowed for one accepted sample before giving up with
+            a ``RuntimeError`` (guards against bounds that can (almost) never be met).
+    """
+
+    def __init__(self, generator=None, bounds=None, max_attempts=10000):
+        if not isinstance(generator, dict) or "type" not in generator:
+            raise ValueError(
+                "FilteredMaterialGenerator needs a 'generator' dictionary with a 'type'."
+            )
+        module_name, class_name = generator["type"].split(".")
+        cls = getattr(importlib.import_module("compgen." + module_name), class_name)
+        self.generator = cls(**generator.get("params", {}))
+
+        self.bounds = {}
+        for prop, bound in (bounds or {}).items():
+            if not isinstance(bound, (list, tuple)) or len(bound) != 2:
+                raise ValueError(
+                    f"Bound for '{prop}' must be a [min, max] pair, got {bound!r}."
+                )
+            low = -math.inf if bound[0] is None else float(bound[0])
+            high = math.inf if bound[1] is None else float(bound[1])
+            if low > high:
+                raise ValueError(f"Bound for '{prop}' has min > max: {bound!r}.")
+            self.bounds[prop] = (low, high)
+        if not self.bounds:
+            raise ValueError("FilteredMaterialGenerator needs at least one bound.")
+
+        if int(max_attempts) < 1:
+            raise ValueError(f"max_attempts must be >= 1, got {max_attempts!r}.")
+        self.max_attempts = int(max_attempts)
+        self.attempts = 0  # total draws of the wrapped generator
+        self.accepted = 0  # total accepted samples
+
+    def accepts(self, props):
+        """Whether one phase's property dict satisfies every bound."""
+        resolved = resolve_elastic_constants(props)
+        for prop, (low, high) in self.bounds.items():
+            if prop not in resolved:
+                raise KeyError(
+                    f"Bounded property '{prop}' is not produced by the wrapped generator "
+                    f"(it gives {sorted(resolved)})."
+                )
+            if not low <= resolved[prop] <= high:
+                return False
+        return True
+
+    def next(self):
+        """Draw from the wrapped generator until a sample passes all bounds."""
+        for _ in range(self.max_attempts):
+            sample = next(self.generator)
+            self.attempts += 1
+            phases = sample if isinstance(sample, tuple) else (sample,)
+            if all(self.accepts(p) for p in phases):
+                self.accepted += 1
+                return sample
+        raise RuntimeError(
+            f"FilteredMaterialGenerator: no sample within bounds {self.bounds} after "
+            f"{self.max_attempts} draws."
+        )

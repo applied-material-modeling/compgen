@@ -31,6 +31,7 @@ import pytest
 
 from compgen.materials import (
     ContrastMaterialGenerator,
+    FilteredMaterialGenerator,
     FixedMaterialGenerator,
     RandomMaterialGenerator,
     bulk_shear_to_engineering,
@@ -396,3 +397,66 @@ def test_generators_reject_bad_bulk_shear(props, match):
         FixedMaterialGenerator(**props)
     with pytest.raises(ValueError, match=match):
         RandomMaterialGenerator(**{k: [v, v] for k, v in props.items()})
+
+
+_KG_CONTRAST = {
+    "type": "materials.ContrastMaterialGenerator",
+    "params": {
+        "contrast": {
+            "shear_modulus": {"interval": [1.0e-3, 5.0e5], "alpha": 0.0, "max_contrast": 1.0e3},
+            "bulk_modulus": {"interval": [10.0, 3.0e5], "alpha": 0.0, "max_contrast": 1.0e3},
+        }
+    },
+}
+
+
+def test_filtered_generator_bounds_poissons_ratio_of_pairs():
+    """Pairs sampled as bulk/shear moduli are redrawn until both phases have nu <= 0.45."""
+    random.seed(7)
+    gen = FilteredMaterialGenerator(
+        generator=_KG_CONTRAST, bounds={"poissons_ratio": [None, 0.45]}
+    )
+    for _ in range(200):
+        a, b = next(gen)
+        for p in (a, b):
+            nu = bulk_shear_to_engineering(p["bulk_modulus"], p["shear_modulus"])[1]
+            assert nu <= 0.45
+    # The unfiltered distribution violates the bound often, so some draws were rejected
+    assert gen.accepted == 200 and gen.attempts > gen.accepted
+
+
+def test_filtered_generator_single_dicts_and_two_sided_bounds():
+    """Single-phase generators are filtered too, with both ends of the bound applied."""
+    random.seed(8)
+    gen = FilteredMaterialGenerator(
+        generator={
+            "type": "materials.RandomMaterialGenerator",
+            "params": {"youngs_modulus": [1.0, 10.0], "poissons_ratio": [-0.5, 0.5]},
+        },
+        bounds={"poissons_ratio": [0.0, 0.3], "youngs_modulus": [2.0, None]},
+    )
+    for _ in range(100):
+        p = next(gen)
+        assert 0.0 <= p["poissons_ratio"] <= 0.3 and p["youngs_modulus"] >= 2.0
+
+
+def test_filtered_generator_validation_and_give_up():
+    """Bad specifications are rejected, and impossible bounds fail after max_attempts."""
+    fixed = {"type": "materials.FixedMaterialGenerator",
+             "params": {"youngs_modulus": 1.0, "poissons_ratio": 0.49}}
+    with pytest.raises(ValueError, match="generator"):
+        FilteredMaterialGenerator(bounds={"poissons_ratio": [None, 0.45]})
+    with pytest.raises(ValueError, match="at least one bound"):
+        FilteredMaterialGenerator(generator=fixed)
+    with pytest.raises(ValueError, match=r"\[min, max\]"):
+        FilteredMaterialGenerator(generator=fixed, bounds={"poissons_ratio": 0.45})
+    with pytest.raises(ValueError, match="min > max"):
+        FilteredMaterialGenerator(generator=fixed, bounds={"poissons_ratio": [0.4, 0.3]})
+    gen = FilteredMaterialGenerator(
+        generator=fixed, bounds={"poissons_ratio": [None, 0.45]}, max_attempts=5
+    )
+    with pytest.raises(RuntimeError, match="after 5 draws"):
+        next(gen)
+    gen = FilteredMaterialGenerator(generator=fixed, bounds={"density": [0.0, 1.0]})
+    with pytest.raises(KeyError, match="density"):
+        next(gen)
