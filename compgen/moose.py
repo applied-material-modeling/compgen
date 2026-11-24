@@ -325,13 +325,44 @@ def process_output(physics, mesh, material_properties, output_exo, output_csv):
     }
 
 
+TERMINATE_GRACE_S = 30
+
+
+def _terminate_process_group(proc, grace_s=TERMINATE_GRACE_S):
+    """Stop a timed-out MOOSE launch and all of its MPI ranks.
+
+    SIGTERM goes to the launcher's process group first. Launchers whose ranks are not
+    their own descendants need this: HPE Cray PALS (Aurora's ``mpiexec``) has the ranks
+    started by the PALS daemon, so only a catchable signal lets ``mpiexec`` forward it
+    and tear the application down; a bare SIGKILL of ``mpiexec`` leaves the ranks
+    running on their GPUs. If the group is still alive after ``grace_s`` seconds it is
+    SIGKILLed (this alone is enough for e.g. mpirun -> hydra_pmi_proxy -> ranks).
+    """
+    try:
+        pgid = os.getpgid(proc.pid)
+    except ProcessLookupError:
+        proc.communicate()
+        return
+    for sig, wait_s in ((signal.SIGTERM, grace_s), (signal.SIGKILL, None)):
+        try:
+            os.killpg(pgid, sig)
+        except ProcessLookupError:
+            break
+        try:
+            proc.communicate(timeout=wait_s)  # reap (and drain any captured output)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+    proc.communicate()
+
+
 def _run_moose_command(cmd, env, capture, timeout_s):
-    """Run a single MOOSE command, killing the whole process tree on timeout.
+    """Run a single MOOSE command, stopping the whole process tree on timeout.
 
     ``subprocess.run(timeout=...)`` only kills the direct child (e.g. ``mpirun``);
     the MPI ranks it spawned would be orphaned and keep running. Launching the
-    command in its own session and killing the process group on timeout tears the
-    whole tree down (mpirun -> hydra_pmi_proxy -> solid_mechanics ranks).
+    command in its own session and signalling the process group on timeout tears the
+    whole tree down (see ``_terminate_process_group``).
 
     Args:
         cmd (list[str]): Command and arguments.
@@ -350,12 +381,7 @@ def _run_moose_command(cmd, env, capture, timeout_s):
         try:
             out, err = proc.communicate(timeout=timeout_s)
         except subprocess.TimeoutExpired:
-            # Kill the entire process group (mpirun + hydra_pmi_proxy + ranks).
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            proc.communicate()  # reap the killed tree
+            _terminate_process_group(proc)
             raise
         if proc.returncode != 0:
             raise subprocess.CalledProcessError(

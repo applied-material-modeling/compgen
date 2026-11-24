@@ -26,7 +26,9 @@
 
 import os
 import re
+import signal
 import subprocess
+import time
 
 import pytest
 
@@ -385,3 +387,42 @@ def test_gpu_mode_runs_gpu_template(monkeypatch, tmp_path):
         assert f"gx={int(n == 0)}" in cmd and f"gy={int(n == 1)}" in cmd
         assert "k1=1.0" in cmd and "k2=2.0" in cmd
         assert cmd[-1] == "--compute-device=xpu"
+
+
+def _session(script):
+    """Start a bash script in its own session, as _run_moose_command does."""
+    return subprocess.Popen(["bash", "-c", script], start_new_session=True)
+
+
+def test_terminate_process_group_sigterm_first(tmp_path):
+    """A launcher that exits on SIGTERM (e.g. PALS mpiexec tearing down its ranks) is
+    stopped by SIGTERM well within the grace period, without needing SIGKILL."""
+    marker = tmp_path / "got_term"
+    proc = _session(f"trap 'touch {marker}; exit 0' TERM; sleep 100 & wait")
+    time.sleep(0.5)
+    t0 = time.time()
+    moose._terminate_process_group(proc, grace_s=20)
+    assert proc.returncode is not None
+    assert marker.exists()
+    assert time.time() - t0 < 10
+
+
+def test_terminate_process_group_falls_back_to_sigkill():
+    """A process group that ignores SIGTERM is SIGKILLed after the grace period."""
+    proc = _session("trap '' TERM; sleep 100")
+    time.sleep(0.5)
+    t0 = time.time()
+    moose._terminate_process_group(proc, grace_s=1)
+    assert proc.returncode == -signal.SIGKILL
+    assert 1.0 <= time.time() - t0 < 10
+
+
+def test_run_moose_command_timeout_stops_group():
+    """On timeout the whole group is stopped and TimeoutExpired is raised."""
+    t0 = time.time()
+    with pytest.raises(subprocess.TimeoutExpired):
+        moose._run_moose_command(
+            ["bash", "-c", "sleep 100 & sleep 100 & wait"], env=None, capture=True,
+            timeout_s=1,
+        )
+    assert time.time() - t0 < 10
